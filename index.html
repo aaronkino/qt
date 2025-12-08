@@ -2,17 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- V47-app: 鎖定縮放，讓手機操作更像 App -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單 (App版)</title>
-    
-    <!-- V47-app: PWA / Mobile Web App 設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="theme-color" content="#105482">
-    <link rel="apple-touch-icon" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/sprites/solid.svg"> <!-- 暫用 icon -->
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奇諾影像報價單生成器 (v47 - 稅額計算模式更新)</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,11 +12,12 @@
                 extend: {
                     colors: {
                         kino: {
-                            DEFAULT: '#105482',
+                            DEFAULT: '#105482', // 企業標準色 (深)
                             light: '#1e6fa5',
                             dark: '#0c3e60',
-                            50: '#f0f6fa',
+                            50: '#f0f6fa', // 極淡標準色 (淺)
                         },
+                        // V39: 新增兩種顏色用於第六項標題交替配色
                         'kino-darker': '#31557e', 
                         'kino-medium': '#4470a0', 
                     }
@@ -33,18 +25,10 @@
             }
         }
     </script>
-    <!-- 引入 Font Awesome -->
+    <!-- 引入 Font Awesome 實用圖示 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <style>
-        /* V47-app: 手機輸入框優化，防止 iOS 自動放大 */
-        @media screen and (max-width: 768px) {
-            input, select, textarea {
-                font-size: 16px !important; 
-            }
-        }
-
- <!-- V46 (b): 完整版本更新日誌 (不顯示於網頁) -->
+    <!-- V46 (b): 完整版本更新日誌 (不顯示於網頁) -->
     <!--
     --- 奇諾影像報價單生成器 - 完整版本更新歷史 (V01 - V47) ---
     
@@ -89,10 +73,10 @@
     V44: 修正列印 H3 標題字級過小問題，使其在列印時為 12pt。
     V45: RWD 優化，所有表格增加橫向捲動容器 (overflow-x-auto) 與最小寬度設定，改善手機填寫體驗。
     V46: 修復 populateForm 與 collectQuotationData 中的 JS 選擇器錯誤，解決因 v45 變更 class 導致的 null pointer exception。
-    V47: 稅額計算模式更新。新增「報價含稅」選項；原「未稅」改名「報價未稅」；原「含稅(5%)」改名「稅外(5%)」。
+    V47 (本版): 稅額計算模式更新。新增「報價含稅」選項；原「未稅」改名「報價未稅」；原「含稅(5%)」改名「稅外(5%)」。
     -->
-
-
+    
+    <style>
         /* 專為列印優化 */
         @media print {
             @page {
@@ -105,7 +89,7 @@
             body {
                 margin: 0;
                 padding: 0;
-                zoom: 0.95;
+                zoom: 0.95; /* 預設縮放 */
                 -webkit-print-color-adjust: exact;
                 font-size: 12px;
             }
@@ -129,16 +113,19 @@
             /* Logo 處理 */
             #logo-placeholder { display: none !important; }
             #logo-wrapper.has-no-logo { display: none !important; }
+            /* Logo 圖片強制顯示，並保持其在絕對定位容器內的位置 */
             #logo-img { display: block !important; } 
 
             table {
                 border-collapse: collapse;
                 width: 100%;
             }
+            /* 修正: 確保所有 table cell 在列印時都有 2px 邊框 */
             th, td {
                 border: 2px solid #000 !important; 
             }
 
+            /* 強制所有表格及總金額區塊的外層邊框為 2px 黑色實線 */
             .summary-table, .item-table, .signature-table, .summary-block {
                  border: 2px solid #000 !important;
             }
@@ -148,13 +135,21 @@
                 page-break-after: avoid;
             }
             
-            h2 { font-size: 14pt !important; }
-            h3 { font-size: 12pt !important; }
+            /* V43 修正: 確保 h2 標題在列印時足夠大 (Section I, IV, V, VI) */
+            h2 {
+                 font-size: 14pt !important; /* 約 18.6px */
+            }
+            
+            /* V44 修正: 確保 h3 摘要標題在列印時字級適中 */
+            h3 {
+                 font-size: 12pt !important; /* 約 16px */
+            }
 
             .section-block {
                 break-inside: avoid;
                 page-break-inside: avoid;
             }
+            /* 預設分頁設定 */
             .payment-section-container {
                 break-before: page;
                 page-break-before: always;
@@ -173,6 +168,7 @@
             tr.hide-date-row { display: none !important; }
             .upload-hint { display: none !important; }
             
+            /* 列印時 H1 繼承標準樣式，現在由 Grid 置中 */
             h1 { 
                 margin-bottom: 10px !important; 
                 font-size: 1.5rem !important; 
@@ -185,8 +181,10 @@
             .gap-4 { gap: 0.5rem !important; }
 
             .summary-table {
+                /* 繼承上面的 .summary-table 樣式，但確保其外邊框存在 */
                 border-collapse: collapse !important;
             }
+            /* 修正: summary-table 內的 cell 也要 2px */
             .summary-table th, .summary-table td {
                 border: 2px solid #000 !important;
             }
@@ -202,56 +200,65 @@
                 font-size: 1.3rem !important; 
             }
 
+            /* 列印時編輯器樣式調整 */
             #notes-list-editor {
                 border: none !important;
                 padding: 0 !important;
                 background-color: #f0f6fa !important; 
             }
             
+            /* 強制報價單號區塊在列印時為 3 欄並排 */
             .header-info-grid {
                 display: grid !important;
                 grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
                 gap: 1rem !important;
             }
             
+            /* 確保收款資訊在列印時不換行，並平均分配欄寬 */
             .bank-info-grid {
                 display: grid !important;
                 grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                gap: 0.5rem !important;
+                gap: 0.5rem !important; /* 確保間距小 */
             }
             .bank-info-grid input {
+                 /* 確保 input 能夠填滿分配到的空間 */
                  width: 100% !important;
             }
 
+            /* 修正: 縮放列印模式 (0.65 -> 0.55) */
             body.print-scaled {
-                zoom: 0.55 !important;
+                zoom: 0.55 !important; /* 縮小比例 */
             }
+            /* 修正: 讓 Section I-V 保持在同一頁 (如果空間足夠) */
             body.print-scaled .payment-section-container {
                 break-before: avoid !important;
                 page-break-before: avoid !important;
                 margin-top: 0 !important;
             }
+            /* 修正: 讓 Section VI 依然換頁 */
             body.print-scaled .detailed-section { 
                 break-before: page !important;
                 page-break-before: always !important;
                 margin-top: 0 !important; 
             }
 
+            /* 重置: 移除 page-container 上的陰影/邊框 */
             .page-container {
                 border: none !important;
                 box-shadow: none !important;
             }
             
+            /* V45: 確保 RWD 模式下，橫向捲動的表格在列印時顯示完整 (移除捲軸) */
             .overflow-x-auto {
                 overflow-x: visible !important;
             }
+
         }
 
+        /* 自定義字體和基礎樣式 */
         body {
             font-family: 'Inter', 'Noto Sans CJK TC', sans-serif;
             background-color: #f4f7f9;
-            /* V47-app: 避免 iOS 點擊高亮 */
-            -webkit-tap-highlight-color: transparent;
         }
 
         .quotation-input {
@@ -284,6 +291,7 @@
             border-collapse: collapse;
             width: 100%;
             margin-bottom: 10px;
+            /* 確保在非列印模式下也有邊框 */
             border: 1px solid #e5e7eb; 
         }
         .item-table thead th {
@@ -298,6 +306,7 @@
         
         tr.hide-date-row { display: none; }
 
+        /* 簽名區域 */
         .signature-area {
             position: relative;
             height: 160px;
@@ -317,6 +326,7 @@
         }
         .signature-upload-wrapper:hover .upload-hint { opacity: 1; }
         
+        /* Logo 上傳區塊 */
         #logo-wrapper { 
             transition: opacity 0.2s; 
             position: relative; 
@@ -357,6 +367,7 @@
             border: 1px solid #e5e7eb; 
         }
 
+        /* Word 風格自動編號編輯器樣式 */
         #notes-list-editor {
             counter-reset: item;
             list-style-type: none;
@@ -392,17 +403,20 @@
             margin-top: 20px;
             padding-top: 20px;
         }
+        /* 手機版收款資訊網格佈局 */
         .bank-info-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0.5rem;
         }
+        /* 修正: 確保 grid item 內部的 flex 元素不換行，並讓 input 佔據剩餘空間 */
         .bank-info-grid .flex {
             flex-wrap: nowrap;
         }
         .bank-info-grid input {
+            /* 修正: 替換 w-full 為 flex-1 */
             flex: 1; 
-            min-width: 0;
+            min-width: 0; /* 讓 flex-1 能正確縮小 */
         }
     </style>
 </head>
@@ -412,16 +426,16 @@
         
         <!-- 控制面板 -->
         <div class="no-print mb-6 text-center bg-gray-100 p-3 rounded-lg shadow-md">
-            <div id="status-message" class="text-sm text-kino mb-2 font-medium">應用程式已初始化 (v47-app)。</div>
+            <div id="status-message" class="text-sm text-kino mb-2 font-medium">應用程式已初始化 (v47 - 稅額計算模式更新)。</div>
             <div class="flex flex-wrap justify-center items-center gap-4">
                 <button id="saveBtn" class="bg-kino hover:bg-kino-dark text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
-                    <i class="fas fa-download mr-1"></i>儲存/備份
+                    <i class="fas fa-download mr-1"></i>另存新檔
                 </button>
 
                 <input type="file" id="fileInput" class="hidden" style="display:none" accept=".json">
 
                 <button id="loadBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
-                    <i class="fas fa-folder-open mr-1"></i>載入舊檔
+                    <i class="fas fa-folder-open mr-1"></i>開啟舊檔
                 </button>
                 
                 <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
@@ -429,24 +443,28 @@
                     <span class="text-xs font-bold text-gray-700">列印細項</span>
                 </label>
                 
+                <!-- (a) 簽署日期 (原為第三個，移動到第二個位置) -->
                 <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
                     <input type="checkbox" id="show-sig-date-toggle" class="form-checkbox h-4 w-4 text-kino" checked>
                     <span class="text-xs font-bold text-gray-700">簽署日期</span>
                 </label>
 
+                <!-- (a) 單頁列印 (原為第二個，移動到第三個位置並改名) -->
                 <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
                     <input type="checkbox" id="print-mode-scaled" class="form-checkbox h-4 w-4 text-kino">
                     <span class="text-xs font-bold text-gray-700">單頁列印</span>
                 </label>
                 
                 <button id="printBtn" class="bg-kino hover:bg-kino-dark text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
-                    <i class="fas fa-print mr-1"></i>列印 / PDF
+                    <i class="fas fa-print mr-1"></i>列印
                 </button>
             </div>
         </div>
 
         <!-- 標題區塊 -->
+        <!-- V41 修正: 使用 3 欄 Grid 佈局實現 Logo 靠左，標題真置中 -->
         <div class="grid grid-cols-3 items-center mb-4 border-b-4 border-kino pb-2 relative">
+            <!-- Col 1: Logo 容器 (Flex items-center for vertical alignment) -->
             <div class="flex items-center group cursor-pointer has-no-logo" id="logo-wrapper" title="點擊上傳公司 Logo">
                 <img id="logo-img" src="" class="hidden" alt="Logo">
                 <div id="logo-placeholder" class="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 border-2 border-dashed border-gray-300">
@@ -455,10 +473,12 @@
                 <input type="file" id="logo-upload" class="hidden" accept="image/*">
             </div>
             
+            <!-- Col 2: H1 報價單標題 (在 Grid Cell 中自動置中) -->
             <h1 class="text-2xl font-extrabold text-gray-900 text-center whitespace-nowrap">
                 奇諾影像報價單(Quotation) 
             </h1>
 
+            <!-- Col 3: 佔位 Spacer (保持視覺對稱) -->
             <div></div>
         </div>
 
@@ -502,6 +522,7 @@
                 </button>
             </div>
             
+            <!-- V45: 增加橫向捲動 wrapper -->
             <div class="mb-4 overflow-x-auto">
                 <table class="w-full min-w-[600px] text-left text-sm border border-gray-300 rounded-lg overflow-hidden summary-table">
                     <thead class="bg-kino-50">
@@ -522,6 +543,7 @@
         <div class="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block">
             <div class="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print">
                 <label class="text-xs font-bold text-gray-500 mr-1">稅額計算：</label>
+                <!-- V47: 更新稅額選項 -->
                 <select id="tax-mode" class="text-xs border border-gray-300 rounded px-1 py-0 bg-white cursor-pointer hover:border-kino focus:outline-none">
                     <option value="excluded">報價未稅</option>
                     <option value="inclusive_flat">報價含稅</option>
@@ -563,6 +585,7 @@
                 </button>
             </div>
             
+            <!-- V45: 增加橫向捲動 wrapper -->
             <div class="overflow-x-auto mb-4">
                 <table class="min-w-[600px] w-full divide-y divide-gray-200 border border-gray-300 summary-table">
                     <thead class="bg-kino-50">
@@ -580,8 +603,10 @@
                 </table>
             </div>
 
+            <!-- 修正：戶名銀行帳號保持在同一列且字級縮小 -->
             <div id="bank-info" class="space-y-0 text-sm pl-3 bg-gray-50 p-2 rounded-lg border border-gray-200 mt-4">
                 <h4 class="font-bold border-b pb-1 mb-1 text-red-700">乙方收款資訊：</h4>
+                <!-- START: 修正區塊，使用 flex-nowrap 和 flex-1 確保水平佈局 -->
                 <div class="bank-info-grid">
                     <div class="flex items-center flex-nowrap min-w-0">
                         戶名：<input type="text" data-key="accountName" value="奇諾影像有限公司" class="quotation-input inline-block flex-1 bg-transparent border-none p-0 h-auto text-xs sm:text-sm">
@@ -593,13 +618,15 @@
                         帳號：<input type="text" data-key="accountNumber" value="007-018-0005565-8" class="quotation-input inline-block flex-1 bg-transparent border-none p-0 h-auto text-xs sm:text-sm">
                     </div>
                 </div>
+                <!-- END: 修正區塊 -->
             </div>
-            <p class="mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
+            <p class="mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
         </div>
 
         <!-- 五、 報價確認與簽署 -->
         <div class="section-block signature-block">
             <h2 class="text-lg font-bold mt-6 mb-2 border-l-4 border-kino pl-3">五、 報價確認與簽署 (Signatures)</h2>
+            <!-- V45: 確保 min-w, wrapper 已有 overflow-x-auto -->
             <div class="w-full overflow-x-auto shadow-lg rounded-lg border border-gray-300">
                 <table class="min-w-[600px] w-full divide-y divide-gray-200 summary-table">
                     <thead class="bg-gray-100">
@@ -1363,7 +1390,7 @@
                         const fileName = `${qId}.json`;
                         const jsonStr = JSON.stringify(data, null, 2);
                         
-                        // V47-app: Mobile download fallback
+                        // 嘗試使用 File System Access API
                         if (window.showSaveFilePicker) {
                             try {
                                 const handle = await window.showSaveFilePicker({
@@ -1379,12 +1406,13 @@
                                 document.getElementById('status-message').textContent = `✅ 檔案儲存成功！`;
                                 return;
                             } catch (err) {
+                                // 若使用者取消，不動作；若不支援或錯誤，則往下執行舊版下載
                                 if (err.name === 'AbortError') return;
                                 console.log("File System API failed, fallback to download.", err);
                             }
                         }
 
-                        // Fallback for mobile/safari
+                        // 舊版下載方式
                         const blob = new Blob([jsonStr], { type: "application/json" });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1416,7 +1444,7 @@
                     document.getElementById('quotation-date').value = today;
                     updateQuotationId(); // 更新單號的前綴部分，保留後綴
 
-                    document.getElementById('status-message').textContent = "已恢復未完成草稿 (v47-app)。";
+                    document.getElementById('status-message').textContent = "已恢復未完成草稿 (v47 - 稅額計算模式更新)。";
                 } else {
                     populateForm({ 
                         project: defaultProjectInfo,
