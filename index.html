@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- V47-app: 鎖定縮放，讓手機操作更像 App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>奇諾影像報價單 (App版)</title>
+    
+    <!-- V47-app: PWA / Mobile Web App 設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#105482">
+    <link rel="apple-touch-icon" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/sprites/solid.svg"> <!-- 暫用 icon -->
+
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kino: {
+                            DEFAULT: '#105482',
+                            light: '#1e6fa5',
+                            dark: '#0c3e60',
+                            50: '#f0f6fa',
+                        },
+                        'kino-darker': '#31557e', 
+                        'kino-medium': '#4470a0', 
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- 引入 Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* V47-app: 手機輸入框優化，防止 iOS 自動放大 */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important; 
+            }
+        }
+
+        /* 專為列印優化 */
+        @media print {
+            @page {
+                size: A4;
+                margin: 12mm;
+            }
+            .no-print {
+                display: none !important;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                zoom: 0.95;
+                -webkit-print-color-adjust: exact;
+                font-size: 12px;
+            }
+            .page-container {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100% !important;
+                max-width: none !important;
+                border: none !important; 
+            }
+            input, textarea, select {
+                border: none !important;
+                padding: 0 !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                appearance: none;
+                font-size: inherit;
+                resize: none;
+            }
+            /* Logo 處理 */
+            #logo-placeholder { display: none !important; }
+            #logo-wrapper.has-no-logo { display: none !important; }
+            #logo-img { display: block !important; } 
+
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+            th, td {
+                border: 2px solid #000 !important; 
+            }
+
+            .summary-table, .item-table, .signature-table, .summary-block {
+                 border: 2px solid #000 !important;
+            }
+            
+            h1, h2, h3, h4 {
+                break-after: avoid; 
+                page-break-after: avoid;
+            }
+            
+            h2 { font-size: 14pt !important; }
+            h3 { font-size: 12pt !important; }
+
+            .section-block {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .payment-section-container {
+                break-before: page;
+                page-break-before: always;
+                margin-top: 20px; 
+            }
+            
+            .detailed-section { 
+                break-before: page; 
+                page-break-before: always;
+                margin-top: 0 !important;
+                padding-top: 20px;
+                border-top: none !important;
+            }
+            
+            body.print-hide-details .detailed-section { display: none !important; }
+            tr.hide-date-row { display: none !important; }
+            .upload-hint { display: none !important; }
+            
+            h1 { 
+                margin-bottom: 10px !important; 
+                font-size: 1.5rem !important; 
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            
+            .mb-6 { margin-bottom: 10px !important; }
+            .p-4, .p-6, .p-10 { padding: 0 !important; }
+            .gap-4 { gap: 0.5rem !important; }
+
+            .summary-table {
+                border-collapse: collapse !important;
+            }
+            .summary-table th, .summary-table td {
+                border: 2px solid #000 !important;
+            }
+
+            .signature-block .summary-table {
+                font-size: 120% !important; 
+            }
+            .signature-block .summary-table th, 
+            .signature-block .summary-table td {
+                padding: 10px !important; 
+            }
+            .signature-block h2 {
+                font-size: 1.3rem !important; 
+            }
+
+            #notes-list-editor {
+                border: none !important;
+                padding: 0 !important;
+                background-color: #f0f6fa !important; 
+            }
+            
+            .header-info-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 1rem !important;
+            }
+            
+            .bank-info-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.5rem !important;
+            }
+            .bank-info-grid input {
+                 width: 100% !important;
+            }
+
+            body.print-scaled {
+                zoom: 0.55 !important;
+            }
+            body.print-scaled .payment-section-container {
+                break-before: avoid !important;
+                page-break-before: avoid !important;
+                margin-top: 0 !important;
+            }
+            body.print-scaled .detailed-section { 
+                break-before: page !important;
+                page-break-before: always !important;
+                margin-top: 0 !important; 
+            }
+
+            .page-container {
+                border: none !important;
+                box-shadow: none !important;
+            }
+            
+            .overflow-x-auto {
+                overflow-x: visible !important;
+            }
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans CJK TC', sans-serif;
+            background-color: #f4f7f9;
+            /* V47-app: 避免 iOS 點擊高亮 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .quotation-input {
+            width: 100%;
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: all 0.2s;
+            text-align: inherit;
+            min-width: 0;
+        }
+        .quotation-input:focus {
+            border-color: #105482;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(16, 84, 130, 0.2);
+        }
+        
+        .header-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        .header-input {
+            font-size: 0.8rem;
+            padding: 2px 4px;
+        }
+
+        .item-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 10px;
+            border: 1px solid #e5e7eb; 
+        }
+        .item-table thead th {
+            border: 1px solid #e5e7eb;
+            padding: 4px 8px;
+        }
+        .item-table tbody td {
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+            padding: 4px 8px;
+        }
+        
+        tr.hide-date-row { display: none; }
+
+        .signature-area {
+            position: relative;
+            height: 160px;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+        }
+        .signature-img {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-height: 140px; 
+            max-width: 100%;
+            z-index: 10;
+            pointer-events: none; 
+        }
+        .signature-upload-wrapper:hover .upload-hint { opacity: 1; }
+        
+        #logo-wrapper { 
+            transition: opacity 0.2s; 
+            position: relative; 
+        }
+        #logo-wrapper.has-no-logo:hover #logo-placeholder {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        #logo-wrapper:not(.has-no-logo) #logo-placeholder {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 32px !important;
+            height: 32px !important;
+            opacity: 0.3;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-color: #999;
+            z-index: 20;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        #logo-wrapper:not(.has-no-logo):hover #logo-placeholder {
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        #logo-img {
+            max-height: 56px; 
+            max-width: 120px; 
+            object-fit: contain;
+        }
+
+        .summary-table {
+            border-collapse: collapse;
+            border: 1px solid #e5e7eb; 
+        }
+        .summary-table th, .summary-table td {
+            padding: 6px 8px; 
+            border: 1px solid #e5e7eb; 
+        }
+
+        #notes-list-editor {
+            counter-reset: item;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            outline: none; 
+        }
+        #notes-list-editor li {
+            display: block;
+            position: relative;
+            padding-left: 2em; 
+            margin-bottom: 0.5em; 
+            line-height: 1.6;
+            text-align: justify;
+        }
+        #notes-list-editor li:focus {
+            background-color: rgba(16, 84, 130, 0.05); 
+        }
+        #notes-list-editor li::before {
+            content: counter(item) ".";
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-weight: bold;
+            color: #105482; 
+            width: 1.5em;
+            text-align: right;
+            pointer-events: none; 
+        }
+
+        .detailed-section {
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+        .bank-info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+        .bank-info-grid .flex {
+            flex-wrap: nowrap;
+        }
+        .bank-info-grid input {
+            flex: 1; 
+            min-width: 0;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-10 page-container">
+        
+        <!-- 控制面板 -->
+        <div class="no-print mb-6 text-center bg-gray-100 p-3 rounded-lg shadow-md">
+            <div id="status-message" class="text-sm text-kino mb-2 font-medium">應用程式已初始化 (v47-app)。</div>
+            <div class="flex flex-wrap justify-center items-center gap-4">
+                <button id="saveBtn" class="bg-kino hover:bg-kino-dark text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
+                    <i class="fas fa-download mr-1"></i>儲存/備份
+                </button>
+
+                <input type="file" id="fileInput" class="hidden" style="display:none" accept=".json">
+
+                <button id="loadBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
+                    <i class="fas fa-folder-open mr-1"></i>載入舊檔
+                </button>
+                
+                <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
+                    <input type="checkbox" id="print-details-toggle" class="form-checkbox h-4 w-4 text-kino" checked>
+                    <span class="text-xs font-bold text-gray-700">列印細項</span>
+                </label>
+                
+                <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
+                    <input type="checkbox" id="show-sig-date-toggle" class="form-checkbox h-4 w-4 text-kino" checked>
+                    <span class="text-xs font-bold text-gray-700">簽署日期</span>
+                </label>
+
+                <label class="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition select-none">
+                    <input type="checkbox" id="print-mode-scaled" class="form-checkbox h-4 w-4 text-kino">
+                    <span class="text-xs font-bold text-gray-700">單頁列印</span>
+                </label>
+                
+                <button id="printBtn" class="bg-kino hover:bg-kino-dark text-white font-bold py-1 px-3 text-sm rounded-lg shadow-lg transition duration-150 ease-in-out">
+                    <i class="fas fa-print mr-1"></i>列印 / PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- 標題區塊 -->
+        <div class="grid grid-cols-3 items-center mb-4 border-b-4 border-kino pb-2 relative">
+            <div class="flex items-center group cursor-pointer has-no-logo" id="logo-wrapper" title="點擊上傳公司 Logo">
+                <img id="logo-img" src="" class="hidden" alt="Logo">
+                <div id="logo-placeholder" class="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 border-2 border-dashed border-gray-300">
+                    <i class="fas fa-image"></i>
+                </div>
+                <input type="file" id="logo-upload" class="hidden" accept="image/*">
+            </div>
+            
+            <h1 class="text-2xl font-extrabold text-gray-900 text-center whitespace-nowrap">
+                奇諾影像報價單(Quotation) 
+            </h1>
+
+            <div></div>
+        </div>
+
+        <!-- 報價單資訊 -->
+        <div class="header-info-grid grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 section-block">
+            <div class="flex flex-col">
+                <div class="header-label">報價單號：</div>
+                <input type="text" id="quotation-id" value="" class="quotation-input header-input font-bold text-kino">
+            </div>
+            
+            <div class="flex flex-col">
+                <div class="header-label">報價日期：</div>
+                <input type="date" id="quotation-date" value="" class="quotation-input header-input">
+            </div>
+
+            <div class="flex flex-col">
+                <div class="header-label">有效期限：</div>
+                <input type="text" id="validity" value="本報價單自發出日起 14 天內有效。" class="quotation-input header-input text-red-600">
+            </div>
+        </div>
+
+        <!-- 一、 專案內容概況 -->
+        <div class="section-block">
+            <div class="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3">
+                <h2 class="text-lg font-bold">一、 專案內容概況 (Project Overview)</h2>
+                <button id="add-project-item-btn" class="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-2 rounded-full transition duration-150">
+                    <i class="fas fa-plus mr-1"></i>
+                </button>
+            </div>
+            <div id="project-info-container" class="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <!-- Project items injected here -->
+            </div>
+        </div>
+
+        <!-- 二、 專案報價 -->
+        <div class="section-block">
+            <div class="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3">
+                <h2 class="text-lg font-bold">二、 專案報價 (Quotation Summary)</h2>
+                <button id="add-category-btn" class="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-2 rounded-full transition duration-150">
+                    <i class="fas fa-plus mr-1"></i> 新增摘要
+                </button>
+            </div>
+            
+            <div class="mb-4 overflow-x-auto">
+                <table class="w-full min-w-[600px] text-left text-sm border border-gray-300 rounded-lg overflow-hidden summary-table">
+                    <thead class="bg-kino-50">
+                        <tr>
+                            <th class="font-bold text-gray-700 w-2/3">摘要 (Summary)</th>
+                            <th class="text-right font-bold text-gray-700 w-1/3">總計 (NTD)</th>
+                            <th class="w-8 no-print"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-tbody" class="text-sm font-medium bg-white">
+                        <!-- Dynamic Summary Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 總金額區塊 -->
+        <div class="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block">
+            <div class="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print">
+                <label class="text-xs font-bold text-gray-500 mr-1">稅額計算：</label>
+                <select id="tax-mode" class="text-xs border border-gray-300 rounded px-1 py-0 bg-white cursor-pointer hover:border-kino focus:outline-none">
+                    <option value="excluded">報價未稅</option>
+                    <option value="inclusive_flat">報價含稅</option>
+                    <option value="included">稅外 (5%)</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 font-medium">
+                <div class="bg-gray-100 px-2 py-2 flex items-center">
+                    <span>服務項目總計 (∆)</span>
+                </div>
+                <div id="total-a" class="bg-gray-100 px-2 py-2 text-right font-bold text-gray-800">0</div>
+
+                <div class="bg-kino text-white px-2 py-2 flex flex-col justify-center">
+                    <span id="grand-total-label" class="font-bold">本次報價總金額 (含稅)</span>
+                    <span id="tax-note" class="text-xs opacity-90 font-normal scale-90 origin-left">(∆ x 1.05)</span>
+                </div>
+                <div id="grand-total" class="bg-kino text-white px-2 py-2 text-right font-extrabold text-lg flex items-center justify-end">0</div>
+            </div>
+        </div>
+        
+        <!-- 三、 客製化專案細節 -->
+        <div class="section-block">
+            <h2 class="text-lg font-bold mt-6 mb-2 border-l-4 border-kino pl-3">三、 客製化專案細節 (Customization Details)</h2>
+            <div class="mt-2">
+                <p class="text-[10px] text-gray-500 mb-2 no-print"><i class="fas fa-edit"></i> 點擊下方文字即可編輯。按 <strong>Enter</strong> 新增項目 (自動編號)。</p>
+                <ol id="notes-list-editor" contenteditable="true" class="text-sm leading-relaxed p-4 bg-kino-50 rounded-xl border-none focus:ring-0 focus:outline-none min-h-[100px]">
+                    <!-- 內容由 JS 初始化 -->
+                </ol>
+            </div>
+        </div>
+
+        <!-- 四、 付款方式 -->
+        <div class="section-block payment-section-container">
+            <div class="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3">
+                 <h2 class="text-lg font-bold">四、 付款方式與條款 (Payment Methods)</h2>
+                 <button id="add-payment-btn" class="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-2 rounded-full transition duration-150">
+                    <i class="fas fa-plus mr-1"></i>
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto mb-4">
+                <table class="min-w-[600px] w-full divide-y divide-gray-200 border border-gray-300 summary-table">
+                    <thead class="bg-kino-50">
+                        <tr>
+                            <th class="text-left text-xs font-medium text-gray-700 uppercase w-[12%]">階段</th>
+                            <th class="text-center text-xs font-medium text-gray-700 uppercase w-[10%]">付款比例</th>
+                            <th class="text-left text-xs font-medium text-gray-700 uppercase w-[40%]">付款條件</th>
+                            <th class="text-left text-xs font-medium text-gray-700 uppercase w-[30%]">備註</th>
+                            <th class="text-center text-xs font-medium text-gray-700 uppercase w-[8%] no-print"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-terms-body" class="bg-white divide-y divide-gray-200 text-xs">
+                        <!-- Payment terms will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="bank-info" class="space-y-0 text-sm pl-3 bg-gray-50 p-2 rounded-lg border border-gray-200 mt-4">
+                <h4 class="font-bold border-b pb-1 mb-1 text-red-700">乙方收款資訊：</h4>
+                <div class="bank-info-grid">
+                    <div class="flex items-center flex-nowrap min-w-0">
+                        戶名：<input type="text" data-key="accountName" value="奇諾影像有限公司" class="quotation-input inline-block flex-1 bg-transparent border-none p-0 h-auto text-xs sm:text-sm">
+                    </div>
+                    <div class="flex items-center flex-nowrap min-w-0">
+                        銀行：<input type="text" data-key="bankName" value="807 永豐銀行 板新分行" class="quotation-input inline-block flex-1 bg-transparent border-none p-0 h-auto text-xs sm:text-sm">
+                    </div>
+                    <div class="flex items-center flex-nowrap min-w-0">
+                        帳號：<input type="text" data-key="accountNumber" value="007-018-0005565-8" class="quotation-input inline-block flex-1 bg-transparent border-none p-0 h-auto text-xs sm:text-sm">
+                    </div>
+                </div>
+            </div>
+            <p class="mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
+        </div>
+
+        <!-- 五、 報價確認與簽署 -->
+        <div class="section-block signature-block">
+            <h2 class="text-lg font-bold mt-6 mb-2 border-l-4 border-kino pl-3">五、 報價確認與簽署 (Signatures)</h2>
+            <div class="w-full overflow-x-auto shadow-lg rounded-lg border border-gray-300">
+                <table class="min-w-[600px] w-full divide-y divide-gray-200 summary-table">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left text-xs font-bold text-gray-700 uppercase w-1/6">項目</th>
+                            <th class="text-center text-xs font-bold text-gray-700 uppercase w-5/12">甲方</th>
+                            <th class="text-center text-xs font-bold text-gray-700 uppercase w-5/12">乙方</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200 text-sm text-gray-900">
+                        <tr>
+                            <td class="font-bold bg-kino-50">抬頭</td>
+                            <td>
+                                <input type="text" data-key="clientCompany" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                            <td>
+                                <input type="text" data-key="vendorCompany" value="奇諾影像有限公司" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold bg-kino-50">代表人</td>
+                            <td>
+                                <input type="text" data-key="clientContact" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                            <td>
+                                <input type="text" data-key="vendorContact" value="陳廷安" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold bg-kino-50">統一編號</td>
+                            <td>
+                                <input type="text" data-key="clientTaxId" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                            <td>
+                                <input type="text" data-key="vendorTaxId" value="83115577" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold bg-kino-50">聯絡電話</td>
+                            <td>
+                                <input type="text" data-key="clientPhone" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                            <td>
+                                <input type="text" data-key="vendorPhone" value="0911715138" class="quotation-input text-center text-kino font-semibold">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold bg-kino-50">簽署</td>
+                            <td class="py-4 text-center relative signature-upload-wrapper" id="client-sig-wrapper">
+                                 <div class="signature-area">
+                                    <img id="client-sig-img" src="" class="signature-img hidden" alt="甲方簽名">
+                                    <div class="border-b border-black w-full h-0.5"></div>
+                                 </div>
+                                 <div class="upload-hint absolute top-1 right-2 text-[10px] text-gray-400 opacity-0 transition-opacity pointer-events-none no-print">上傳</div>
+                                 <input type="file" class="hidden" accept="image/*">
+                            </td>
+                            <td class="py-4 text-center relative signature-upload-wrapper" id="vendor-sig-wrapper">
+                                 <div class="signature-area">
+                                    <img id="vendor-sig-img" src="" class="signature-img hidden" alt="乙方簽名">
+                                    <div class="border-b border-black w-full h-0.5"></div>
+                                 </div>
+                                 <div class="upload-hint absolute top-1 right-2 text-[10px] text-gray-400 opacity-0 transition-opacity pointer-events-none no-print">上傳</div>
+                                 <input type="file" class="hidden" accept="image/*">
+                            </td>
+                        </tr>
+                        <tr id="signature-date-row">
+                            <td class="font-bold bg-kino-50">日期</td>
+                            <td colspan="2"><input type="date" data-key="signatureDate" class="quotation-input text-center"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- VI. 服務細項與描述 -->
+        <div class="detailed-section border-t border-gray-300">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-l-8 border-kino pl-4">
+                六、 服務細項與描述 (Detailed Services and Description)
+            </h2>
+            <p class="text-xs text-gray-600 mb-4 no-print">本區塊詳細列出四大項目的所有費用細節，可使用 +/- 按鈕進行增減。</p>
+            <div id="quotation-sections"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // -----------------------------------------------------------
+        // 放上 LOGO base64位置
+        // -----------------------------------------------------------
+        const defaultLogo = "data:image/png;base64,iVC"; 
+
+        const defaultCategories = [
+            { id: 'preProduction', name: 'I. Pre-production Expenses / 前期' },
+            { id: 'crew', name: 'II. Production Crew Expenses / 拍攝' },
+            { id: 'equipment', name: 'III. Equipment Rental / 器材' },
+            { id: 'postProduction', name: 'IV. Video Post Production / 影像後期' }
+        ];
+
+        let categories = JSON.parse(JSON.stringify(defaultCategories));
+
+        const defaultItems = {
+            preProduction: [
+                { desc: "前期企劃與腳本撰寫（含 2 次修改）", qty: 1, unit: "式", price: 0 },
+                { desc: "場地租賃或勘景費用", qty: 1, unit: "式", price: 0 },
+            ],
+            crew: [
+                { desc: "導演（含現場指導與後期監製）", qty: 1, unit: "天", price: 0 },
+                { desc: "攝影組（影像構圖及視覺呈現）", qty: 1, unit: "天", price: 0 },
+                { desc: "燈光組（塑造場景畫面氛圍）", qty: 1, unit: "天", price: 0 },
+                { desc: "造型師（包含 3 位演員）", qty: 1, unit: "天", price: 0 },
+            ],
+            equipment: [
+                { desc: "全幅攝影機租賃（Sony FX3 或同級）", qty: 1, unit: "天", price: 0 },
+                { desc: "進階燈光組租賃（含柔光、硬光、控光設備）", qty: 1, unit: "天", price: 0 },
+                { desc: "高階無線收音設備（24-bit 浮點錄音）", qty: 1, unit: "天", price: 0 },
+            ],
+            postProduction: [
+                { desc: "影片剪輯（含毛片初剪、精剪，2 次修改）", qty: 1, unit: "式", price: 0 },
+                { desc: "校色調光（一級校色還原、二級調光）", qty: 1, unit: "式", price: 0 },
+                { desc: "視覺特效和字卡（效果字和2D動畫等）", qty: 1, unit: "式", price: 0 },
+                { desc: "版權配樂和音效處理（商用授權）", qty: 1, unit: "次", price: 0 },
+            ],
+        };
+
+        const defaultProjectInfo = [
+            { label: "專案名稱", value: "形象影片" },
+            { label: "專案類型", value: "影片統籌製作" },
+            { label: "片長預估", value: "約2分鐘" },
+            { label: "交付格式", value: "Full HD" }
+        ];
+
+        const defaultPaymentTerms = [
+            { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" },
+            { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" },
+            { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" }
+        ];
+        
+        const defaultNotes = `甲方委託乙方於2025年12月1日拍攝形象影片，成品交付影片乙支，拍攝期間甲方應於現場確認畫面無虞，<br>製作費包含乙方 ■ 技術人員、 □ 演員、 □ 場地、 ■ 器材等相關費用，<br>專案期間或結案後，甲方對於本專案內容倘有除合約議定外額外製作/修改需求，為本案預算不可及之部分，<br>經雙方協議後，由乙方針對甲方需求另行報價。
+
+影片經後期輸出後，內容若有須修改事項，甲方得於每次收件 7 日內要求乙方修正，次數 2 次為限。
+
+乙方擔保就其提供甲方利用之影片內容，除由甲方提供或要求外，具有合法智慧財產權利，<br>若有違反著作權之爭議相關法律責任由乙方負責。
+
+乙方應於約定交片日完成本專案並交付予甲方，甲方了解製作時程根據溝通回覆之進度而有不同差異，<br>若因自然災害等不可抗力之因素或甲方要求致無法遵守進度時，雙方應另議交片日或依下列第5條所示結算。
+
+如非乙方之過失而中途停止或取消本案之執行時，其已執行部份仍需計費，<br>非經雙方同意仍應支付全額費用，甲方不得以本案尚未全部完成為理由而拒絕付款。
+
+本契約之解釋、效力及其他未盡事宜，皆以相關法律為準則。倘有任何糾紛，雙方亦應依誠實信用原則解決。<br>如有訴訟必要，雙方同意於新北地方法院板橋簡易庭進行訴訟程序。`;
+
+        const formatter = new Intl.NumberFormat('zh-TW');
+
+        function updateQuotationId() {
+            const quotationDateInput = document.getElementById('quotation-date');
+            const projectInfoContainer = document.getElementById('project-info-container');
+            const quotationIdInput = document.getElementById('quotation-id');
+
+            const dateVal = quotationDateInput.value;
+            if (!dateVal) return;
+            const [y, m, d] = dateVal.split('-');
+            const yymmdd = `${y.slice(2)}${m}${d}`;
+            
+            let projectName = "專案名稱";
+            const projectInputs = projectInfoContainer.querySelectorAll('input[type="text"]');
+            for (let i = 0; i < projectInputs.length; i += 2) {
+                if (projectInputs[i] && projectInputs[i].value.includes("專案名稱")) {
+                    if (projectInputs[i+1]) {
+                        projectName = projectInputs[i+1].value || "未命名專案";
+                    }
+                    break;
+                }
+            }
+            
+            const newPrefix = `${yymmdd} ${projectName}`;
+            const currentId = quotationIdInput.value;
+            let suffix = "_KS01"; 
+            const match = currentId.match(/(_KS.+)$/);
+            if (match) {
+                suffix = match[1];
+            }
+            quotationIdInput.value = `${newPrefix}${suffix}`;
+        }
+
+        function handleImageUpload(input, imgId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById(imgId);
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    
+                    if (imgId === 'logo-img') {
+                        document.getElementById('logo-wrapper').classList.remove('has-no-logo');
+                    }
+                    saveStateToLocal();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveStateToLocal() {
+            try {
+                const data = collectQuotationData();
+                localStorage.setItem('kino_quotation_draft', JSON.stringify(data));
+                const status = document.getElementById('status-message');
+                if(status) status.textContent = "系統就緒 (已自動暫存草稿)。";
+            } catch(e) { console.log("Auto-save failed", e); }
+        }
+
+        function initNotesEditor(content) {
+            const editor = document.getElementById('notes-list-editor');
+            if (!editor) return;
+
+            if (!content || content.trim() === '') return;
+
+            const points = content.split(/\n/g)
+                                .map(p => p.trim())
+                                .filter(p => p.length > 0);
+            
+            let html = '';
+            points.forEach(point => {
+                html += `<li>${point}</li>`;
+            });
+            editor.innerHTML = html;
+        }
+
+        function getNotesFromEditor() {
+            const editor = document.getElementById('notes-list-editor');
+            if (!editor) return '';
+            
+            const lis = editor.querySelectorAll('li');
+            const lines = [];
+            lis.forEach(li => {
+                let text = li.innerHTML;
+                text = text.replace(/<br\s*\/?>/gi, '\n');
+                lines.push(text.trim());
+            });
+            return lines.join('\n\n');
+        }
+
+        function initQuotationGenerator() {
+            try {
+                const totalAElement = document.getElementById('total-a');
+                const grandTotalElement = document.getElementById('grand-total');
+                const grandTotalLabel = document.getElementById('grand-total-label');
+                const taxNote = document.getElementById('tax-note');
+                const taxModeSelect = document.getElementById('tax-mode');
+                
+                const saveBtn = document.getElementById('saveBtn');
+                const loadBtn = document.getElementById('loadBtn');
+                const fileInput = document.getElementById('fileInput');
+                
+                const projectInfoContainer = document.getElementById('project-info-container');
+                const addProjectItemBtn = document.getElementById('add-project-item-btn');
+                const quotationIdInput = document.getElementById('quotation-id');
+                const quotationDateInput = document.getElementById('quotation-date');
+
+                const printDetailsToggle = document.getElementById('print-details-toggle');
+                const printModeScaledToggle = document.getElementById('print-mode-scaled');
+                const showSigDateToggle = document.getElementById('show-sig-date-toggle');
+                const signatureDateRow = document.getElementById('signature-date-row');
+                
+                const paymentTermsBody = document.getElementById('payment-terms-body');
+                const addPaymentBtn = document.getElementById('add-payment-btn');
+                const addCategoryBtn = document.getElementById('add-category-btn'); 
+
+                const clientSigWrapper = document.getElementById('client-sig-wrapper');
+                const vendorSigWrapper = document.getElementById('vendor-sig-wrapper');
+                const logoWrapper = document.getElementById('logo-wrapper');
+                
+                const notesEditor = document.getElementById('notes-list-editor');
+
+                
+                function createProjectItem(label = "項目名稱", value = "") {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2 group relative pr-6';
+                    div.innerHTML = `
+                        <input type="text" class="font-semibold text-gray-700 bg-transparent border-b border-gray-300 focus:border-kino focus:outline-none w-1/3 text-right px-1" value="${label}" placeholder="標題">
+                        <span class="text-gray-500">：</span>
+                        <input type="text" class="quotation-input w-2/3" value="${value}" placeholder="內容">
+                        <button class="absolute right-0 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity no-print delete-proj-btn" title="刪除此項目">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    `;
+                    div.querySelector('.delete-proj-btn').addEventListener('click', () => {
+                        div.remove();
+                        updateQuotationId();
+                        saveStateToLocal();
+                    });
+                    div.querySelectorAll('input').forEach(input => {
+                        input.addEventListener('input', () => {
+                            updateQuotationId();
+                            saveStateToLocal();
+                        });
+                    });
+                    return div;
+                }
+
+                function handleAddProjectItem() {
+                    projectInfoContainer.appendChild(createProjectItem("", ""));
+                    saveStateToLocal();
+                }
+
+                function createPaymentTermRow(term) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-2 py-1 font-bold"><input type="text" data-key="phase" value="${term.phase}" class="quotation-input font-bold"></td>
+                        <td class="px-2 py-1 text-center text-kino font-bold"><input type="text" data-key="percent" value="${term.percent}" class="quotation-input text-center text-kino font-bold"></td>
+                        <td class="px-2 py-1"><input type="text" data-key="condition" value="${term.condition}" class="quotation-input"></td>
+                        <td class="px-2 py-1"><input type="text" data-key="notes" value="${term.notes}" class="quotation-input"></td>
+                        <td class="px-2 py-1 text-center no-print">
+                            <button class="text-red-500 hover:text-red-700 p-1 rounded-full delete-payment-btn" title="刪除此條款">
+                                <i class="fas fa-trash-alt fa-sm"></i>
+                            </button>
+                        </td>
+                    `;
+                    row.querySelector('.delete-payment-btn').addEventListener('click', () => {
+                        row.remove();
+                        saveStateToLocal();
+                    });
+                    row.querySelectorAll('input').forEach(i => i.addEventListener('input', saveStateToLocal));
+                    return row;
+                }
+
+                function handleAddPaymentTerm() {
+                    paymentTermsBody.appendChild(createPaymentTermRow({ phase: "第X期", percent: "XX%", condition: "", notes: "" }));
+                    saveStateToLocal();
+                }
+
+                function renderCategories() {
+                    const summaryTbody = document.getElementById('summary-tbody');
+                    const detailedContainer = document.getElementById('quotation-sections');
+                    
+                    const existingData = {};
+                    categories.forEach(cat => {
+                        const tbody = document.querySelector(`[data-tbody-key="${cat.id}"]`);
+                        if (tbody) {
+                            existingData[cat.id] = Array.from(tbody.querySelectorAll('tr')).map(row => ({
+                                desc: row.querySelector('input[data-key="desc"]').value,
+                                qty: row.querySelector('input[data-key="qty"]').value,
+                                unit: row.querySelector('input[data-key="unit"]').value,
+                                price: row.querySelector('input[data-key="price"]').value
+                            }));
+                        }
+                    });
+
+                    summaryTbody.innerHTML = '';
+                    detailedContainer.innerHTML = '';
+
+                    categories.forEach((cat, index) => {
+                        const sumRow = document.createElement('tr');
+                        sumRow.className = "hover:bg-gray-50 transition";
+                        sumRow.innerHTML = `
+                            <td>
+                                <input type="text" class="w-full bg-transparent font-bold text-gray-700 focus:outline-none" value="${cat.name}" oninput="updateCategoryName('${cat.id}', this.value)">
+                            </td>
+                            <td id="summary-${cat.id}" class="text-right text-gray-800">0</td>
+                            <td class="no-print text-center">
+                                <button class="text-red-400 hover:text-red-600 delete-cat-btn" onclick="deleteCategory('${cat.id}')">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                            </td>
+                        `;
+                        summaryTbody.appendChild(sumRow);
+
+                        // V39 修正 (b): 第六項標題底色配色
+                        const isDark = index % 2 === 0;
+                        const headerClass = isDark ? 'bg-kino-darker text-white' : 'bg-kino-medium text-white';
+                        const btnClass = isDark ? 'bg-white text-kino-darker hover:bg-gray-100' : 'bg-white text-kino-medium hover:bg-gray-100';
+
+                        // V45 修正: 加入 overflow-x-auto 容器與表格 min-w-[600px]
+                        const sectionHtml = `
+                        <div data-section-key="${cat.id}" class="mb-6 border border-gray-300 rounded-lg overflow-hidden shadow-md">
+                            <div class="flex justify-between items-center ${headerClass} p-3">
+                                <h3 class="font-bold" id="title-${cat.id}">${cat.name}</h3>
+                                <button class="add-item-btn no-print ${btnClass} text-xs font-bold py-1 px-3 rounded-full transition duration-150" data-section="${cat.id}">
+                                    <i class="fas fa-plus mr-1"></i> 新增項目
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="item-table text-sm min-w-[600px]">
+                                    <thead>
+                                        <tr class="bg-gray-100">
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase w-5/12">細項（Item）</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase w-1/12">數量</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase w-1/12">單位</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase w-2/12">單價 (NTD)</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase w-2/12">小計 (NTD)</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase w-1/12 no-print">動作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-tbody-key="${cat.id}"></tbody>
+                                </table>
+                            </div>
+                            <div class="text-right p-3 bg-gray-50 font-bold text-base border-t border-gray-300">
+                                總計：<span data-subtotal-key="${cat.id}">0</span> NTD
+                            </div>
+                        </div>`;
+                        detailedContainer.insertAdjacentHTML('beforeend', sectionHtml);
+                        
+                        const tbody = document.querySelector(`[data-tbody-key="${cat.id}"]`);
+                        let items = existingData[cat.id];
+                        if (!items) {
+                             items = defaultItems[cat.id] || [];
+                        }
+                        
+                        items.forEach(item => {
+                            const p = typeof item.price === 'string' ? parseFloat(item.price.replace(/,/g, '')) : item.price;
+                            tbody.appendChild(createLineItem({
+                                desc: item.desc,
+                                qty: item.qty,
+                                unit: item.unit,
+                                price: p
+                            }, cat.id));
+                        });
+                    });
+                    
+                    recalculateTotals();
+                }
+
+                window.updateCategoryName = function(id, newName) {
+                    const cat = categories.find(c => c.id === id);
+                    if (cat) {
+                        cat.name = newName;
+                        const titleEl = document.getElementById(`title-${id}`);
+                        if (titleEl) titleEl.textContent = newName;
+                        saveStateToLocal();
+                    }
+                };
+
+                window.deleteCategory = function(id) {
+                    if (confirm('確定要刪除此摘要及其所有細項嗎？')) {
+                        categories = categories.filter(c => c.id !== id);
+                        renderCategories();
+                        saveStateToLocal();
+                    }
+                };
+
+                addCategoryBtn.addEventListener('click', () => {
+                    const id = 'cat_' + Date.now();
+                    categories.push({ id: id, name: '新摘要項目' });
+                    renderCategories();
+                    saveStateToLocal();
+                });
+
+                function createLineItem(item, sectionKey) {
+                    const row = document.createElement('tr');
+                    row.dataset.section = sectionKey;
+                    row.innerHTML = `
+                        <td class="px-3 py-2 font-medium text-gray-900">
+                            <input type="text" data-key="desc" value="${item.desc}" class="quotation-input w-full">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-center">
+                            <input type="number" data-key="qty" value="${item.qty}" min="0" class="quotation-input qty-input text-center">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-center text-gray-500">
+                            <input type="text" data-key="unit" value="${item.unit}" class="quotation-input text-center w-12">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-right">
+                            <input type="text" data-key="price" value="${formatter.format(item.price)}" class="quotation-input price-input text-right" 
+                                onfocus="this.value = this.value.replace(/,/g, '')" 
+                                onblur="this.value = formatter.format(parseFloat(this.value.replace(/,/g, '')) || 0); recalculateTotals();">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-right font-bold text-kino subtotal-cell">
+                            ${formatter.format(item.qty * item.price)}
+                        </td>
+                        <td class="px-3 py-2 text-center no-print">
+                            <button class="delete-item-btn text-red-500 hover:text-red-700 p-1 rounded-full transition duration-150">
+                                <i class="fas fa-trash-alt fa-sm"></i>
+                            </button>
+                        </td>
+                    `;
+                    row.querySelector('.delete-item-btn').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        row.remove();
+                        recalculateTotals();
+                        saveStateToLocal();
+                    });
+                    row.querySelectorAll('.qty-input, .price-input, [data-key="unit"]').forEach(input => {
+                        input.addEventListener('input', () => {
+                            recalculateTotals();
+                            saveStateToLocal();
+                        });
+                    });
+                    return row;
+                }
+
+                function handleAddItem(event) {
+                    const btn = event.target.closest('.add-item-btn');
+                    if(!btn) return;
+                    const sectionKey = btn.dataset.section;
+                    const tbody = document.querySelector(`[data-tbody-key="${sectionKey}"]`);
+                    if (tbody) {
+                        const newItem = { desc: "[新項目描述]", qty: 1, unit: "式", price: 0 };
+                        const newRow = createLineItem(newItem, sectionKey);
+                        tbody.appendChild(newRow);
+                        recalculateTotals();
+                        newRow.querySelector('input[data-key="desc"]').focus();
+                        saveStateToLocal();
+                    }
+                }
+
+                function recalculateTotals() {
+                    let totalA = 0;
+                    categories.forEach(cat => {
+                        let sectionTotal = 0;
+                        const tbody = document.querySelector(`[data-tbody-key="${cat.id}"]`);
+                        if (!tbody) return;
+
+                        const lineItems = tbody.querySelectorAll('tr');
+                        lineItems.forEach((row) => {
+                            const qtyInput = row.querySelector('.qty-input');
+                            const priceInput = row.querySelector('.price-input');
+                            
+                            const qty = parseInt(qtyInput.value) || 0;
+                            const price = parseFloat(priceInput.value.replace(/,/g, '')) || 0; 
+                            const subtotal = qty * price;
+                            sectionTotal += subtotal;
+                            
+                            const subtotalCell = row.querySelector('.subtotal-cell');
+                            if(subtotalCell) subtotalCell.textContent = formatter.format(subtotal);
+                        });
+
+                        const subtotalDisplay = document.querySelector(`[data-subtotal-key="${cat.id}"]`);
+                        if(subtotalDisplay) subtotalDisplay.textContent = formatter.format(sectionTotal);
+                        
+                        const summaryEl = document.getElementById(`summary-${cat.id}`);
+                        if (summaryEl) {
+                            summaryEl.textContent = formatter.format(sectionTotal);
+                        }
+                        totalA += sectionTotal;
+                    });
+
+                    const taxMode = taxModeSelect.value;
+                    let grandTotal = 0;
+                    // V47: 稅額計算邏輯更新
+                    if (taxMode === 'included') {
+                        // 稅外 (5%) - 原含稅(5%)邏輯
+                        grandTotal = Math.round(totalA * 1.05);
+                        grandTotalLabel.textContent = "本次報價總金額 (含稅)";
+                        taxNote.textContent = "(∆ x 1.05)";
+                        taxNote.style.display = 'inline';
+                    } else if (taxMode === 'inclusive_flat') {
+                        // 報價含稅 - 金額同未稅，顯示(含稅)
+                        grandTotal = totalA;
+                        grandTotalLabel.textContent = "本次報價總金額 (含稅)";
+                        taxNote.textContent = "";
+                        taxNote.style.display = 'none';
+                    } else {
+                        // 報價未稅 - 原未稅邏輯
+                        grandTotal = totalA;
+                        grandTotalLabel.textContent = "本次報價總金額 (未稅)";
+                        taxNote.textContent = "";
+                        taxNote.style.display = 'none';
+                    }
+
+                    totalAElement.textContent = formatter.format(totalA);
+                    grandTotalElement.textContent = formatter.format(grandTotal);
+                }
+
+                function collectQuotationData() {
+                    const items = {};
+                    categories.forEach(cat => {
+                        const tbody = document.querySelector(`[data-tbody-key="${cat.id}"]`);
+                        if (!tbody) return;
+                        items[cat.id] = Array.from(tbody.querySelectorAll('tr')).map(row => {
+                            const desc = row.querySelector('input[data-key="desc"]').value;
+                            const qty = parseInt(row.querySelector('input[data-key="qty"]').value) || 0;
+                            const unit = row.querySelector('input[data-key="unit"]').value;
+                            const price = parseFloat(row.querySelector('input[data-key="price"]').value.replace(/,/g, '')) || 0; 
+                            return { desc, qty, unit, price };
+                        });
+                    });
+
+                    const projectInfo = [];
+                    projectInfoContainer.querySelectorAll('div.flex').forEach(div => {
+                        const inputs = div.querySelectorAll('input');
+                        if(inputs.length >= 2) {
+                            projectInfo.push({ label: inputs[0].value, value: inputs[1].value });
+                        }
+                    });
+
+                    const paymentTerms = Array.from(paymentTermsBody.querySelectorAll('tr')).map(row => ({
+                        phase: row.querySelector('input[data-key="phase"]').value,
+                        percent: row.querySelector('input[data-key="percent"]').value,
+                        condition: row.querySelector('input[data-key="condition"]').value,
+                        notes: row.querySelector('input[data-key="notes"]').value,
+                    }));
+
+                    // V46 Fix: Using stable class selector
+                    const signatureInputs = document.querySelector('.signature-block table tbody');
+                    const signatureData = Array.from(signatureInputs.querySelectorAll('input:not([type="file"])')).reduce((acc, input) => {
+                        if(input.dataset.key) acc[input.dataset.key] = input.value;
+                        return acc;
+                    }, {});
+                    
+                    const clientSigImg = document.getElementById('client-sig-img');
+                    const vendorSigImg = document.getElementById('vendor-sig-img');
+                    if (!clientSigImg.classList.contains('hidden')) signatureData.clientSigImg = clientSigImg.src;
+                    if (!vendorSigImg.classList.contains('hidden')) signatureData.vendorSigImg = vendorSigImg.src;
+
+                    let logoData = "";
+                    const logoImg = document.getElementById('logo-img');
+                    if(!logoImg.classList.contains('hidden')) {
+                        logoData = logoImg.src;
+                    }
+
+                    const bankInfo = Array.from(document.getElementById('bank-info').querySelectorAll('input')).reduce((acc, input) => {
+                            acc[input.dataset.key] = input.value;
+                            return acc;
+                        }, {});
+
+                    const data = {
+                        header: {
+                            quotationId: quotationIdInput.value,
+                            quotationDate: quotationDateInput.value,
+                            validity: document.getElementById('validity').value,
+                        },
+                        project: projectInfo,
+                        taxMode: taxModeSelect.value,
+                        categories: categories, 
+                        items: items,
+                        notes: getNotesFromEditor(),
+                        payment: { terms: paymentTerms },
+                        signature: signatureData,
+                        logo: logoData,
+                        bank: bankInfo,
+                        timestamp: new Date().toISOString(),
+                        // 保存新的列印設定
+                        printSettings: {
+                            scaledMode: printModeScaledToggle.checked,
+                            showPageNumbers: false, 
+                        }
+                    };
+                    return data;
+                }
+
+                function populateForm(data) {
+                    if (!data) return;
+                    
+                    quotationIdInput.value = data.header?.quotationId || "";
+                    // E. 即使讀取舊檔，若您希望載入後日期也是今天，可在此覆蓋。
+                    // 但通常「載入舊檔」應保留舊檔日期。
+                    // 「開啟程式時」則預設今天。這段是 populateForm，主要用於載入。
+                    if (data.header?.quotationDate) {
+                        quotationDateInput.value = data.header.quotationDate;
+                    }
+
+                    document.getElementById('validity').value = data.header?.validity || '本報價單自發出日起 14 天內有效。';
+                    
+                    if (data.taxMode) taxModeSelect.value = data.taxMode;
+
+                    // 載入列印設定
+                    if (data.printSettings) {
+                        printModeScaledToggle.checked = data.printSettings.scaledMode || false;
+                        
+                        // 立即應用樣式
+                        if (printModeScaledToggle.checked) {
+                            document.body.classList.add('print-scaled');
+                        }
+                    } 
+
+
+                    projectInfoContainer.innerHTML = '';
+                    let projectData = Array.isArray(data.project) ? data.project : defaultProjectInfo;
+                    projectData.forEach(item => {
+                        projectInfoContainer.appendChild(createProjectItem(item.label, item.value));
+                    });
+                    
+                    // 如果沒有單號，更新一下
+                    if (!data.header?.quotationId) {
+                         updateQuotationId();
+                    }
+
+                    initNotesEditor(data.notes || defaultNotes);
+
+                    const bankInputs = document.getElementById('bank-info').querySelectorAll('input');
+                    bankInputs.forEach(input => {
+                        if (data.bank && data.bank[input.dataset.key] !== undefined) input.value = data.bank[input.dataset.key];
+                    });
+                    
+                    paymentTermsBody.innerHTML = '';
+                    const termsToLoad = (data.payment && Array.isArray(data.payment.terms) && data.payment.terms.length > 0)
+                                        ? data.payment.terms 
+                                        : defaultPaymentTerms;
+                    termsToLoad.forEach(term => {
+                        paymentTermsBody.appendChild(createPaymentTermRow(term));
+                    });
+
+                    // V46 Fix: Using stable class selector
+                    const signatureInputs = document.querySelector('.signature-block table tbody').querySelectorAll('input:not([type="file"])');
+                    signatureInputs.forEach(input => {
+                        if (data.signature && data.signature[input.dataset.key] !== undefined) {
+                            input.value = data.signature[input.dataset.key];
+                        }
+                    });
+                    if (data.signature?.clientSigImg) {
+                        const img = document.getElementById('client-sig-img');
+                        img.src = data.signature.clientSigImg;
+                        img.classList.remove('hidden');
+                    }
+                    if (data.signature?.vendorSigImg) {
+                        const img = document.getElementById('vendor-sig-img');
+                        img.src = data.signature.vendorSigImg;
+                        img.classList.remove('hidden');
+                    }
+                    
+                    if (data.logo) {
+                        const img = document.getElementById('logo-img');
+                        img.src = data.logo;
+                        img.classList.remove('hidden');
+                        document.getElementById('logo-wrapper').classList.remove('has-no-logo');
+                    } else if (typeof defaultLogo !== 'undefined' && defaultLogo.length > 30) {
+                        const img = document.getElementById('logo-img');
+                        img.src = defaultLogo;
+                        img.classList.remove('hidden');
+                        document.getElementById('logo-wrapper').classList.remove('has-no-logo');
+                    }
+
+                    if (data.categories) {
+                        categories = data.categories;
+                    } else {
+                        // V43 清理: defaultCategories 不再包含 color
+                        categories = defaultCategories.map(cat => ({ ...cat })); 
+                    }
+                    
+                    renderCategories();
+                    
+                    categories.forEach(cat => {
+                        const tbody = document.querySelector(`[data-tbody-key="${cat.id}"]`);
+                        if (tbody) {
+                            tbody.innerHTML = '';
+                            let itemsToLoad = [];
+                            if (data.items && data.items[cat.id]) {
+                                itemsToLoad = data.items[cat.id];
+                            } else if (!data.items && defaultItems[cat.id]) {
+                                itemsToLoad = defaultItems[cat.id];
+                            }
+                            
+                            itemsToLoad.forEach(item => {
+                                const p = typeof item.price === 'string' ? parseFloat(item.price.replace(/,/g, '')) : item.price;
+                                tbody.appendChild(createLineItem({
+                                    desc: item.desc,
+                                    qty: item.qty,
+                                    unit: item.unit,
+                                    price: p
+                                }, cat.id));
+                            });
+                        }
+                    });
+                   
+                    recalculateTotals(); 
+                }
+
+                // D. 支援選擇存檔位置 (Chrome/Edge/Desktop)
+                async function saveQuotation() {
+                    try {
+                        updateQuotationId();
+                        const data = collectQuotationData();
+                        const qId = data.header.quotationId;
+                        const fileName = `${qId}.json`;
+                        const jsonStr = JSON.stringify(data, null, 2);
+                        
+                        // V47-app: Mobile download fallback
+                        if (window.showSaveFilePicker) {
+                            try {
+                                const handle = await window.showSaveFilePicker({
+                                    suggestedName: fileName,
+                                    types: [{
+                                        description: 'JSON File',
+                                        accept: {'application/json': ['.json']},
+                                    }],
+                                });
+                                const writable = await handle.createWritable();
+                                await writable.write(jsonStr);
+                                await writable.close();
+                                document.getElementById('status-message').textContent = `✅ 檔案儲存成功！`;
+                                return;
+                            } catch (err) {
+                                if (err.name === 'AbortError') return;
+                                console.log("File System API failed, fallback to download.", err);
+                            }
+                        }
+
+                        // Fallback for mobile/safari
+                        const blob = new Blob([jsonStr], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        document.getElementById('status-message').textContent = `✅ 檔案 ${fileName} 已下載！`;
+                    } catch (error) {
+                        console.error("Error saving file: ", error);
+                        document.getElementById('status-message').textContent = `❌ 下載失敗: ${error.message}`;
+                    }
+                }
+
+                // E. 開啟時，日期自動更新為今天 (改用本地時間，避免時區誤差)
+                const d = new Date();
+                const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                
+                document.getElementById('quotation-date').value = today;
+                document.querySelector('input[data-key="signatureDate"]').value = today;
+
+                const saved = localStorage.getItem('kino_quotation_draft');
+                if (saved) {
+                    populateForm(JSON.parse(saved));
+                    
+                    // 若是讀取暫存檔，通常希望日期也是今天(視為繼續編輯)，所以再次強制更新日期與ID前綴
+                    document.getElementById('quotation-date').value = today;
+                    updateQuotationId(); // 更新單號的前綴部分，保留後綴
+
+                    document.getElementById('status-message').textContent = "已恢復未完成草稿 (v47-app)。";
+                } else {
+                    populateForm({ 
+                        project: defaultProjectInfo,
+                        payment: { terms: defaultPaymentTerms },
+                        notes: defaultNotes
+                    });
+                    updateQuotationId();
+                }
+
+                
+                quotationDateInput.addEventListener('change', () => {
+                    updateQuotationId();
+                    saveStateToLocal();
+                });
+                
+                notesEditor.addEventListener('input', () => {
+                    saveStateToLocal();
+                });
+
+                document.querySelectorAll('input, textarea').forEach(el => {
+                    if (el.id !== 'notes-textarea') {
+                        el.addEventListener('input', saveStateToLocal);
+                    }
+                });
+
+                saveBtn.addEventListener('click', saveQuotation);
+                loadBtn.addEventListener('click', () => { fileInput.click(); });
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            populateForm(data);
+                            document.getElementById('status-message').textContent = `✅ 檔案 ${file.name} 載入成功！`;
+                            fileInput.value = '';
+                            saveStateToLocal();
+                        } catch (error) {
+                            console.error(error);
+                            document.getElementById('status-message').textContent = `❌ 檔案解析失敗：${error.message}`;
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+                addProjectItemBtn.addEventListener('click', handleAddProjectItem);
+                addPaymentBtn.addEventListener('click', handleAddPaymentTerm); 
+                taxModeSelect.addEventListener('change', () => {
+                    recalculateTotals();
+                    saveStateToLocal();
+                });
+
+                document.getElementById('quotation-sections').addEventListener('click', function(e) {
+                    if (e.target.closest('.add-item-btn')) {
+                       handleAddItem(e);
+                    }
+                });
+                document.getElementById('quotation-sections').addEventListener('input', (event) => {
+                    if (event.target.classList.contains('qty-input') || event.target.classList.contains('price-input')) {
+                        if (!event.target.classList.contains('price-input')) {
+                            recalculateTotals();
+                        }
+                    }
+                });
+
+                document.getElementById('printBtn').addEventListener('click', () => {
+                    window.print();
+                });
+
+                printDetailsToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        document.body.classList.remove('print-hide-details');
+                    } else {
+                        document.body.classList.add('print-hide-details');
+                    }
+                    saveStateToLocal();
+                });
+                
+                // 單頁列印模式開關
+                printModeScaledToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        document.body.classList.add('print-scaled');
+                    } else {
+                        document.body.classList.remove('print-scaled');
+                    }
+                    saveStateToLocal();
+                });
+
+
+                showSigDateToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        signatureDateRow.classList.remove('hide-date-row');
+                    } else {
+                        signatureDateRow.classList.add('hide-date-row');
+                    }
+                    saveStateToLocal();
+                });
+                
+                clientSigWrapper.addEventListener('click', () => {
+                    clientSigWrapper.querySelector('input[type="file"]').click();
+                });
+                clientSigWrapper.querySelector('input[type="file"]').addEventListener('change', function() {
+                    handleImageUpload(this, 'client-sig-img');
+                });
+
+                vendorSigWrapper.addEventListener('click', () => {
+                    vendorSigWrapper.querySelector('input[type="file"]').click();
+                });
+                vendorSigWrapper.querySelector('input[type="file"]').addEventListener('change', function() {
+                    handleImageUpload(this, 'vendor-sig-img');
+                });
+                
+                logoWrapper.addEventListener('click', () => {
+                    logoWrapper.querySelector('input[type="file"]').click();
+                });
+                logoWrapper.querySelector('input[type="file"]').addEventListener('change', function() {
+                    handleImageUpload(this, 'logo-img');
+                });
+                
+            } catch (err) {
+                console.error("Initialization Error:", err);
+                document.getElementById('status-message').textContent = "⚠️ 程式初始化發生錯誤，請檢查控制台。";
+            }
+        }
+
+        window.onload = initQuotationGenerator;
+    </script>
+</body>
+</html>
