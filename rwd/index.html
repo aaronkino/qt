@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>奇諾影像報價單 (RWD-V12.3)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kino: { DEFAULT: '#105482', light: '#1e6fa5', dark: '#0c3e60', 50: '#f0f6fa' },
+                        'kino-darker': '#31557e',
+                        'kino-medium': '#4470a0',
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* V11: 通用樣式 */
+        .print-container {
+            background-color: white;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #000;
+        }
+
+        .print-container table { width: 100%; border-collapse: collapse; }
+        .print-container th, .print-container td { border: 1px solid #000; }
+        
+        .print-container .table-rounded-wrapper {
+            border-radius: 0.5rem; 
+            overflow: hidden;
+            border: 1px solid #000;
+        }
+        .print-container .table-rounded-wrapper table { border-style: hidden; }
+
+        /* V12 修正: 報價單主標題降 2pt (18pt) 並確保字重 */
+        .print-container h1 { font-size: 18pt; margin-bottom: 5px; font-weight: 800; }
+        
+        .print-container h2 { 
+            font-size: 13pt; 
+            margin-top: 10px; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #105482;
+            border-left: 4px solid #105482;
+            padding-left: 0.5rem;
+            border-bottom: none;
+        }
+        .print-container h3 { font-size: 12pt; }
+
+        /* 列印特定樣式 */
+        @media print {
+            @page { size: A4; margin: 15mm; } 
+            
+            body { background-color: white; -webkit-print-color-adjust: exact; }
+            
+            .no-print { display: none !important; }
+            .print-layer { display: block !important; }
+            .screen-preview { display: none !important; }
+
+            .page-break { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
+            
+            .print-container {
+                width: 100% !important;
+                margin: 0 auto !important; 
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+
+            /* V11: 單頁列印 (70%) 修正 */
+            .print-container.single-page-mode {
+                zoom: 0.70; 
+                margin: 0 auto !important; 
+                width: 100% !important;
+            }
+            
+            /* V11: 第六項 (詳細細項) 總是強制分頁 (需求 1) */
+            .page-break.detailed-services-page-break {
+                 page-break-before: always !important;
+            }
+            
+            /* V11: 付款方式 (Section IV) 的條件分頁，在單頁模式下取消分頁 (需求 2) */
+            /* 預設: page-break-conditional 帶有 page-break-before: always */
+            .single-page-mode .page-break-conditional {
+                page-break-before: avoid !important;
+                margin-top: 5px !important; 
+            }
+            
+            input, textarea { border: none !important; background: transparent !important; padding: 0 !important; resize: none; }
+            
+            .overflow-x-auto { overflow-x: visible !important; }
+        }
+        
+        input[type="date"] { min-width: 0; appearance: none; -webkit-appearance: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const getLocalDateString = () => {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const defaultNotes = [
+            "甲方委託乙方於2025年12月1日拍攝形象影片，成品交付影片乙支，拍攝期間甲方應於現場確認畫面無虞。",
+            "製作費包含乙方 ■ 技術人員、 □ 演員、 □ 場地、 ■ 器材等相關費用。",
+            "專案期間或結案後，甲方對於本專案內容倘有除合約議定外額外製作/修改需求，為本案預算不可及之部分，經雙方協議後，由乙方針對甲方需求另行報價。",
+            "影片經後期輸出後，內容若有須修改事項，甲方得於每次收件 7 日內要求乙方修正，次數 2 次為限。",
+            "乙方擔保就其提供甲方利用之影片內容，除由甲方提供或要求外，具有合法智慧財產權利，若有違反著作權之爭議相關法律責任由乙方負責。",
+            "乙方應於約定交片日完成本專案並交付予甲方，甲方了解製作時程根據溝通回覆之進度而有不同差異。",
+            "如非乙方之過失而中途停止或取消本案之執行時，其已執行部份仍需計費，非經雙方同意仍應支付全額費用。"
+        ];
+
+        const defaultData = {
+            header: { id: '', date: getLocalDateString(), valid: '14天' },
+            projectFields: [
+                { id: 'p1', label: '專案名稱', value: '形象影片' },
+                { id: 'p2', label: '專案類型', value: '影片統籌製作' },
+                { id: 'p3', label: '片長預估', value: '約2分鐘' },
+                { id: 'p4', label: '交付格式', value: 'Full HD' },
+            ],
+            categories: [
+                { id: 1, name: 'I. Pre-production Expenses / 前期', items: [
+                    { id: 1, desc: '前期企劃與腳本撰寫（含 2 次修改）', unit: '式', qty: 1, price: 0 },
+                    { id: 2, desc: '場地租賃或勘景費用', unit: '式', qty: 1, price: 0 }
+                ] },
+                { id: 2, name: 'II. Production Crew Expenses / 拍攝', items: [
+                    { id: 1, desc: '導演（含現場指導與後期監製）', unit: '天', qty: 1, price: 0 },
+                    { id: 2, desc: '攝影組（影像構圖及視覺呈現）', unit: '天', qty: 1, price: 0 },
+                    { id: 3, desc: '燈光組（塑造場景畫面氛圍）', unit: '天', qty: 1, price: 0 },
+                    { id: 4, desc: '造型師（包含 3 位演員）', unit: '天', qty: 1, price: 0 }
+                ] },
+                { id: 3, name: 'III. Equipment Rental / 器材', items: [
+                    { id: 1, desc: '全幅攝影機租賃（Sony FX3 或同級）', unit: '天', qty: 1, price: 0 },
+                    { id: 2, desc: '進階燈光組租賃（含柔光、硬光、控光設備）', unit: '天', qty: 1, price: 0 },
+                    { id: 3, desc: '高階無線收音設備（24-bit 浮點錄音）', unit: '天', qty: 1, price: 0 }
+                ] },
+                { id: 4, name: 'IV. Video Post Production / 影像後期', items: [
+                    { id: 1, desc: '影片剪輯（含毛片初剪、精剪，2 次修改）', unit: '式', qty: 1, price: 0 },
+                    { id: 2, desc: '校色調光（一級校色還原、二級調光）', unit: '式', qty: 1, price: 0 },
+                    { id: 3, desc: '視覺特效和字卡（效果字和2D動畫等）', unit: '式', qty: 1, price: 0 },
+                    { id: 4, desc: '版權配樂和音效處理（商用授權）', unit: '次', qty: 1, price: 0 }
+                ] },
+            ],
+            notes: defaultNotes,
+            payment: [
+                { id: 1, stage: '第一期 (訂金)', percent: 40, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
+                { id: 2, stage: '第二期 (拍攝款)', percent: 30, condition: '影片拍攝日結束後 3 日內支付。', note: '拍攝團隊費用' },
+                { id: 3, stage: '第三期 (尾款)', percent: 30, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
+            ],
+            bank: { name: '奇諾影像有限公司', bank: '807 永豐銀行 板新分行', acc: '007-018-0005565-8' },
+            signatures: {
+                client: { company: '', rep: '', taxId: '', phone: '', img: '' },
+                vendor: { company: '奇諾影像有限公司', rep: '陳廷安', taxId: '83115577', phone: '0911715138', img: '' },
+                date: getLocalDateString() 
+            },
+            // V12 確認: logo 欄位預留 Base64 數據
+            logo: '', 
+            taxMode: 'excluded', 
+        };
+
+        const IconButton = ({ icon, onClick, color = "text-gray-500", label, className="" }) => (
+            <button onClick={onClick} className={`p-2 rounded-full hover:bg-gray-100 ${color} transition ${className}`}>
+                <i className={`fas ${icon}`}></i> {label && <span className="ml-1 text-sm">{label}</span>}
+            </button>
+        );
+
+        const InputGroup = ({ label, value, onChange, type = "text", placeholder, className="" }) => (
+            <div className={`mb-3 ${className}`}>
+                <label className="block text-xs font-bold text-gray-500 mb-1">{label}</label>
+                <input 
+                    type={type} 
+                    value={value} 
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:border-kino focus:ring-1 focus:ring-kino outline-none text-gray-800 bg-white"
+                />
+            </div>
+        );
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('project'); 
+            const [data, setData] = useState(defaultData);
+            const [previewSettings, setPreviewSettings] = useState({
+                showDetails: true,
+                showSigDate: true,
+                singlePageMode: false 
+            });
+            const [loading, setLoading] = useState(false); // V11: 增加載入狀態
+            // V12.1: 拖曳排序狀態
+            const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('kino_rwd_v10_draft');
+                if (saved) {
+                    try { setData(JSON.parse(saved)); } catch(e) { console.error("Error loading data from localStorage:", e); } // V11: 增加 try...catch
+                }
+                if (!data.header.id) updateQuotationId('形象影片', data.header.date);
+            }, []); 
+
+            useEffect(() => {
+                // 應用程式狀態儲存到瀏覽器的本地儲存
+                localStorage.setItem('kino_rwd_v10_draft', JSON.stringify(data));
+            }, [data]);
+
+            const updateQuotationId = (name, date) => {
+                const d = date.replace(/-/g, '').slice(2);
+                // V11: 移除全形標點符號，僅保留中英數
+                const cleanName = (name || '').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').slice(0, 5); 
+                setData(prev => ({...prev, header: {...prev.header, id: `${d}${cleanName}_KS01`}}));
+            };
+
+            const updateDeep = (path, value) => {
+                setData(prev => {
+                    const newData = JSON.parse(JSON.stringify(prev));
+                    let current = newData;
+                    // V11: 使用 for 循環取代 forEach，確保 path 陣列能正確導航
+                    for (let i = 0; i < path.length - 1; i++) {
+                        if (current && current[path[i]] !== undefined) {
+                            current = current[path[i]];
+                        } else {
+                            // 預防錯誤: 如果路徑不存在，則終止
+                            console.error("Invalid path for deep update:", path);
+                            return prev;
+                        }
+                    }
+                    current[path[path.length - 1]] = value;
+                    
+                    if (path[0] === 'header' && path[1] === 'date') {
+                        const foundField = newData.projectFields.find(f => f.label.includes('專案名稱'));
+                        const projName = foundField ? foundField.value : '';
+                        updateQuotationId(projName, value);
+                    }
+                    if (path[0] === 'projectFields') {
+                         const foundField = newData.projectFields.find(f => f.label.includes('專案名稱'));
+                         const projName = foundField ? foundField.value : '';
+                         updateQuotationId(projName, newData.header.date);
+                    }
+                    return newData;
+                });
+            };
+            
+            // V12.1: 拖曳排序邏輯
+            const handleDragStart = (index) => {
+                setDraggedItemIndex(index);
+            };
+
+            const handleDragEnter = (e, index) => {
+                e.preventDefault();
+                if (draggedItemIndex === null || draggedItemIndex === index) return;
+
+                const newNotes = [...data.notes];
+                const draggedItem = newNotes[draggedItemIndex];
+                
+                // 移除被拖曳項
+                newNotes.splice(draggedItemIndex, 1);
+                
+                // 插入到新的位置
+                newNotes.splice(index, 0, draggedItem);
+                
+                // 更新狀態和被拖曳項的當前索引，實現即時排序
+                setData(prev => ({...prev, notes: newNotes}));
+                setDraggedItemIndex(index); 
+            };
+
+            const handleDragEnd = () => {
+                setDraggedItemIndex(null);
+            };
+            
+            // V11: 修正圖片上傳的錯誤處理 (避免白屏)
+            const handleLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    setLoading(true);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            updateDeep(['logo'], ev.target.result);
+                        } catch(error) {
+                            console.error("Error setting logo data:", error);
+                            // 可以給用戶一個提示
+                        } finally {
+                            setLoading(false);
+                        }
+                    };
+                    reader.onerror = (error) => {
+                        console.error("FileReader error on logo upload:", error);
+                        setLoading(false);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            // V11: 修正簽名圖片上傳的錯誤處理 (避免白屏)
+            const handleSigUpload = (e, party) => {
+                const file = e.target.files[0];
+                if(file) {
+                    setLoading(true);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            updateDeep(['signatures', party, 'img'], ev.target.result);
+                        } catch(error) {
+                            console.error("Error setting signature data:", error);
+                        } finally {
+                            setLoading(false);
+                        }
+                    };
+                    reader.onerror = (error) => {
+                        console.error("FileReader error on signature upload:", error);
+                        setLoading(false);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // V12.1: 移除 moveNote 函數，改用拖曳
+            // const moveNote = (index, direction) => { ... };
+
+            const saveFile = () => {
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${data.header.id || 'quotation'}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+            const loadFile = (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try { 
+                        setData(JSON.parse(ev.target.result)); 
+                        console.log('檔案載入成功');
+                    }
+                    catch(err) { 
+                        console.error('檔案格式錯誤', err);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            const totals = () => {
+                let subtotal = 0;
+                // V11: 確保價格和數量是數字類型
+                data.categories.forEach(cat => cat.items.forEach(i => subtotal += (Number(i.price)||0)*(Number(i.qty)||0)));
+                let total = subtotal;
+                if(data.taxMode === 'included') total = Math.round(subtotal * 1.05);
+                return total;
+            };
+
+            return (
+                <div>
+                    {/* V11: 載入指示器 */}
+                    {loading && (
+                        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[100]">
+                            <div className="bg-white p-4 rounded-lg shadow-xl flex items-center">
+                                <i className="fas fa-spinner fa-spin text-kino text-xl mr-3"></i>
+                                <span className="font-bold text-gray-700">圖片處理中...</span>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div id="screen-ui" className="max-w-screen-md mx-auto min-h-screen bg-gray-100 sm:border-x sm:border-gray-200 relative pb-20 no-print">
+                        <div className="bg-white sticky top-0 z-50 shadow-sm border-b">
+                            <div className="flex justify-between items-center p-3">
+                                <h1 className="font-bold text-kino text-lg truncate flex-1">
+                                    {data.header.id || '報價單'}
+                                </h1>
+                                <div className="flex gap-2">
+                                    <button onClick={saveFile} className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs"><i className="fas fa-save"></i> 儲存</button>
+                                    <label className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1">
+                                        <i className="fas fa-folder-open"></i> 開啟 <input type="file" className="hidden" onChange={loadFile} accept=".json"/>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex bg-white px-2">
+                                {['project:專案', 'items:報價', 'terms:條款', 'preview:預覽'].map(tab => {
+                                    const [key, label] = tab.split(':');
+                                    return (
+                                        <button key={key} onClick={() => setActiveTab(key)}
+                                            className={`flex-1 py-3 text-sm font-bold border-b-2 transition ${activeTab===key ? 'border-kino text-kino' : 'border-transparent text-gray-400'}`}>
+                                            {label}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div>
+                            {activeTab === 'project' && (
+                                <div className="space-y-4 p-4 pb-24">
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-bold text-kino"><i className="fas fa-image mr-2"></i>公司 Logo</h3>
+                                        </div>
+                                        <div className="h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-kino transition bg-gray-50 relative overflow-hidden"
+                                             onClick={() => document.getElementById('upload-logo').click()}>
+                                            <input type="file" id="upload-logo" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={loading}/> 
+                                            {loading ? ( 
+                                                <div className="text-kino text-sm flex flex-col items-center"><i className="fas fa-spinner fa-spin text-2xl mb-1"></i>載入中</div>
+                                            ) : data.logo ? 
+                                                <img src={data.logo} className="h-full object-contain p-2" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/f0f6fa/6b7280?text=圖片載入失敗"; }}/> : 
+                                                <div className="text-gray-400 text-xs flex flex-col items-center"><i className="fas fa-cloud-upload-alt text-2xl mb-1"></i>點擊上傳圖片</div>
+                                            }
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 mt-4">
+                                            <InputGroup label="報價單號" value={data.header.id} onChange={v => updateDeep(['header', 'id'], v)} />
+                                            <InputGroup label="報價日期" value={data.header.date} type="date" onChange={v => updateDeep(['header', 'date'], v)} />
+                                            <InputGroup label="有效期限" value={data.header.valid} onChange={v => updateDeep(['header', 'valid'], v)} />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                            <h3 className="font-bold text-kino"><i className="fas fa-briefcase mr-2"></i>專案與客戶</h3>
+                                            <button onClick={() => setData(prev => ({...prev, projectFields: [...prev.projectFields, {id: Date.now(), label: '新欄位', value: ''}]}))} 
+                                                className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {data.projectFields.map((field, idx) => (
+                                                <div key={field.id} className="flex items-center gap-2">
+                                                    <input className="w-1/3 text-xs font-bold text-gray-500 bg-transparent border-b border-dashed focus:outline-none"
+                                                        value={field.label} onChange={(e) => {
+                                                            const newFields = [...data.projectFields]; newFields[idx].label = e.target.value; setData(prev => ({...prev, projectFields: newFields}));
+                                                        }} />
+                                                    <input className="w-2/3 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        value={field.value} onChange={(e) => {
+                                                            const newFields = [...data.projectFields]; newFields[idx].value = e.target.value;
+                                                            if(field.label.includes('專案名稱')) updateQuotationId(e.target.value, data.header.date);
+                                                            setData(prev => ({...prev, projectFields: newFields}));
+                                                        }} />
+                                                    <button className="text-red-300" onClick={() => setData(prev => ({...prev, projectFields: prev.projectFields.filter(f => f.id !== field.id)}))}><i className="fas fa-times"></i></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <h3 className="font-bold text-kino mb-3 border-b pb-2"><i className="fas fa-file-signature mr-2"></i>報價確認與簽署資料</h3>
+                                        
+                                        <div className="mb-6 p-3 bg-gray-50 rounded-lg border">
+                                            <label className="text-sm font-bold text-kino block mb-2">甲方 (Client)</label>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                <InputGroup label="抬頭 (Company)" value={data.signatures.client.company} onChange={v => updateDeep(['signatures', 'client', 'company'], v)} />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <InputGroup label="代表人" value={data.signatures.client.rep} onChange={v => updateDeep(['signatures', 'client', 'rep'], v)} />
+                                                    <InputGroup label="統編" value={data.signatures.client.taxId} onChange={v => updateDeep(['signatures', 'client', 'taxId'], v)} />
+                                                </div>
+                                                <InputGroup label="電話" value={data.signatures.client.phone} onChange={v => updateDeep(['signatures', 'client', 'phone'], v)} />
+                                            </div>
+                                            <div className="mt-2 h-24 border-2 border-dashed border-gray-300 rounded bg-white flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-kino transition"
+                                                 onClick={() => document.getElementById('upload-client-sig').click()}>
+                                                <input type="file" id="upload-client-sig" className="hidden" accept="image/*" onChange={(e) => handleSigUpload(e, 'client')} disabled={loading}/> 
+                                                {loading ? ( 
+                                                    <div className="text-kino text-sm flex flex-col items-center"><i className="fas fa-spinner fa-spin text-xl mb-1"></i>載入中</div>
+                                                ) : data.signatures.client.img ? 
+                                                    <img src={data.signatures.client.img} className="h-full object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/ffffff/6b7280?text=圖片載入失敗"; }}/> : 
+                                                    <div className="text-gray-400 text-xs flex flex-col items-center"><i className="fas fa-upload mb-1"></i>點擊上傳印鑑</div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 bg-gray-50 rounded-lg border">
+                                            <label className="text-sm font-bold text-kino block mb-2">乙方 (Vendor)</label>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                <InputGroup label="抬頭 (Company)" value={data.signatures.vendor.company} onChange={v => updateDeep(['signatures', 'vendor', 'company'], v)} />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <InputGroup label="代表人" value={data.signatures.vendor.rep} onChange={v => updateDeep(['signatures', 'vendor', 'rep'], v)} />
+                                                    <InputGroup label="統編" value={data.signatures.vendor.taxId} onChange={v => updateDeep(['signatures', 'vendor', 'taxId'], v)} />
+                                                </div>
+                                                <InputGroup label="電話" value={data.signatures.vendor.phone} onChange={v => updateDeep(['signatures', 'vendor', 'phone'], v)} />
+                                            </div>
+                                            <div className="mt-2 h-24 border-2 border-dashed border-gray-300 rounded bg-white flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-kino transition"
+                                                 onClick={() => document.getElementById('upload-vendor-sig').click()}>
+                                                <input type="file" id="upload-vendor-sig" className="hidden" accept="image/*" onChange={(e) => handleSigUpload(e, 'vendor')} disabled={loading}/> 
+                                                {loading ? ( 
+                                                    <div className="text-kino text-sm flex flex-col items-center"><i className="fas fa-spinner fa-spin text-xl mb-1"></i>載入中</div>
+                                                ) : data.signatures.vendor.img ? 
+                                                    <img src={data.signatures.vendor.img} className="h-full object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/ffffff/6b7280?text=圖片載入失敗"; }}/> : 
+                                                    <div className="text-gray-400 text-xs flex flex-col items-center"><i className="fas fa-upload mb-1"></i>點擊上傳印鑑</div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <InputGroup label="簽署日期 (統一)" type="date" value={data.signatures.date} onChange={v => updateDeep(['signatures', 'date'], v)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'items' && (
+                                <div className="space-y-4 p-4 pb-24">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="font-bold text-gray-700">報價細項 (交替配色)</h2>
+                                        <button onClick={() => {
+                                            const newId = Date.now();
+                                            setData(prev => ({...prev, categories: [...prev.categories, { id: newId, name: '新分類', items: [] }]}));
+                                        }} className="bg-kino text-white px-3 py-1 rounded-full text-sm shadow"><i className="fas fa-plus mr-1"></i>分類</button>
+                                    </div>
+                                    {data.categories.map((cat, catIdx) => (
+                                        <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                            <div className={`${catIdx % 2 === 0 ? 'bg-kino text-white' : 'bg-kino-medium text-white'} p-3 flex justify-between items-center`}>
+                                                <input className="font-bold bg-transparent border-b border-dashed border-white/50 w-full mr-2 focus:outline-none placeholder-white/70"
+                                                    value={cat.name} onChange={e => {
+                                                        const newCats = [...data.categories]; newCats[catIdx].name = e.target.value; setData(prev => ({...prev, categories: newCats}));
+                                                    }} />
+                                                {/* V11: 避免使用 alert，改用 window.confirm 提示 */}
+                                                <IconButton icon="fa-trash-alt" color="text-white/80 hover:text-white" onClick={() => {
+                                                    if(window.confirm('確定刪除此分類？')) setData(prev => ({...prev, categories: prev.categories.filter(c => c.id !== cat.id)}));
+                                                }} />
+                                            </div>
+                                            <div className="p-2 space-y-2">
+                                                {cat.items.map((item, itemIdx) => (
+                                                    <div key={item.id} className="bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
+                                                        <div className="mb-2">
+                                                            <input className="w-full font-medium text-gray-800 border-b border-gray-200 focus:border-kino outline-none"
+                                                                value={item.desc} placeholder="項目描述"
+                                                                onChange={e => {
+                                                                    const newCats = [...data.categories];
+                                                                    newCats[catIdx].items[itemIdx].desc = e.target.value;
+                                                                    setData(prev => ({...prev, categories: newCats}));
+                                                                }} />
+                                                        </div>
+                                                        <div className="flex gap-2 items-end">
+                                                            <div className="flex-1">
+                                                                <label className="text-[10px] text-gray-400">單價</label>
+                                                                {/* V11: 確保價格是數字輸入，避免 NaN 錯誤 */}
+                                                                <input type="number" className="w-full text-sm border bg-gray-50 rounded px-1" value={item.price} 
+                                                                    onChange={e => { const newCats = [...data.categories]; newCats[catIdx].items[itemIdx].price = e.target.value; setData(prev => ({...prev, categories: newCats})); }} />
+                                                            </div>
+                                                            <div className="w-16">
+                                                                <label className="text-[10px] text-gray-400">數量</label>
+                                                                <input type="number" className="w-full text-sm border bg-gray-50 rounded px-1 text-center" value={item.qty} 
+                                                                     onChange={e => { const newCats = [...data.categories]; newCats[catIdx].items[itemIdx].qty = e.target.value; setData(prev => ({...prev, categories: newCats})); }} />
+                                                            </div>
+                                                            <div className="w-16">
+                                                                <label className="text-[10px] text-gray-400">單位</label>
+                                                                <input type="text" className="w-full text-sm border bg-gray-50 rounded px-1 text-center" value={item.unit} 
+                                                                     onChange={e => { const newCats = [...data.categories]; newCats[catIdx].items[itemIdx].unit = e.target.value; setData(prev => ({...prev, categories: newCats})); }} />
+                                                            </div>
+                                                            <button className="text-red-300 p-1 mb-1" onClick={() => {
+                                                                const newCats = [...data.categories]; newCats[catIdx].items = newCats[catIdx].items.filter(i => i.id !== item.id); setData(prev => ({...prev, categories: newCats}));
+                                                            }}><i className="fas fa-times"></i></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => {
+                                                    const newCats = [...data.categories]; newCats[catIdx].items.push({ id: Date.now(), desc: '', unit: '式', qty: 1, price: 0 }); setData(prev => ({...prev, categories: newCats}));
+                                                }} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-kino hover:text-kino transition text-sm font-bold">
+                                                    <i className="fas fa-plus mr-1"></i> 新增項目
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {activeTab === 'terms' && (
+                                <div className="space-y-4 p-4 pb-24">
+                                    {/* V12.1: 客製化備註 (已移除條列式後綴，並改為拖曳排序) */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                            <h3 className="font-bold text-kino"><i className="fas fa-pen-nib mr-2"></i>客製化備註</h3>
+                                            <button onClick={() => setData(prev => ({...prev, notes: [...prev.notes, '']}))} 
+                                                className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {data.notes.map((note, idx) => (
+                                                <div key={idx} 
+                                                    className="flex items-start gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 hover:shadow-md transition"
+                                                    draggable
+                                                    onDragStart={() => handleDragStart(idx)}
+                                                    onDragEnter={(e) => handleDragEnter(e, idx)}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDragEnd={handleDragEnd}
+                                                >
+                                                    {/* V12.3 修正: 拖曳把手改用 fa-bars 且移除旋轉 (模擬水平「三」字) */}
+                                                    <div className="flex flex-col items-center justify-center h-full pt-2 cursor-grab text-gray-400 hover:text-kino transition">
+                                                        <i className="fas fa-bars text-lg"></i>
+                                                    </div>
+
+                                                    <span className="text-kino font-bold mt-2 text-sm shrink-0">{idx + 1}.</span>
+                                                    <textarea 
+                                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm leading-relaxed focus:border-kino outline-none bg-white"
+                                                        rows={2}
+                                                        value={note}
+                                                        onChange={e => {
+                                                            const newNotes = [...data.notes];
+                                                            newNotes[idx] = e.target.value;
+                                                            setData(prev => ({...prev, notes: newNotes}));
+                                                        }}
+                                                    />
+                                                    <div className="flex flex-col gap-1 mt-1 shrink-0">
+                                                        {/* 僅保留刪除按鈕 */}
+                                                        <button className="text-red-300 hover:text-red-500 p-1" onClick={() => setData(prev => ({...prev, notes: prev.notes.filter((_, i) => i !== idx)}))}>
+                                                            <i className="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* V10: 4. 付款方式 (Swapped to Bottom) */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                            <h3 className="font-bold text-kino"><i className="fas fa-list-ol mr-2"></i>付款條件</h3>
+                                            <button onClick={() => setData(prev => ({...prev, payment: [...prev.payment, {id: Date.now(), stage: '新階段', percent: 0, condition: '', note: ''}]}))} 
+                                                className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {data.payment.map((term, idx) => (
+                                                <div key={term.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
+                                                    <button className="absolute top-2 right-2 text-red-300 hover:text-red-500" onClick={() => setData(prev => ({...prev, payment: prev.payment.filter(p => p.id !== term.id)}))}><i className="fas fa-times"></i></button>
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        <InputGroup label={`階段 ${idx+1}`} value={term.stage} onChange={v => {const newPay=[...data.payment]; newPay[idx].stage=v; setData(prev=>({...prev,payment:newPay}))}} />
+                                                        <div className="flex gap-2">
+                                                            <div className="w-1/3"><InputGroup label="比例 (%)" type="number" value={term.percent} onChange={v => {const newPay=[...data.payment]; newPay[idx].percent=v; setData(prev=>({...prev,payment:newPay}))}} /></div>
+                                                            <div className="w-2/3"><InputGroup label="付款條件" value={term.condition} onChange={v => {const newPay=[...data.payment]; newPay[idx].condition=v; setData(prev=>({...prev,payment:newPay}))}} /></div>
+                                                        </div>
+                                                        <InputGroup label="備註" value={term.note} onChange={v => {const newPay=[...data.payment]; newPay[idx].note=v; setData(prev=>({...prev,payment:newPay}))}} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                        <h3 className="font-bold text-kino"><i className="fas fa-university mr-2"></i>收款帳戶</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                                            <InputGroup label="銀行名稱" value={data.bank.bank} onChange={v => updateDeep(['bank', 'bank'], v)} />
+                                            <InputGroup label="戶名" value={data.bank.name} onChange={v => updateDeep(['bank', 'name'], v)} />
+                                            <InputGroup label="帳號" value={data.bank.acc} onChange={v => updateDeep(['bank', 'acc'], v)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'preview' && (
+                                <div className="p-4 bg-gray-200 min-h-screen">
+                                    <div className="no-print bg-white p-3 rounded mb-4 shadow flex flex-wrap gap-4 items-center justify-between">
+                                        <div className="flex flex-wrap gap-3 text-sm font-bold text-gray-700">
+                                            <label className="flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" checked={previewSettings.showDetails} 
+                                                    onChange={e => setPreviewSettings(prev => ({...prev, showDetails: e.target.checked}))} /> 
+                                                列印細項
+                                            </label>
+                                            <label className="flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" checked={previewSettings.showSigDate} 
+                                                    onChange={e => setPreviewSettings(prev => ({...prev, showSigDate: e.target.checked}))} /> 
+                                                簽署日期
+                                            </label>
+                                            <label className="flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" checked={previewSettings.singlePageMode} 
+                                                    onChange={e => setPreviewSettings(prev => ({...prev, singlePageMode: e.target.checked}))} /> 
+                                                單頁列印 (縮放 70%)
+                                            </label>
+                                        </div>
+                                        {/* V11: 移除 HTML5 警告符號，使用 <button> 替代 */}
+                                        <button onClick={() => window.print()} className="bg-kino text-white px-4 py-1.5 rounded shadow hover:bg-kino-light text-sm font-bold">
+                                            <i className="fas fa-print mr-1"></i> 列印 / PDF
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="screen-preview origin-top w-full overflow-x-auto">
+                                        <PreviewSection data={data} settings={previewSettings} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                         {activeTab === 'items' && (
+                             <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-3 flex justify-between items-center shadow-lg z-40 max-w-screen-md mx-auto">
+                                <select className="text-xs border rounded p-1" value={data.taxMode} onChange={e => updateDeep(['taxMode'], e.target.value)}>
+                                    <option value="excluded">報價未稅</option>
+                                    <option value="inclusive_flat">報價含稅</option> 
+                                    <option value="included">稅外(5%)</option>
+                                </select>
+                                <div className="text-right">
+                                    <div className="text-xs text-gray-500">總金額</div>
+                                    <div className="text-lg font-bold text-kino">NT$ {totals().toLocaleString()}</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="print-layer hidden print:block">
+                        <PreviewSection data={data} settings={previewSettings} />
+                    </div>
+                </div>
+            );
+        }
+
+        // --- 列印版面 (V12.3: 標題修正與分頁邏輯) ---
+        const PreviewSection = ({ data, settings }) => {
+            let subtotal = 0;
+            // V11: 確保價格和數量是數字類型
+            data.categories.forEach(cat => cat.items.forEach(i => subtotal += (Number(i.price)||0)*(Number(i.qty)||0)));
+            let tax = Math.round(subtotal * 0.05);
+            let total = subtotal;
+            let taxText = "(未稅)";
+            if (data.taxMode === 'included') { total = subtotal + tax; taxText = "(含稅)"; }
+            else if (data.taxMode === 'inclusive_flat') { taxText = "(含稅)"; }
+
+            const containerClass = `print-container relative mx-auto max-w-[210mm] shadow-lg print:shadow-none p-[10mm] print:p-0 ${settings.singlePageMode ? 'single-page-mode' : ''}`;
+
+            // V11: 分頁邏輯更新
+            // Section IV (付款方式) 的條件分頁：在非單頁模式下強制分頁
+            const paymentBreakClass = settings.singlePageMode ? '' : 'page-break-conditional page-break'; 
+            // Section VI (詳細細項) 總是強制分頁 
+            const detailedBreakClass = 'page-break detailed-services-page-break';
+
+            return (
+                <div className={containerClass}>
+                    {/* Header */}
+                    <div className="grid grid-cols-3 items-center mb-2 pb-2 border-b-4 border-kino">
+                            <div className="flex items-center justify-start h-16">
+                            {data.logo && <img src={data.logo} className="max-h-full max-w-[120px] object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/f0f6fa/6b7280?text=圖片載入失敗"; }} />}
+                            </div>
+                            {/* V12 修正: 標題確保不分行，已修改 CSS 為 18pt */}
+                            <h1 className="text-center whitespace-nowrap">奇諾影像報價單(Quotation)</h1>
+                            <div className="text-right text-xs"></div>
+                    </div>
+
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-2 text-xs sm:text-sm">
+                        <div><span className="font-bold block text-gray-500">報價單號</span><span className="text-kino font-bold text-base">{data.header.id}</span></div>
+                        <div><span className="font-bold block text-gray-500">報價日期</span>{data.header.date}</div>
+                        <div><span className="font-bold block text-gray-500">有效期限</span>{data.header.valid}</div>
+                    </div>
+
+                    {/* I. Project Overview (V7: mb-2 for spacing) */}
+                    <div className="mb-2 avoid-break">
+                        <h2>一、 專案內容概況</h2>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm">
+                            {data.projectFields.map(f => (
+                                <div key={f.id}><span className="font-bold mr-1">{f.label}:</span>{f.value}</div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* II. Summary */}
+                    <div className="mb-2 avoid-break">
+                        <h2>二、 專案報價</h2>
+                        <div className="table-rounded-wrapper">
+                            <table className="w-full text-xs sm:text-sm">
+                                <thead className="bg-kino text-white">
+                                    <tr>
+                                        <th className="p-1 text-left border-b border-black">摘要</th>
+                                        <th className="p-1 text-right w-32 border-b border-black border-l border-white/20">總計 (NTD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.categories.map(cat => {
+                                        const total = cat.items.reduce((acc, i) => acc + (Number(i.price) * Number(i.qty)), 0); 
+                                        return (
+                                            <tr key={cat.id}>
+                                                <td className="p-1 pl-2 font-bold border-b border-black">{cat.name}</td>
+                                                <td className="p-1 text-right font-bold border-b border-black border-l">${total.toLocaleString()}</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="flex justify-end mt-1">
+                            <div className="w-full sm:w-1/2 text-xs sm:text-sm table-rounded-wrapper">
+                                <div className="flex justify-between p-1 px-2 border-b border-black bg-gray-50">
+                                    <span>服務項目總計 (∆)</span>
+                                    <span className="font-bold">${subtotal.toLocaleString()}</span>
+                                </div>
+                                {data.taxMode === 'included' && (
+                                        <div className="flex justify-between p-1 px-2 border-b border-black bg-gray-50">
+                                        <span>營業稅 (5%)</span>
+                                        <span>${tax.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between p-1 px-2 bg-kino text-white items-center">
+                                    <span className="font-bold">本次報價總金額 {taxText}</span>
+                                    <span className="font-bold text-base sm:text-lg">${total.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* III. Notes (Moved to III) - V12.1: 修正標題 */}
+                    <div className={`mb-2 avoid-break`}>
+                        <h2>三、 客製化備註</h2>
+                        <div className="bg-kino-50 rounded-lg p-2 text-xs sm:text-sm leading-relaxed">
+                            <ol className="list-decimal pl-5 space-y-0.5 marker:text-kino marker:font-bold">
+                                {data.notes.map((note, i) => <li key={i}>{note}</li>)}
+                            </ol>
+                        </div>
+                    </div>
+
+                    {/* IV. Terms (Moved to IV) - Conditional page break (依據需求 2) */}
+                    <div className={`mb-2 avoid-break ${paymentBreakClass}`}>
+                        <h2>四、 付款方式與條款</h2>
+                        <div className="table-rounded-wrapper mb-2">
+                            <table className="w-full text-xs sm:text-sm">
+                                <thead className="bg-kino text-white">
+                                    <tr>
+                                        <th className="p-1 w-1/5 border-b border-black">階段</th>
+                                        <th className="p-1 w-16 text-center border-b border-black border-l border-white/20">比例</th>
+                                        <th className="p-1 border-b border-black border-l border-white/20">付款條件</th>
+                                        <th className="p-1 border-b border-black border-l border-white/20">備註</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.payment.map(term => (
+                                        <tr key={term.id}>
+                                            <td className="p-1 font-bold border-b border-black">{term.stage}</td>
+                                            <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{term.percent}%</td>
+                                            <td className="p-1 border-b border-black border-l">{term.condition}</td>
+                                            <td className="p-1 border-b border-black border-l">{term.note}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="table-rounded-wrapper p-2 bg-gray-50 text-xs sm:text-sm flex flex-wrap gap-x-4 gap-y-1">
+                            <span className="font-bold text-kino">匯款資訊：</span>
+                            <span><b>銀行:</b> {data.bank.bank}</span>
+                            <span><b>戶名:</b> {data.bank.name}</span>
+                            <span><b>帳號:</b> {data.bank.acc}</span>
+                        </div>
+                        <div className="text-[10px] text-red-500 mt-1 font-medium">
+                            ** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。
+                        </div>
+                    </div>
+
+                    {/* V. Signatures - 報價簽署不分頁 (需求 2) */}
+                    <div className={`mb-2 avoid-break`}> 
+                        <h2>五、 報價確認與簽署</h2>
+                        <div className="overflow-x-auto w-full table-rounded-wrapper">
+                             <table className="w-full text-xs sm:text-sm">
+                                <thead className="bg-kino-50">
+                                    <tr>
+                                        <th className="p-1 w-1/6 font-normal border-b border-black">項目</th>
+                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">甲方 (Client)</th>
+                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">乙方 (Vendor)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center border-b border-black">抬頭</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.client.company}</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.vendor.company}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center border-b border-black">代表人</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.client.rep}</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.vendor.rep}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center border-b border-black">統一編號</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.client.taxId}</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.vendor.taxId}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center border-b border-black">聯絡電話</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.client.phone}</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l">{data.signatures.vendor.phone}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center align-middle border-b border-black">簽署</td>
+                                        <td className="p-1 h-24 relative border-b border-black border-l">
+                                             {data.signatures.client.img && <img src={data.signatures.client.img} className="absolute inset-0 m-auto max-h-20 max-w-[90%]" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/ffffff/6b7280?text=圖片載入失敗"; }} />}
+                                        </td>
+                                        <td className="p-1 h-24 relative border-b border-black border-l">
+                                             {data.signatures.vendor.img && <img src={data.signatures.vendor.img} className="absolute inset-0 m-auto max-h-20 max-w-[90%]" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/ffffff/6b7280?text=圖片載入失敗"; }} />}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-1 font-bold bg-gray-50 text-center border-b border-black">日期</td>
+                                        <td className="p-1 text-center font-bold text-kino border-b border-black border-l" colSpan="2">{settings.showSigDate ? data.signatures.date : ''}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* VI. Detailed Services (Always break, 依據需求 1) */}
+                    {settings.showDetails && (
+                        <div className={`mt-4 ${detailedBreakClass}`}>
+                            <h2 className="text-kino mb-3 border-l-4 border-kino pl-2">六、 服務細項清單</h2>
+                            {data.categories.map((cat, idx) => {
+                                const isDark = idx % 2 === 0;
+                                return (
+                                    <div key={cat.id} className="mb-4 avoid-break table-rounded-wrapper">
+                                        <div className={`p-1 pl-2 font-bold text-white text-sm ${isDark ? 'bg-kino-darker' : 'bg-kino-medium'}`}>
+                                            {cat.name}
+                                        </div>
+                                        <table className="w-full text-xs sm:text-sm">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="p-1 text-left w-1/2 border-b border-black">項目</th>
+                                                    <th className="p-1 w-12 text-center border-b border-black border-l">數量</th>
+                                                    <th className="p-1 w-12 text-center border-b border-black border-l">單位</th>
+                                                    <th className="p-1 text-right w-24 border-b border-black border-l">單價</th>
+                                                    <th className="p-1 text-right w-24 border-b border-black border-l">小計</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {cat.items.map(item => (
+                                                    <tr key={item.id}>
+                                                        <td className="p-1 border-b border-black">{item.desc}</td>
+                                                        <td className="p-1 text-center border-b border-black border-l">{item.qty}</td>
+                                                        <td className="p-1 text-center border-b border-black border-l">{item.unit}</td>
+                                                        <td className="p-1 text-right border-b border-black border-l">${Number(item.price).toLocaleString()}</td>
+                                                        <td className="p-1 text-right font-bold border-b border-black border-l">${(Number(item.price) * Number(item.qty)).toLocaleString()}</td> 
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
