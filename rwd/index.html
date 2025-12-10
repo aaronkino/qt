@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單 (RWD-V12.6)</title>
+    <title>奇諾影像報價單 (RWD-V12.7)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -725,7 +725,7 @@
             );
         }
 
-        // --- 列印版面 (V12.6: 帳號不分段與專案概況縮排調整) ---
+        // --- 列印版面 (V12.7: 帳號不分段與專案概況縮排調整) ---
         const PreviewSection = ({ data, settings }) => {
             let subtotal = 0;
             // V11: 確保價格和數量是數字類型
@@ -770,8 +770,8 @@
                     {/* I. Project Overview (V7: mb-2 for spacing) */}
                     <div className="mb-2 avoid-break">
                         <h2>一、 專案內容概況</h2>
-                        {/* V12.6 修正: 僅在專案內容概況中縮排 (pl-8) */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-8">
+                        {/* V12.7 修正: 僅在專案內容概況中縮排，加大為 pl-16 (兩倍) */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-16">
                             {data.projectFields.map(f => (
                                 // V12.4 修正: 標題顏色改為 softGray
                                 <div key={f.id}><span className="font-bold mr-1" style={{ color: softGray }}>{f.label}:</span>{f.value}</div>
@@ -864,6 +864,7 @@
                         </div>
                         {/* V12.6 修正: 匯款資訊強制不分段 (whitespace-nowrap) */}
                         <div className="table-rounded-wrapper p-2 bg-gray-50 text-xs sm:text-sm flex flex-wrap gap-x-4 gap-y-1">
+                            {/* V12.6 已修正，確保所有列印模式下帳號不分段 */}
                             <span className="font-bold text-kino whitespace-nowrap">匯款資訊：</span>
                             <span className="whitespace-nowrap"><b>銀行:</b> {data.bank.bank}</span>
                             <span className="whitespace-nowrap"><b>戶名:</b> {data.bank.name}</span>
