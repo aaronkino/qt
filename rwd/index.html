@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單 (RWD-V12.3)</title>
+    <title>奇諾影像報價單 (RWD-V12.6)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -52,12 +52,13 @@
         /* V12 修正: 報價單主標題降 2pt (18pt) 並確保字重 */
         .print-container h1 { font-size: 18pt; margin-bottom: 5px; font-weight: 800; }
         
+        /* V12.4 修正: 大項目標題文字改為黑色 (text-black) */
         .print-container h2 { 
             font-size: 13pt; 
             margin-top: 10px; 
             margin-bottom: 5px; 
             font-weight: bold; 
-            color: #105482;
+            color: black; /* 修正顏色為黑色 */
             border-left: 4px solid #105482;
             padding-left: 0.5rem;
             border-bottom: none;
@@ -265,7 +266,9 @@
             };
             
             // V12.1: 拖曳排序邏輯
-            const handleDragStart = (index) => {
+            const handleDragStart = (e, index) => {
+                // V12.4 修正: 確保在行動裝置上拖曳時，不會觸發文本選取
+                e.dataTransfer.setData('text/plain', '');
                 setDraggedItemIndex(index);
             };
 
@@ -600,13 +603,14 @@
                                                 <div key={idx} 
                                                     className="flex items-start gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 hover:shadow-md transition"
                                                     draggable
-                                                    onDragStart={() => handleDragStart(idx)}
+                                                    onDragStart={(e) => handleDragStart(e, idx)}
                                                     onDragEnter={(e) => handleDragEnter(e, idx)}
                                                     onDragOver={(e) => e.preventDefault()}
                                                     onDragEnd={handleDragEnd}
                                                 >
                                                     {/* V12.3 修正: 拖曳把手改用 fa-bars 且移除旋轉 (模擬水平「三」字) */}
-                                                    <div className="flex flex-col items-center justify-center h-full pt-2 cursor-grab text-gray-400 hover:text-kino transition">
+                                                    {/* V12.4 修正: 增加 select-none 避免手機上拖曳時選取文字 */}
+                                                    <div className="flex flex-col items-center justify-center h-full pt-2 cursor-grab text-gray-400 hover:text-kino transition select-none">
                                                         <i className="fas fa-bars text-lg"></i>
                                                     </div>
 
@@ -721,7 +725,7 @@
             );
         }
 
-        // --- 列印版面 (V12.3: 標題修正與分頁邏輯) ---
+        // --- 列印版面 (V12.6: 帳號不分段與專案概況縮排調整) ---
         const PreviewSection = ({ data, settings }) => {
             let subtotal = 0;
             // V11: 確保價格和數量是數字類型
@@ -739,6 +743,9 @@
             const paymentBreakClass = settings.singlePageMode ? '' : 'page-break-conditional page-break'; 
             // Section VI (詳細細項) 總是強制分頁 
             const detailedBreakClass = 'page-break detailed-services-page-break';
+            
+            // V12.4: 柔和灰色
+            const softGray = '#394150';
 
             return (
                 <div className={containerClass}>
@@ -754,17 +761,20 @@
 
                     {/* Info Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-2 text-xs sm:text-sm">
-                        <div><span className="font-bold block text-gray-500">報價單號</span><span className="text-kino font-bold text-base">{data.header.id}</span></div>
-                        <div><span className="font-bold block text-gray-500">報價日期</span>{data.header.date}</div>
-                        <div><span className="font-bold block text-gray-500">有效期限</span>{data.header.valid}</div>
+                        {/* V12.4 修正: 標題顏色改為 softGray */}
+                        <div><span className="font-bold block" style={{ color: softGray }}>報價單號</span><span className="text-kino font-bold text-base">{data.header.id}</span></div>
+                        <div><span className="font-bold block" style={{ color: softGray }}>報價日期</span>{data.header.date}</div>
+                        <div><span className="font-bold block" style={{ color: softGray }}>有效期限</span>{data.header.valid}</div>
                     </div>
 
                     {/* I. Project Overview (V7: mb-2 for spacing) */}
                     <div className="mb-2 avoid-break">
                         <h2>一、 專案內容概況</h2>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm">
+                        {/* V12.6 修正: 僅在專案內容概況中縮排 (pl-8) */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-8">
                             {data.projectFields.map(f => (
-                                <div key={f.id}><span className="font-bold mr-1">{f.label}:</span>{f.value}</div>
+                                // V12.4 修正: 標題顏色改為 softGray
+                                <div key={f.id}><span className="font-bold mr-1" style={{ color: softGray }}>{f.label}:</span>{f.value}</div>
                             ))}
                         </div>
                     </div>
@@ -785,7 +795,8 @@
                                         const total = cat.items.reduce((acc, i) => acc + (Number(i.price) * Number(i.qty)), 0); 
                                         return (
                                             <tr key={cat.id}>
-                                                <td className="p-1 pl-2 font-bold border-b border-black">{cat.name}</td>
+                                                {/* V12.4 修正: 摘要內的細項文字顏色改為 softGray */}
+                                                <td className="p-1 pl-2 font-bold border-b border-black" style={{ color: softGray }}>{cat.name}</td>
                                                 <td className="p-1 text-right font-bold border-b border-black border-l">${total.toLocaleString()}</td>
                                             </tr>
                                         )
@@ -794,7 +805,8 @@
                             </table>
                         </div>
                         <div className="flex justify-end mt-1">
-                            <div className="w-full sm:w-1/2 text-xs sm:text-sm table-rounded-wrapper">
+                            {/* V12.4 修正: 總計區塊寬度，使用 max-w-full 確保 RWD (需求 3) */}
+                            <div className={`max-w-full sm:w-1/2 text-xs sm:text-sm table-rounded-wrapper`}>
                                 <div className="flex justify-between p-1 px-2 border-b border-black bg-gray-50">
                                     <span>服務項目總計 (∆)</span>
                                     <span className="font-bold">${subtotal.toLocaleString()}</span>
@@ -816,7 +828,9 @@
                     {/* III. Notes (Moved to III) - V12.1: 修正標題 */}
                     <div className={`mb-2 avoid-break`}>
                         <h2>三、 客製化備註</h2>
+                        {/* V12.5 修正: 取消內文容器的 padding 縮排設定 */}
                         <div className="bg-kino-50 rounded-lg p-2 text-xs sm:text-sm leading-relaxed">
+                            {/* 列表保留 pl-5 讓編號出現，但外層 div 上的 padding 已移除 */}
                             <ol className="list-decimal pl-5 space-y-0.5 marker:text-kino marker:font-bold">
                                 {data.notes.map((note, i) => <li key={i}>{note}</li>)}
                             </ol>
@@ -848,11 +862,12 @@
                                 </tbody>
                             </table>
                         </div>
+                        {/* V12.6 修正: 匯款資訊強制不分段 (whitespace-nowrap) */}
                         <div className="table-rounded-wrapper p-2 bg-gray-50 text-xs sm:text-sm flex flex-wrap gap-x-4 gap-y-1">
-                            <span className="font-bold text-kino">匯款資訊：</span>
-                            <span><b>銀行:</b> {data.bank.bank}</span>
-                            <span><b>戶名:</b> {data.bank.name}</span>
-                            <span><b>帳號:</b> {data.bank.acc}</span>
+                            <span className="font-bold text-kino whitespace-nowrap">匯款資訊：</span>
+                            <span className="whitespace-nowrap"><b>銀行:</b> {data.bank.bank}</span>
+                            <span className="whitespace-nowrap"><b>戶名:</b> {data.bank.name}</span>
+                            <span className="whitespace-nowrap"><b>帳號:</b> {data.bank.acc}</span>
                         </div>
                         <div className="text-[10px] text-red-500 mt-1 font-medium">
                             ** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。
