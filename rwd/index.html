@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單 (RWD-V12.8)</title>
+    <title>奇諾影像報價單 (RWD-V12.9.4)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -127,14 +127,32 @@
         };
 
         const defaultNotes = [
-            "甲方委託乙方於2025年12月1日拍攝形象影片，成品交付影片乙支，拍攝期間甲方應於現場確認畫面無虞。",
-            "製作費包含乙方 ■ 技術人員、 □ 演員、 □ 場地、 ■ 器材等相關費用。",
-            "專案期間或結案後，甲方對於本專案內容倘有除合約議定外額外製作/修改需求，為本案預算不可及之部分，經雙方協議後，由乙方針對甲方需求另行報價。",
+            "甲方委託乙方於2025年12月1日拍攝形象影片，成品交付影片乙支，拍攝期間甲方應於現場確認畫面無虞，製作費包含乙方 ■ 技術人員、 □ 演員、 □ 場地、 ■ 器材等相關費用，專案期間或結案後，甲方對於本專案內容倘有除合約議定外額外製作/修改需求，為本案預算不可及之部分，經雙方協議後，由乙方針對甲方需求另行報價。",
             "影片經後期輸出後，內容若有須修改事項，甲方得於每次收件 7 日內要求乙方修正，次數 2 次為限。",
-            "乙方擔保就其提供甲方利用之影片內容，除由甲方提供或要求外，具有合法智慧財產權利，若有違反著作權之爭議相關法律責任由乙方負責。",
-            "乙方應於約定交片日完成本專案並交付予甲方，甲方了解製作時程根據溝通回覆之進度而有不同差異。",
-            "如非乙方之過失而中途停止或取消本案之執行時，其已執行部份仍需計費，非經雙方同意仍應支付全額費用。"
+            "乙方擔保就其提供甲方利用之影片內容，除由甲方提供或要求外，具有合法智慧財產權利，\n若有違反著作權之爭議相關法律責任由乙方負責。",
+            "乙方應於約定交片日完成本專案並交付予甲方，甲方了解製作時程根據溝通回覆之進度而有不同差異，\n若因自然災害等不可抗力之因素或甲方要求致無法遵守進度時，雙方應另議交片日或依下列第5條所示結算。",
+            "如非乙方之過失而中途停止或取消本案之執行時，其已執行部份仍需計費，非經雙方同意仍應支付全額費用，甲方不得以本案尚未全部完成為理由而拒絕付款。",
+            "本契約之解釋、效力及其他未盡事宜，皆以相關法律為準則。倘有任何糾紛，雙方亦應依誠實信用原則解決。如有訴訟必要，雙方同意於新北地方法院板橋簡易庭進行訴訟程序。"
         ];
+
+        // V12.9.3: 新增付款預設方案
+        const paymentPresets = {
+            'default': [ // 三期 (4:3:3) - 原始預設
+                { id: 1, stage: '第一期 (訂金)', percent: 40, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
+                { id: 2, stage: '第二期 (拍攝款)', percent: 30, condition: '影片拍攝日結束後 3 日內支付。', note: '拍攝團隊費用' },
+                { id: 3, stage: '第三期 (尾款)', percent: 30, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
+            ],
+            'two_parts': [ // 兩期 (5:5)
+                { id: 1, stage: '第一期 (訂金)', percent: 50, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
+                { id: 2, stage: '第二期 (尾款)', percent: 50, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
+            ],
+            'full_payment_upfront': [ // 一期 (全款 - 簽訂後支付)
+                { id: 1, stage: '第一期 (全款)', percent: 100, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' }
+            ],
+            'full_payment_upon_completion': [ // 一期 (全款 - 交付後支付)
+                { id: 1, stage: '第一期 (全款)', percent: 100, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
+            ],
+        };
 
         const defaultData = {
             header: { id: '', date: getLocalDateString(), valid: '14天' },
@@ -168,11 +186,7 @@
                 ] },
             ],
             notes: defaultNotes,
-            payment: [
-                { id: 1, stage: '第一期 (訂金)', percent: 40, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
-                { id: 2, stage: '第二期 (拍攝款)', percent: 30, condition: '影片拍攝日結束後 3 日內支付。', note: '拍攝團隊費用' },
-                { id: 3, stage: '第三期 (尾款)', percent: 30, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
-            ],
+            payment: paymentPresets.default, // 初始使用三期預設
             bank: { name: '奇諾影像有限公司', bank: '807 永豐銀行 板新分行', acc: '007-018-0005565-8' },
             signatures: {
                 client: { company: '', rep: '', taxId: '', phone: '', img: '' },
@@ -232,7 +246,8 @@
                 const d = date.replace(/-/g, '').slice(2);
                 // V11: 移除全形標點符號，僅保留中英數
                 const cleanName = (name || '').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').slice(0, 5); 
-                setData(prev => ({...prev, header: {...prev.header, id: `${d}${cleanName}_KS01`}}));
+                // V12.9.1 修正: 在日期和專案名稱之間加入一個空格
+                setData(prev => ({...prev, header: {...prev.header, id: `${d} ${cleanName}_KS01`}}));
             };
 
             const updateDeep = (path, value) => {
@@ -341,20 +356,26 @@
                 }
             };
 
-            // V12.1: 移除 moveNote 函數，改用拖曳
-            // const moveNote = (index, direction) => { ... };
-
+            // V12.9.4 修正: 儲存時詢問儲存位置
             const saveFile = () => {
+                if (!window.confirm('確定要儲存報價單數據嗎？這將下載一個 .json 文件。')) return;
+
                 const jsonStr = JSON.stringify(data, null, 2);
                 const blob = new Blob([jsonStr], {type: "application/json"});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
+                // 移除 a.download 屬性以觸發瀏覽器的 "另存新檔" 對話框
+                // a.download = `${data.header.id || 'quotation'}.json`; 
+                
+                // 為了兼容性，我們仍將文件名設定為默認值，但讓瀏覽器處理路徑選擇
                 a.download = `${data.header.id || 'quotation'}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                URL.revokeObjectURL(url); // 釋放 blob URL
             };
+            
             const loadFile = (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
@@ -369,6 +390,44 @@
                     }
                 };
                 reader.readAsText(file);
+            };
+            
+            // V12.9 新增: 分頁還原預設值功能
+            const resetTab = () => {
+                if (!window.confirm('確定要將目前分頁還原成預設值嗎？此操作無法復原。')) return;
+                
+                setData(prev => {
+                    const newData = JSON.parse(JSON.stringify(prev));
+                    const defaults = JSON.parse(JSON.stringify(defaultData)); // 確保取得乾淨的預設值副本
+
+                    if (activeTab === 'project') {
+                        newData.header = defaults.header;
+                        // 日期保持當天，避免跳回舊資料
+                        newData.header.date = getLocalDateString(); 
+                        newData.projectFields = defaults.projectFields;
+                        newData.signatures = defaults.signatures;
+                        newData.signatures.date = getLocalDateString();
+                        newData.logo = defaults.logo;
+                    } else if (activeTab === 'items') {
+                        newData.categories = defaults.categories;
+                        newData.taxMode = defaults.taxMode;
+                    } else if (activeTab === 'terms') {
+                        newData.notes = defaults.notes;
+                        // V12.9.3: 還原付款條件為預設三期
+                        newData.payment = paymentPresets.default; 
+                        newData.bank = defaults.bank;
+                    }
+                    return newData;
+                });
+            };
+
+            // V12.9.3: 套用付款預設方案
+            const applyPaymentPreset = (presetKey) => {
+                if (!window.confirm('確定要套用此預設付款方案嗎？這將覆蓋現有的付款條件。')) return;
+                setData(prev => ({
+                    ...prev,
+                    payment: paymentPresets[presetKey]
+                }));
             };
             
             const totals = () => {
@@ -399,10 +458,17 @@
                                     {data.header.id || '報價單'}
                                 </h1>
                                 <div className="flex gap-2">
+                                    {/* V12.9.4 修正: 儲存按鈕調用修改後的 saveFile */}
                                     <button onClick={saveFile} className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs"><i className="fas fa-save"></i> 儲存</button>
                                     <label className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1">
                                         <i className="fas fa-folder-open"></i> 開啟 <input type="file" className="hidden" onChange={loadFile} accept=".json"/>
                                     </label>
+                                    {/* V12.9 新增: 還原預設按鈕 (僅在非預覽模式顯示) */}
+                                    {activeTab !== 'preview' && (
+                                        <button onClick={resetTab} className="bg-gray-100 text-gray-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs transition" title="還原此頁預設值">
+                                            <i className="fas fa-undo"></i>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex bg-white px-2">
@@ -424,7 +490,7 @@
                                 <div className="space-y-4 p-4 pb-24">
                                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold text-kino"><i className="fas fa-image mr-2"></i>公司 Logo</h3>
+                                            <h3 className="font-bold text-kino"><i className="fas fa-image mr-2"></i>Logo</h3>
                                         </div>
                                         <div className="h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-kino transition bg-gray-50 relative overflow-hidden"
                                              onClick={() => document.getElementById('upload-logo').click()}>
@@ -445,7 +511,7 @@
 
                                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                                         <div className="flex justify-between items-center mb-3 border-b pb-2">
-                                            <h3 className="font-bold text-kino"><i className="fas fa-briefcase mr-2"></i>專案與客戶</h3>
+                                            <h3 className="font-bold text-kino"><i className="fas fa-briefcase mr-2"></i>專案內容</h3>
                                             <button onClick={() => setData(prev => ({...prev, projectFields: [...prev.projectFields, {id: Date.now(), label: '新欄位', value: ''}]}))} 
                                                 className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
                                         </div>
@@ -469,12 +535,14 @@
                                     </div>
 
                                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                                        <h3 className="font-bold text-kino mb-3 border-b pb-2"><i className="fas fa-file-signature mr-2"></i>報價確認與簽署資料</h3>
+                                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                            <h3 className="font-bold text-kino"><i className="fas fa-file-signature mr-2"></i>客戶資料</h3>
+                                        </div>
                                         
                                         <div className="mb-6 p-3 bg-gray-50 rounded-lg border">
-                                            <label className="text-sm font-bold text-kino block mb-2">甲方 (Client)</label>
+                                            <label className="text-sm font-bold text-kino block mb-2">甲方</label>
                                             <div className="grid grid-cols-1 gap-2">
-                                                <InputGroup label="抬頭 (Company)" value={data.signatures.client.company} onChange={v => updateDeep(['signatures', 'client', 'company'], v)} />
+                                                <InputGroup label="抬頭" value={data.signatures.client.company} onChange={v => updateDeep(['signatures', 'client', 'company'], v)} />
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <InputGroup label="代表人" value={data.signatures.client.rep} onChange={v => updateDeep(['signatures', 'client', 'rep'], v)} />
                                                     <InputGroup label="統編" value={data.signatures.client.taxId} onChange={v => updateDeep(['signatures', 'client', 'taxId'], v)} />
@@ -494,9 +562,9 @@
                                         </div>
 
                                         <div className="p-3 bg-gray-50 rounded-lg border">
-                                            <label className="text-sm font-bold text-kino block mb-2">乙方 (Vendor)</label>
+                                            <label className="text-sm font-bold text-kino block mb-2">乙方</label>
                                             <div className="grid grid-cols-1 gap-2">
-                                                <InputGroup label="抬頭 (Company)" value={data.signatures.vendor.company} onChange={v => updateDeep(['signatures', 'vendor', 'company'], v)} />
+                                                <InputGroup label="抬頭" value={data.signatures.vendor.company} onChange={v => updateDeep(['signatures', 'vendor', 'company'], v)} />
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <InputGroup label="代表人" value={data.signatures.vendor.rep} onChange={v => updateDeep(['signatures', 'vendor', 'rep'], v)} />
                                                     <InputGroup label="統編" value={data.signatures.vendor.taxId} onChange={v => updateDeep(['signatures', 'vendor', 'taxId'], v)} />
@@ -516,7 +584,7 @@
                                         </div>
 
                                         <div className="mt-4">
-                                            <InputGroup label="簽署日期 (統一)" type="date" value={data.signatures.date} onChange={v => updateDeep(['signatures', 'date'], v)} />
+                                            <InputGroup label="簽署日期" type="date" value={data.signatures.date} onChange={v => updateDeep(['signatures', 'date'], v)} />
                                         </div>
                                     </div>
                                 </div>
@@ -525,11 +593,11 @@
                             {activeTab === 'items' && (
                                 <div className="space-y-4 p-4 pb-24">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h2 className="font-bold text-gray-700">報價細項 (交替配色)</h2>
+                                        <h2 className="font-bold text-gray-700">報價細項</h2>
                                         <button onClick={() => {
                                             const newId = Date.now();
                                             setData(prev => ({...prev, categories: [...prev.categories, { id: newId, name: '新分類', items: [] }]}));
-                                        }} className="bg-kino text-white px-3 py-1 rounded-full text-sm shadow"><i className="fas fa-plus mr-1"></i>分類</button>
+                                        }} className="bg-kino text-white px-3 py-1 rounded-full text-sm shadow"><i className="fas fa-plus mr-1"></i>類別</button>
                                     </div>
                                     {data.categories.map((cat, catIdx) => (
                                         <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -581,7 +649,7 @@
                                                 <button onClick={() => {
                                                     const newCats = [...data.categories]; newCats[catIdx].items.push({ id: Date.now(), desc: '', unit: '式', qty: 1, price: 0 }); setData(prev => ({...prev, categories: newCats}));
                                                 }} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-kino hover:text-kino transition text-sm font-bold">
-                                                    <i className="fas fa-plus mr-1"></i> 新增項目
+                                                    <i className="fas fa-plus mr-1"></i> 新增細項
                                                 </button>
                                             </div>
                                         </div>
@@ -601,7 +669,8 @@
                                         <div className="space-y-3">
                                             {data.notes.map((note, idx) => (
                                                 <div key={idx} 
-                                                    className="flex items-start gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 hover:shadow-md transition"
+                                                    /* V12.9 修正: 在外層 div 加入 select-none，解決手機長按拖曳時誤選文字的問題 */
+                                                    className="flex items-start gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 hover:shadow-md transition select-none"
                                                     draggable
                                                     onDragStart={(e) => handleDragStart(e, idx)}
                                                     onDragEnter={(e) => handleDragEnter(e, idx)}
@@ -640,8 +709,22 @@
                                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                                         <div className="flex justify-between items-center mb-3 border-b pb-2">
                                             <h3 className="font-bold text-kino"><i className="fas fa-list-ol mr-2"></i>付款條件</h3>
-                                            <button onClick={() => setData(prev => ({...prev, payment: [...prev.payment, {id: Date.now(), stage: '新階段', percent: 0, condition: '', note: ''}]}))} 
-                                                className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
+                                            <div className="flex items-center gap-2">
+                                                {/* V12.9.3: 新增預設選單 */}
+                                                <select 
+                                                    className="text-xs border border-gray-300 rounded p-1.5 bg-white shadow-sm focus:border-kino focus:ring-kino"
+                                                    onChange={(e) => applyPaymentPreset(e.target.value)}
+                                                >
+                                                    <option value="" disabled selected>— 套用預設 —</option>
+                                                    <option value="default">三期 (4:3:3)</option>
+                                                    <option value="two_parts">兩期 (5:5)</option>
+                                                    <option value="full_payment_upfront">一期 (簽約後 100%)</option>
+                                                    <option value="full_payment_upon_completion">一期 (交付後 100%)</option>
+                                                </select>
+
+                                                <button onClick={() => setData(prev => ({...prev, payment: [...prev.payment, {id: Date.now(), stage: '新階段', percent: 0, condition: '', note: ''}]}))} 
+                                                    className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200"><i className="fas fa-plus"></i></button>
+                                            </div>
                                         </div>
                                         <div className="space-y-4">
                                             {data.payment.map((term, idx) => (
@@ -725,7 +808,7 @@
             );
         }
 
-        // --- 列印版面 (V12.8: 帳號強制不換行與專案概況縮排調整) ---
+        // --- 列印版面 (V12.9.4: 逾期付款警示顏色修正) ---
         const PreviewSection = ({ data, settings }) => {
             let subtotal = 0;
             // V11: 確保價格和數量是數字類型
@@ -746,6 +829,9 @@
             
             // V12.4: 柔和灰色
             const softGray = '#394150';
+
+            // V12.9.4 修正: 逾期付款警示顏色改為暗紅色 (#B91C1C)
+            const warningRed = '#B91C1C';
 
             return (
                 <div className={containerClass}>
@@ -769,7 +855,7 @@
 
                     {/* I. Project Overview (V7: mb-2 for spacing) */}
                     <div className="mb-2 avoid-break">
-                        <h2>一、 專案內容概況</h2>
+                        <h2>一、 專案內容</h2>
                         {/* V12.8 修正: 僅在專案內容概況中縮排，調整為 pl-14 */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-14">
                             {data.projectFields.map(f => (
@@ -864,26 +950,27 @@
                         </div>
                         {/* V12.8 修正: 匯款資訊強制不分段，使用 flex-nowrap 並保持 whitespace-nowrap */}
                         <div className="table-rounded-wrapper p-2 bg-gray-50 text-xs sm:text-sm flex flex-nowrap gap-x-4 gap-y-1 overflow-x-auto">
-                            <span className="font-bold text-kino whitespace-nowrap">匯款資訊：</span>
+                            <span className="font-bold text-kino whitespace-nowrap">收款資訊：</span>
                             <span className="whitespace-nowrap"><b>銀行:</b> {data.bank.bank}</span>
                             <span className="whitespace-nowrap"><b>戶名:</b> {data.bank.name}</span>
                             <span className="whitespace-nowrap"><b>帳號:</b> {data.bank.acc}</span>
                         </div>
-                        <div className="text-[10px] text-red-500 mt-1 font-medium">
+                        {/* V12.9.4 修正: 逾期付款警示顏色改為暗紅色 (#B91C1C) */}
+                        <div className="text-[10px] mt-1 font-medium" style={{ color: warningRed }}>
                             ** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。
                         </div>
                     </div>
 
                     {/* V. Signatures - 報價簽署不分頁 (需求 2) */}
                     <div className={`mb-2 avoid-break`}> 
-                        <h2>五、 報價確認與簽署</h2>
+                        <h2>五、 簽署</h2>
                         <div className="overflow-x-auto w-full table-rounded-wrapper">
                              <table className="w-full text-xs sm:text-sm">
                                 <thead className="bg-kino-50">
                                     <tr>
                                         <th className="p-1 w-1/6 font-normal border-b border-black">項目</th>
-                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">甲方 (Client)</th>
-                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">乙方 (Vendor)</th>
+                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">甲方</th>
+                                        <th className="p-1 w-5/12 font-normal border-b border-black border-l">乙方</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -928,7 +1015,7 @@
                     {/* VI. Detailed Services (Always break, 依據需求 1) */}
                     {settings.showDetails && (
                         <div className={`mt-4 ${detailedBreakClass}`}>
-                            <h2 className="text-kino mb-3 border-l-4 border-kino pl-2">六、 服務細項清單</h2>
+                            <h2 className="text-kino mb-3 border-l-4 border-kino pl-2">六、 專案細項報價</h2>
                             {data.categories.map((cat, idx) => {
                                 const isDark = idx % 2 === 0;
                                 return (
