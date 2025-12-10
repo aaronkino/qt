@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單 (RWD-V13.0.1)</title>
+    <title>奇諾影像報價單 (RWD-V13.0.7)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -150,7 +150,7 @@
                             const ctx = canvas.getContext('2d');
                             
                             // 設置背景為透明 (關鍵：保留 PNG/GIF 透明度)
-                            if (file.type === 'image/png' || file.type === 'image/gif') {
+                            if (file.type === 'image/png') {
                                 ctx.clearRect(0, 0, width, height); 
                             }
                             ctx.drawImage(img, 0, 0, width, height);
@@ -395,21 +395,46 @@
             const handleSigUpload = (e, party) => processFileUpload(e, ['signatures', party, 'img']);
 
 
-            // V12.9.4 修正: 儲存時詢問儲存位置
-            const saveFile = () => {
-                if (!window.confirm('確定要儲存報價單數據嗎？這將下載一個 .json 文件。')) return;
-
+            // V13.0.7 修正: 引入 File System Access API 支援另存新檔，並保留自動降級機制
+            const saveFile = async () => {
+                const fileName = `${data.header.id || 'quotation'}.json`;
                 const jsonStr = JSON.stringify(data, null, 2);
+
+                // 1. 嘗試使用現代瀏覽器的 "另存新檔" API
+                if (window.showSaveFilePicker) {
+                    try {
+                        const handle = await window.showSaveFilePicker({
+                            suggestedName: fileName,
+                            types: [{
+                                description: 'JSON File',
+                                accept: {'application/json': ['.json']},
+                            }],
+                        });
+                        const writable = await handle.createWritable();
+                        await writable.write(jsonStr);
+                        await writable.close();
+                        console.log('檔案儲存成功 (File System API)');
+                        return; // 成功則結束
+                    } catch (err) {
+                        if (err.name === 'AbortError') return; // 使用者取消不報錯
+                        console.log("File System API failed, fallback to download.", err);
+                        // 失敗則繼續執行下方的傳統下載
+                    }
+                }
+
+                // 2. 傳統下載模式 (Fallback)
                 const blob = new Blob([jsonStr], {type: "application/json"});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                // 為了兼容性，我們仍將文件名設定為默認值，但讓瀏覽器處理路徑選擇
-                a.download = `${data.header.id || 'quotation'}.json`;
+                a.download = fileName; 
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(url); // 釋放 blob URL
+                URL.revokeObjectURL(url);
+                
+                // 提示用戶檢查瀏覽器設定，以滿足自選儲存位置的需求
+                console.log(`檔案下載已觸發: ${fileName} (Fallback mode)`);
             };
             
             const loadFile = (e) => {
@@ -494,7 +519,7 @@
                                     {data.header.id || '報價單'}
                                 </h1>
                                 <div className="flex gap-2">
-                                    {/* V12.9.4 修正: 儲存按鈕調用修改後的 saveFile */}
+                                    {/* V13.0.4 修正: 儲存按鈕調用修改後的 saveFile */}
                                     <button onClick={saveFile} className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs"><i className="fas fa-save"></i> 儲存</button>
                                     <label className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1">
                                         <i className="fas fa-folder-open"></i> 開啟 <input type="file" className="hidden" onChange={loadFile} accept=".json"/>
@@ -754,7 +779,7 @@
                                                     className="text-xs border border-gray-300 rounded p-1.5 bg-white shadow-sm focus:border-kino focus:ring-kino"
                                                     onChange={(e) => applyPaymentPreset(e.target.value)}
                                                 >
-                                                    <option value="" disabled selected>— 套用預設 —</option>
+                                                    <option value="" disabled selected>— 付款比例 —</option>
                                                     <option value="default">三期 (4:3:3)</option>
                                                     <option value="two_parts">兩期 (5:5)</option>
                                                     <option value="full_payment_upfront">一期 (簽約後 100%)</option>
@@ -1055,7 +1080,7 @@
                                     <tr>
                                         <td className="p-1 font-bold bg-gray-50 text-center align-middle border-b border-black">簽署</td>
                                         {/* V12.9.5 修正: 增加 h-32 行高 */}
-                                        {/* V13.0.1 修正: 邊框調整為 85% 佔比 (留白 7.5%) */}
+                                        {/* V12.9.8 修正: 調整為 10% 邊框 */}
                                         <td className="h-32 relative border-b border-black border-l" style={signatureStyle}>
                                              {/* V13.0.1 修正: 調整圖片樣式，maxWidth/maxHeight 設為 85% */}
                                              {data.signatures.client.img && <img src={data.signatures.client.img} style={imageStyle} onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x24/ffffff/6b7280?text=圖片載入失敗"; }} />}
