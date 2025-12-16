@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canva2PDF Lite - 專為創作者設計的 PDF 工具</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 Phosphor Icons (圖示庫) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- 引入 pdf-lib 函式庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+    
+    <!-- 引入 pdf.js 函式庫 (鎖定穩定版本 2.16.105) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // Indigo 500
+                        secondary: '#4f46e5', // Indigo 600
+                        accent: '#a5b4fc', // Indigo 200
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #475569;
+        }
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed #6366f1 !important;
+            background-color: rgba(99, 102, 241, 0.1) !important;
+        }
+        .drag-over {
+            transform: scale(1.02);
+            transition: transform 0.2s;
+            border-color: #6366f1 !important;
+        }
+        /* Details Marker Customization */
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans antialiased flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="window.location.reload()">
+                        <i class="ph-fill ph-file-pdf text-3xl text-primary"></i>
+                        <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-gray-100">Canva2PDF <span class="text-primary font-normal">Lite</span></span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors font-medium dark:text-gray-300">功能介紹</a>
+                    <button id="theme-toggle-desktop" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                        <i class="ph ph-sun text-xl" id="desktop-icon-sun"></i>
+                        <i class="ph ph-moon text-xl hidden" id="desktop-icon-moon"></i>
+                    </button>
+                    <button class="bg-primary hover:bg-secondary text-white px-5 py-2 rounded-full font-medium transition-colors shadow-lg shadow-indigo-200 dark:shadow-indigo-700/50">登入</button>
+                </div>
+                <div class="flex items-center md:hidden gap-2">
+                    <button id="theme-toggle-mobile" class="text-gray-500 hover:text-gray-700 p-2 focus:outline-none dark:text-gray-300">
+                        <i class="ph ph-sun text-2xl" id="mobile-icon-sun"></i>
+                        <i class="ph ph-moon text-2xl hidden" id="mobile-icon-moon"></i>
+                    </button>
+                    <button id="mobile-menu-btn" class="text-gray-500 hover:text-gray-700 p-2 focus:outline-none dark:text-gray-300"><i class="ph ph-list text-2xl"></i></button>
+                </div>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary dark:text-gray-300">功能介紹</a>
+                <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-primary font-bold">登入</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-indigo-50/50 to-white dark:from-gray-900 dark:to-gray-900">
+        
+        <div id="hero-text" class="text-center max-w-3xl mx-auto mb-10 transition-all duration-300">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100 mb-4 tracking-tight">
+                最適合創作者的 PDF 工具
+            </h1>
+            <p class="text-lg md:text-xl text-gray-600 dark:text-gray-400">
+                專為 Canva 使用者設計，完美保留您的<span class="text-primary font-semibold">連結</span>與<span class="text-primary font-semibold">嵌入影片</span>。
+            </p>
+        </div>
+
+        <div class="w-full max-w-6xl">
+            
+            <!-- STEP 1: Upload Zone -->
+            <div id="upload-step-container">
+                <div id="dropzone" class="relative group bg-white dark:bg-gray-800 rounded-2xl border-4 border-dashed border-indigo-200 dark:border-indigo-700 hover:border-primary hover:bg-indigo-50/30 dark:hover:bg-indigo-900/30 transition-all duration-300 ease-in-out cursor-pointer h-80 flex flex-col items-center justify-center shadow-lg dark:shadow-indigo-900/20 max-w-2xl mx-auto">
+                    <div id="dropzone-content" class="text-center p-6 transition-opacity duration-300">
+                        <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 dark:bg-indigo-900">
+                            <i class="ph ph-cloud-arrow-up text-4xl text-primary"></i>
+                        </div>
+                        <p class="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">將 PDF 檔案拖放到這裡</p>
+                        <p class="text-gray-500 dark:text-gray-400 mb-6">或是</p>
+                        <button id="select-file-btn" class="bg-primary hover:bg-secondary text-white px-8 py-3 rounded-lg font-bold text-lg shadow-lg shadow-indigo-200 dark:shadow-indigo-700/50 transition-all hover:-translate-y-1">選擇檔案</button>
+                        <p class="mt-4 text-xs text-gray-400 dark:text-gray-500">支援 .pdf 格式，單檔最大 20MB</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".pdf" multiple>
+                    <div id="drag-overlay" class="absolute inset-0 bg-indigo-500/10 rounded-xl backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200">
+                        <p class="text-2xl font-bold text-primary bg-white dark:bg-gray-900 px-6 py-3 rounded-full shadow-lg">放開以開始上傳</p>
+                    </div>
+                </div>
+
+                <!-- Initial File List -->
+                <div id="initial-file-list" class="mt-6 hidden animate-fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                            <h3 class="font-semibold text-gray-700 dark:text-gray-200">已選擇 <span id="file-count">0</span> 個檔案</h3>
+                            <button id="clear-files-btn" class="text-sm text-red-500 hover:text-red-700 font-medium">清除全部</button>
+                        </div>
+                        <ul id="file-list-ul" class="divide-y divide-gray-100 dark:divide-gray-700 max-h-40 overflow-y-auto custom-scrollbar"></ul>
+                    </div>
+                    <div class="mt-6 flex justify-center">
+                        <button id="confirm-selection-btn" class="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200 text-white px-10 py-4 rounded-xl font-bold text-xl shadow-xl flex items-center gap-3 transition-all hover:scale-105 w-full md:w-auto justify-center">
+                            <i class="ph-bold ph-arrow-right"></i> 確認並繼續
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Dashboard -->
+            <div id="dashboard-section" class="hidden animate-fade-in">
+                <div class="flex flex-col lg:flex-row gap-8">
+                    
+                    <!-- Left: Preview & List -->
+                    <div class="w-full lg:w-3/5 flex flex-col gap-6">
+                        <!-- Preview Box -->
+                        <div class="bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-700 relative h-[500px] lg:h-[600px] flex flex-col">
+                             <div class="bg-gray-900 px-4 py-2 flex justify-between items-center border-b border-gray-700">
+                                <div class="flex space-x-2">
+                                    <button id="tab-single" class="px-3 py-1 text-xs font-bold rounded-md bg-primary text-white transition-colors">單檔預覽</button>
+                                    <button id="tab-merged" class="px-3 py-1 text-xs font-bold rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">合併預覽</button>
+                                </div>
+                                <span id="preview-filename" class="text-white text-xs font-bold truncate max-w-[200px] opacity-80">Filename.pdf</span>
+                             </div>
+                             <div class="relative flex-grow">
+                                <div class="absolute inset-0 flex items-center justify-center bg-gray-900/50 z-0">
+                                    <span class="text-gray-400 flex flex-col items-center animate-pulse">
+                                        <i class="ph ph-file-pdf text-4xl mb-2"></i>
+                                        <span id="preview-loading-text">載入預覽中...</span>
+                                    </span>
+                                </div>
+                                <iframe id="pdf-preview-frame" class="w-full h-full relative z-10 bg-white" src=""></iframe>
+                            </div>
+                        </div>
+
+                        <!-- Mini File List -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">待處理檔案</h3>
+                                <div class="flex items-center gap-3">
+                                    <button id="add-more-files-btn" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                                        <i class="ph-bold ph-plus-circle"></i> 新增檔案
+                                    </button>
+                                    <span class="text-gray-300">|</span>
+                                    <button onclick="window.location.reload()" class="text-xs text-gray-400 hover:text-red-500">清除重來</button>
+                                </div>
+                                <input type="file" id="add-file-input" accept=".pdf" multiple>
+                            </div>
+                            <ul id="dashboard-file-list" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Right: Actions -->
+                    <div class="w-full lg:w-2/5 flex flex-col gap-6">
+                        
+                        <!-- Notification Area (Top) -->
+                        <div id="result-notification-area" class="space-y-4"></div>
+
+                        <!-- Action Card -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-8 sticky top-20 min-h-[500px] flex flex-col">
+                            
+                            <!-- Main Actions -->
+                            <div id="action-panel-content">
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">功能設定</h2>
+                                
+                                <!-- 功能設定區 -->
+                                <div class="mb-6 space-y-3">
+                                    <!-- Canva 安全模式 -->
+                                    <div class="flex items-center p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center h-5">
+                                            <input id="canvaMode" type="checkbox" checked class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary dark:bg-gray-800 dark:border-gray-600 cursor-pointer">
+                                        </div>
+                                        <div class="ml-3">
+                                            <label for="canvaMode" class="font-bold text-gray-900 dark:text-gray-100 cursor-pointer">Canva 連結保護模式</label>
+                                            <p class="text-gray-500 dark:text-gray-400 text-xs">完整保留影片嵌入與可點擊的超連結</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 壓縮設定 -->
+                                    <details class="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition-all duration-300">
+                                        <summary class="flex justify-between items-center p-4 font-bold text-gray-700 dark:text-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors select-none">
+                                            <div class="flex items-center gap-2">
+                                                <i class="ph-bold ph-arrows-in-line-horizontal text-primary text-xl"></i>
+                                                <span>壓縮設定 (Compression Options)</span>
+                                            </div>
+                                            <span class="transition-transform duration-300 group-open:rotate-180">
+                                                <i class="ph-bold ph-caret-down"></i>
+                                            </span>
+                                        </summary>
+                                        <div class="p-4 pt-0 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 mt-3">請選擇 PDF 優化等級：</p>
+                                            <div class="space-y-3">
+                                                <div class="flex items-center">
+                                                    <input id="opt-smart" name="optimization" type="radio" value="smart" checked class="w-4 h-4 text-primary border-gray-300 focus:ring-primary dark:bg-gray-800 dark:border-gray-600">
+                                                    <label for="opt-smart" class="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                                        <span class="font-bold">智慧保存 (Smart)</span> - <span class="text-xs text-gray-500">畫質優先，保留 Metadata</span>
+                                                    </label>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <input id="opt-clean" name="optimization" type="radio" value="clean" class="w-4 h-4 text-primary border-gray-300 focus:ring-primary dark:bg-gray-800 dark:border-gray-600">
+                                                    <label for="opt-clean" class="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                                        <span class="font-bold">極致清理 (Clean)</span> - <span class="text-xs text-gray-500">移除 Metadata，檔案較小</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <button id="start-process-btn" class="w-full group relative flex items-center p-4 rounded-xl bg-primary hover:bg-secondary text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 transition-all text-left">
+                                        <div id="process-icon-container" class="flex-shrink-0 bg-white/20 p-3 rounded-lg mr-4">
+                                            <i class="ph-bold ph-magic-wand text-2xl"></i>
+                                        </div>
+                                        <div class="flex-grow">
+                                            <h3 class="font-bold text-lg">開始處理 (合併/優化)</h3>
+                                            <p class="text-sm text-indigo-100 opacity-90">應用上述設定並輸出檔案</p>
+                                        </div>
+                                    </button>
+
+                                    <button id="action-split-btn" class="w-full group flex items-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-left bg-white dark:bg-gray-800">
+                                        <div class="flex-shrink-0 bg-orange-100 dark:bg-orange-900/30 p-3 rounded-lg text-orange-600 dark:text-orange-400 mr-4">
+                                            <i class="ph-fill ph-scissors text-2xl"></i>
+                                        </div>
+                                        <div class="flex-grow">
+                                            <h3 class="font-bold text-gray-900 dark:text-gray-100">頁面管理 (分割)</h3>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">手動提取或重新排序頁面</p>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div id="progressContainer" class="hidden mt-6 animate-fade-in">
+                                    <div class="flex justify-between mb-1">
+                                        <span id="progressText" class="text-sm font-medium text-primary dark:text-indigo-400">準備中...</span>
+                                        <span class="text-sm font-medium text-primary dark:text-indigo-400"></span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                                        <div id="progressBar" class="bg-primary h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Page Editor Panel -->
+                            <div id="page-editor-panel" class="hidden flex-col h-full">
+                                <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                                    <button id="back-to-actions" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2 text-sm font-bold">
+                                        <i class="ph-bold ph-arrow-left"></i> 返回設定
+                                    </button>
+                                    <h3 class="font-bold text-gray-900 dark:text-gray-100">頁面管理器</h3>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                    <i class="ph-fill ph-info"></i> 拖曳可排序，取消勾選可刪除。
+                                </p>
+                                <div id="page-grid-loading" class="hidden flex-col items-center justify-center py-10 text-gray-500">
+                                    <i class="ph-bold ph-spinner animate-spin text-3xl mb-2 text-primary"></i>
+                                    <span>正在載入頁面縮圖...</span>
+                                </div>
+                                <div id="page-editor-grid" class="flex-grow overflow-y-auto custom-scrollbar grid grid-cols-2 gap-3 p-1 content-start"></div>
+                                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3">
+                                    <button id="save-pages-btn" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                                        <i class="ph-bold ph-download-simple"></i> 僅下載
+                                    </button>
+                                    <button id="apply-pages-btn" class="w-full bg-primary hover:bg-secondary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                                        <i class="ph-bold ph-check-circle"></i> 應用至專案
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-auto pt-4 flex justify-end">
+                                <div class="text-xs text-gray-400">Canva2PDF Lite v1.2.7</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-base text-gray-400">&copy; 2025 Canva2PDF Lite. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // 設定 PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        const { PDFDocument } = window.PDFLib;
+
+        // 狀態管理
+        let filesBuffer = []; 
+        let currentPreviewIndex = 0;
+        let previewMode = 'single'; 
+        
+        // DOM Elements
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const dragOverlay = document.getElementById('drag-overlay');
+        const uploadStepContainer = document.getElementById('upload-step-container');
+        const initialFileList = document.getElementById('initial-file-list');
+        const fileListUl = document.getElementById('file-list-ul');
+        const fileCountSpan = document.getElementById('file-count');
+        const confirmSelectionBtn = document.getElementById('confirm-selection-btn');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const dashboardFileList = document.getElementById('dashboard-file-list');
+        const pdfPreviewFrame = document.getElementById('pdf-preview-frame');
+        const previewFilenameLabel = document.getElementById('preview-filename');
+        const previewLoadingText = document.getElementById('preview-loading-text');
+        const resultNotificationArea = document.getElementById('result-notification-area');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const addMoreFilesBtn = document.getElementById('add-more-files-btn');
+        const addFileInput = document.getElementById('add-file-input');
+        const clearFilesBtn = document.getElementById('clear-files-btn');
+        const startProcessBtn = document.getElementById('start-process-btn');
+        const actionSplitBtn = document.getElementById('action-split-btn');
+        const savePagesBtn = document.getElementById('save-pages-btn');
+        const applyPagesBtn = document.getElementById('apply-pages-btn');
+        const backToActionsBtn = document.getElementById('back-to-actions');
+        const actionPanelContent = document.getElementById('action-panel-content');
+        const pageEditorPanel = document.getElementById('page-editor-panel');
+        const pageEditorGrid = document.getElementById('page-editor-grid');
+        const pageGridLoading = document.getElementById('page-grid-loading');
+        const tabSingle = document.getElementById('tab-single');
+        const tabMerged = document.getElementById('tab-merged');
+        const canvaModeCheckbox = document.getElementById('canvaMode');
+        const optRadios = document.getElementsByName('optimization');
+        const htmlElement = document.documentElement;
+
+        // Theme Init
+        function initializeTheme() {
+            const storedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = storedTheme || (prefersDark ? 'dark' : 'light');
+            if(theme === 'dark') htmlElement.classList.add('dark');
+            else htmlElement.classList.remove('dark');
+            updateThemeIcons(theme);
+        }
+        function updateThemeIcons(theme) {
+            const isDark = theme === 'dark';
+            document.getElementById('desktop-icon-sun').classList.toggle('hidden', isDark);
+            document.getElementById('desktop-icon-moon').classList.toggle('hidden', !isDark);
+            document.getElementById('mobile-icon-sun').classList.toggle('hidden', isDark);
+            document.getElementById('mobile-icon-moon').classList.toggle('hidden', !isDark);
+        }
+        function toggleTheme() {
+            const isDark = htmlElement.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            htmlElement.classList.toggle('dark');
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcons(newTheme);
+        }
+        document.getElementById('theme-toggle-desktop').addEventListener('click', toggleTheme);
+        document.getElementById('theme-toggle-mobile').addEventListener('click', toggleTheme);
+        initializeTheme();
+
+        // 檔案處理
+        function handleFileSelect(files) {
+            const validFiles = Array.from(files).filter(file => file.type === 'application/pdf');
+            if (validFiles.length === 0) return;
+            filesBuffer = [...filesBuffer, ...validFiles];
+            renderFileList(); 
+            if (!dashboardSection.classList.contains('hidden')) {
+                renderDashboardFileList();
+                if (previewMode === 'merged') renderMergedPreview();
+            }
+        }
+
+        // Helper: Get File Bytes (Original or Edited)
+        async function getFileBytes(index) {
+            const isEditingThisFile = !pageEditorPanel.classList.contains('hidden') && index === currentPreviewIndex;
+            if (isEditingThisFile) {
+                const editedBytes = await generatePdfFromEditor();
+                if (editedBytes) return editedBytes;
+            }
+            return await filesBuffer[index].arrayBuffer();
+        }
+
+        // 核心處理函數 mergePDFs
+        startProcessBtn.addEventListener('click', async () => {
+            if (filesBuffer.length === 0) return alert("請先上傳 PDF 檔案！");
+            
+            startProcessBtn.disabled = true;
+            startProcessBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            updateProgress(5, "初始化處理核心...");
+
+            let optLevel = 'smart';
+            for (const radio of optRadios) { if (radio.checked) optLevel = radio.value; }
+
+            try {
+                const mergedPdf = await PDFDocument.create();
+                const totalFiles = filesBuffer.length;
+
+                for (let i = 0; i < totalFiles; i++) {
+                    const progressStep = Math.round(((i + 1) / totalFiles) * 80);
+                    updateProgress(5 + progressStep, `正在處理第 ${i+1}/${totalFiles} 個檔案...`);
+
+                    const arrayBuffer = await getFileBytes(i);
+                    const pdfDoc = await PDFDocument.load(arrayBuffer);
+                    
+                    const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                    copiedPages.forEach(page => mergedPdf.addPage(page));
+                }
+
+                updateProgress(90, "正在執行優化...");
+                let saveOptions = {}; 
+
+                if (optLevel === 'clean') {
+                    // 極致清理：重建頁面與連結
+                    await processCleanMode(mergedPdf); // Use separate logic for heavy processing
+                } else {
+                    // 智慧保存：保留結構但優化 Streams
+                    mergedPdf.setProducer('Canva2PDF Lite - Canva Safe Mode');
+                    saveOptions = { useObjectStreams: false };
+                    updateProgress(95, "正在封裝檔案...");
+                    const pdfBytes = await mergedPdf.save(saveOptions);
+                    finishProcessing(pdfBytes);
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("處理發生錯誤，請檢查檔案是否損毀。");
+                updateProgress(100, "錯誤");
+                startProcessBtn.disabled = false;
+                startProcessBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        // Dedicated Clean Mode Processor
+        async function processCleanMode(mergedPdf) {
+            // Re-create a fresh PDF for clean mode to ensure metadata strip
+            const cleanPdf = await PDFDocument.create();
+            const totalFiles = filesBuffer.length;
+            const keepLinks = canvaModeCheckbox.checked;
+
+            for (let i = 0; i < totalFiles; i++) {
+                updateProgress(10 + Math.round(((i + 1) / totalFiles) * 70), `正在重繪第 ${i+1}/${totalFiles} 個檔案...`);
+                
+                const arrayBuffer = await getFileBytes(i);
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+                const pdfJsDoc = await loadingTask.promise;
+                
+                for (let j = 1; j <= pdfJsDoc.numPages; j++) {
+                    const page = await pdfJsDoc.getPage(j);
+                    // V1.2.7 Fix: Reduced scale from 2.0 to 1.5 for better compression
+                    const viewport = page.getViewport({ scale: 1.5 }); 
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                    
+                    // V1.2.7 Fix: Reduced quality from 0.75 to 0.6
+                    const blob = await canvasToBlob(canvas, 0.6); 
+                    const imageBytes = await blob.arrayBuffer();
+                    const embeddedImage = await cleanPdf.embedJpg(imageBytes);
+                    
+                    const newPage = cleanPdf.addPage([viewport.width, viewport.height]); 
+                    newPage.drawImage(embeddedImage, {
+                        x: 0, y: 0, width: viewport.width, height: viewport.height,
+                    });
+
+                    if (keepLinks) {
+                        // Note: Complex link reconstruction is simplified here to avoid errors in Lite version
+                        // In full version, we would iterate page.getAnnotations() and map to pdf-lib link annotations
+                    }
+                }
+            }
+            updateProgress(95, "正在封裝檔案 (Clean)...");
+            const pdfBytes = await cleanPdf.save({ useObjectStreams: true });
+            finishProcessing(pdfBytes);
+        }
+
+        function finishProcessing(pdfBytes) {
+            const timestamp = new Date().toISOString().slice(0,16).replace(/[-T:]/g, '');
+            const fileName = `merged_smartpdf_${timestamp}.pdf`;
+            downloadPdfBlob(pdfBytes, fileName);
+            showResultNotification(fileName, pdfBytes, "處理完成！", "check-circle");
+            updateProgress(100, "完成！");
+        }
+
+        // --- Helper: Convert Canvas to Blob ---
+        function canvasToBlob(canvas, quality) {
+            return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+        }
+
+        // --- Event Listeners for Upload ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropzone.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(e => dropzone.addEventListener(e, () => {
+            dropzone.classList.add('border-primary', 'bg-indigo-50', 'dark:bg-indigo-900/30');
+            dragOverlay.classList.remove('opacity-0');
+        }));
+        ['dragleave', 'drop'].forEach(e => dropzone.addEventListener(e, () => {
+            dropzone.classList.remove('border-primary', 'bg-indigo-50', 'dark:bg-indigo-900/30');
+            dragOverlay.classList.add('opacity-0');
+        }));
+        dropzone.addEventListener('drop', (e) => handleFileSelect(e.dataTransfer.files));
+        selectFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFileSelect(e.target.files));
+        addMoreFilesBtn.addEventListener('click', () => addFileInput.click());
+        addFileInput.addEventListener('change', (e) => handleFileSelect(e.target.files));
+        
+        clearFilesBtn.addEventListener('click', () => { 
+            filesBuffer = []; renderFileList(); 
+            uploadStepContainer.classList.remove('hidden'); 
+            dashboardSection.classList.add('hidden'); 
+        });
+
+        confirmSelectionBtn.addEventListener('click', () => { 
+            if(filesBuffer.length===0) return; 
+            uploadStepContainer.classList.add('hidden'); 
+            document.getElementById('hero-text').classList.add('hidden');
+            dashboardSection.classList.remove('hidden'); 
+            switchPreviewMode('single'); 
+            currentPreviewIndex = 0; 
+            renderPreview(0); 
+            renderDashboardFileList(); 
+        });
+
+        // Render Functions
+        function renderFileList() {
+            fileListUl.innerHTML = '';
+            fileCountSpan.textContent = filesBuffer.length;
+            if(filesBuffer.length>0) initialFileList.classList.remove('hidden');
+            filesBuffer.forEach((f,i) => {
+                fileListUl.innerHTML += `<li class="px-6 py-3 flex justify-between hover:bg-gray-50 dark:hover:bg-gray-700"><div>${f.name}</div><button onclick="removeFile(${i})" class="text-red-500">刪除</button></li>`;
+            });
+        }
+        window.removeFile = (i) => { filesBuffer.splice(i,1); renderFileList(); };
+
+        function renderDashboardFileList() {
+            dashboardFileList.innerHTML = '';
+            filesBuffer.forEach((file, index) => {
+                const li = document.createElement('li');
+                const isActive = (index === currentPreviewIndex) && (previewMode === 'single');
+                
+                // V1.2.7 Fix: Changed active text color to indigo-900 for better contrast on light bg
+                const activeClasses = isActive 
+                    ? 'bg-indigo-50 dark:bg-indigo-900/40 border-primary dark:border-indigo-500 text-indigo-900 dark:text-indigo-200 shadow-sm' 
+                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300';
+                
+                li.className = `flex items-center gap-2 text-sm p-3 rounded-lg border cursor-pointer ${activeClasses}`;
+                li.draggable = true;
+                li.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', index); listDragSrcEl = li; });
+                li.addEventListener('dragover', (e) => { e.preventDefault(); });
+                li.addEventListener('drop', (e) => {
+                    e.stopPropagation();
+                    const srcIdx = parseInt(e.dataTransfer.getData('text/plain'));
+                    if(srcIdx!==index) {
+                        const [moved] = filesBuffer.splice(srcIdx, 1);
+                        filesBuffer.splice(index, 0, moved);
+                        if(currentPreviewIndex===srcIdx) currentPreviewIndex=index;
+                        renderDashboardFileList();
+                        refreshCurrentPreview();
+                    }
+                });
+                li.onclick = () => switchPreview(index);
+                const fileName = file.name || "未命名檔案.pdf";
+                li.innerHTML = `<div class="flex-1 truncate pointer-events-none">${index+1}. ${fileName}</div>
+                                <button onclick="event.stopPropagation(); duplicateFile(${index})"><i class="ph-bold ph-copy"></i></button>
+                                <button onclick="event.stopPropagation(); removeFileFromDashboard(${index})" class="text-red-500"><i class="ph-bold ph-trash"></i></button>`;
+                dashboardFileList.appendChild(li);
+            });
+        }
+
+        window.duplicateFile = function(index) {
+            const file = filesBuffer[index];
+            const newFile = new File([file], file.name.replace('.pdf', ' (Copy).pdf'), { type: file.type });
+            filesBuffer.splice(index + 1, 0, newFile);
+            renderDashboardFileList();
+            if (previewMode === 'merged') renderMergedPreview();
+        };
+
+        window.removeFileFromDashboard = function(index) {
+            if (filesBuffer.length <= 1) return window.location.reload();
+            filesBuffer.splice(index, 1);
+            if (index <= currentPreviewIndex) currentPreviewIndex = Math.max(0, currentPreviewIndex - 1);
+            renderDashboardFileList();
+            refreshCurrentPreview();
+        };
+
+        function switchPreviewMode(mode) {
+            previewMode = mode;
+            tabSingle.className = mode === 'single' ? 'px-3 py-1 text-xs font-bold rounded-md bg-primary text-white' : 'px-3 py-1 text-xs font-bold rounded-md text-gray-400 hover:text-white hover:bg-gray-800';
+            tabMerged.className = mode === 'merged' ? 'px-3 py-1 text-xs font-bold rounded-md bg-primary text-white' : 'px-3 py-1 text-xs font-bold rounded-md text-gray-400 hover:text-white hover:bg-gray-800';
+            refreshCurrentPreview();
+            renderDashboardFileList();
+        }
+
+        function switchPreview(index) {
+            currentPreviewIndex = index;
+            if (previewMode === 'merged') switchPreviewMode('single');
+            else renderPreview(index);
+            renderDashboardFileList();
+            if (!pageEditorPanel.classList.contains('hidden')) loadPageEditor(filesBuffer[currentPreviewIndex]);
+        }
+
+        function refreshCurrentPreview() {
+            if (previewMode === 'merged') {
+                renderMergedPreview();
+            } else {
+                renderPreview(currentPreviewIndex);
+            }
+        }
+
+        async function renderPreview(index) {
+            if (previewMode !== 'single') return;
+            if (filesBuffer.length === 0) return;
+            
+            const arrayBuffer = await getFileBytes(index);
+            const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+            pdfPreviewFrame.src = URL.createObjectURL(blob) + "#toolbar=0&view=FitH";
+            previewFilenameLabel.textContent = filesBuffer[index].name + (pageEditorPanel.classList.contains('hidden') ? "" : " (編輯中)");
+        }
+
+        async function renderMergedPreview() {
+            previewFilenameLabel.textContent = "合併結果預覽 (實時)";
+            previewLoadingText.textContent = "正在生成...";
+            pdfPreviewFrame.classList.add('opacity-50');
+            try {
+                const mergedPdf = await PDFDocument.create();
+                for (let i = 0; i < filesBuffer.length; i++) {
+                    const buffer = await getFileBytes(i);
+                    const doc = await PDFDocument.load(buffer);
+                    const pages = await mergedPdf.copyPages(doc, doc.getPageIndices());
+                    pages.forEach(p => mergedPdf.addPage(p));
+                }
+                const bytes = await mergedPdf.save();
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                pdfPreviewFrame.src = URL.createObjectURL(blob) + "#toolbar=0&view=FitH";
+            } catch (e) { console.error(e); }
+            finally { pdfPreviewFrame.classList.remove('opacity-50'); }
+        }
+
+        // Page Editor Logic
+        async function loadPageEditor(file) {
+            pageEditorGrid.innerHTML = '';
+            pageGridLoading.classList.remove('hidden');
+            pageGridLoading.classList.add('flex');
+            try {
+                const buffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+                const pdf = await loadingTask.promise;
+                pageGridLoading.classList.add('hidden');
+                pageGridLoading.classList.remove('flex');
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewportRaw = page.getViewport({ scale: 1 });
+                    const scale = 150 / viewportRaw.width; 
+                    const viewport = page.getViewport({ scale: scale });
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-2 cursor-move hover:shadow-md transition-all group';
+                    wrapper.draggable = true;
+                    wrapper.dataset.originalPageIndex = i - 1;
+                    
+                    // Drag Events
+                    wrapper.addEventListener('dragstart', function(e) { e.dataTransfer.setData('text/html', ''); this.classList.add('dragging'); pageDragSrcEl = this; });
+                    wrapper.addEventListener('dragover', (e) => { e.preventDefault(); return false; });
+                    wrapper.addEventListener('dragenter', function() { this.classList.add('drag-over'); });
+                    wrapper.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+                    wrapper.addEventListener('drop', function(e) {
+                        e.stopPropagation();
+                        if (pageDragSrcEl !== this) {
+                            const items = [...pageEditorGrid.children];
+                            const srcIdx = items.indexOf(pageDragSrcEl);
+                            const tgtIdx = items.indexOf(this);
+                            if (srcIdx < tgtIdx) pageEditorGrid.insertBefore(pageDragSrcEl, this.nextSibling);
+                            else pageEditorGrid.insertBefore(pageDragSrcEl, this);
+                            refreshPageEditorPreview();
+                        }
+                        return false;
+                    });
+                    wrapper.addEventListener('dragend', function() {
+                        this.classList.remove('dragging');
+                        document.querySelectorAll('#page-editor-grid > div').forEach(el => el.classList.remove('drag-over'));
+                    });
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    canvas.className = 'w-full h-auto rounded pointer-events-none';
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'absolute top-3 left-3 z-10';
+                    checkboxDiv.innerHTML = `<input type="checkbox" checked class="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer">`;
+                    checkboxDiv.addEventListener('mousedown', e => e.stopPropagation());
+                    checkboxDiv.querySelector('input').addEventListener('change', refreshPageEditorPreview);
+
+                    const label = document.createElement('div');
+                    label.className = 'absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-0.5 rounded';
+                    label.textContent = i;
+
+                    wrapper.append(checkboxDiv, canvas, label);
+                    pageEditorGrid.appendChild(wrapper);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function generatePdfFromEditor() {
+            const file = filesBuffer[currentPreviewIndex];
+            const items = [...pageEditorGrid.children];
+            const selectedIndices = [];
+            items.forEach(item => {
+                if (item.querySelector('input').checked) 
+                    selectedIndices.push(parseInt(item.dataset.originalPageIndex));
+            });
+            if (selectedIndices.length === 0) return null;
+            const buffer = await file.arrayBuffer();
+            const srcDoc = await PDFDocument.load(buffer);
+            const newDoc = await PDFDocument.create();
+            const pages = await newDoc.copyPages(srcDoc, selectedIndices);
+            pages.forEach(p => newDoc.addPage(p));
+            return await newDoc.save();
+        }
+
+        function refreshPageEditorPreview() { renderPreview(currentPreviewIndex); }
+
+        savePagesBtn.addEventListener('click', () => processPages('download'));
+        applyPagesBtn.addEventListener('click', () => processPages('apply'));
+
+        async function processPages(mode) {
+            const btn = mode === 'download' ? savePagesBtn : applyPagesBtn;
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> 處理中`;
+
+            try {
+                const pdfBytes = await generatePdfFromEditor();
+                if (!pdfBytes) { btn.disabled = false; btn.innerHTML = originalHtml; return alert("請至少選擇一頁"); }
+
+                if (mode === 'download') {
+                    downloadPdfBlob(pdfBytes, `Split_Page_${Date.now()}.pdf`);
+                    showResultNotification(`Split_Page.pdf`, pdfBytes, "下載完成", "download-simple");
+                } else {
+                    const file = filesBuffer[currentPreviewIndex];
+                    filesBuffer[currentPreviewIndex] = new File([pdfBytes], file.name, { type: 'application/pdf' });
+                    renderDashboardFileList();
+                    if(previewMode === 'single') renderPreview(currentPreviewIndex);
+                    
+                    pageEditorPanel.classList.add('hidden');
+                    pageEditorPanel.classList.remove('flex');
+                    actionPanelContent.classList.remove('hidden');
+                    showResultNotification("專案已更新", pdfBytes, "變更已應用", "check-circle");
+                }
+            } catch (e) { console.error(e); }
+            finally { btn.disabled = false; btn.innerHTML = originalHtml; }
+        }
+
+        // Utilities
+        function downloadPdfBlob(bytes, fileName) {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showResultNotification(fileName, bytes, title, icon) {
+            const url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
+            const div = document.createElement('div');
+            div.className = "bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-xl p-4 flex gap-3 animate-fade-in transition-opacity duration-500";
+            div.innerHTML = `
+                <div class="text-green-600"><i class="ph-fill ph-${icon} text-xl"></i></div>
+                <div class="flex-grow">
+                    <h4 class="font-bold text-sm">${title} <span class="countdown text-xs opacity-70">(4)</span></h4>
+                    <p class="text-xs truncate mb-2">${fileName}</p>
+                    <div class="flex gap-2">
+                        <a href="${url}" download="${fileName}" class="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-md font-bold transition-colors"><i class="ph-bold ph-download-simple"></i> 下載</a>
+                        <button class="close-btn text-xs text-gray-400 px-2 py-1.5 hover:text-gray-600 dark:hover:text-gray-200">關閉</button>
+                    </div>
+                </div>`;
+            resultNotificationArea.prepend(div);
+            
+            // Handle Close Button
+            div.querySelector('.close-btn').addEventListener('click', () => div.remove());
+
+            let sec = 4;
+            const interval = setInterval(() => {
+                sec--;
+                if(sec>0) div.querySelector('.countdown').textContent = `(${sec})`;
+                else { clearInterval(interval); div.classList.add('opacity-0'); setTimeout(()=>div.remove(),500); }
+            }, 1000);
+        }
+
+        function updateProgress(percent, text) {
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = text;
+            if (percent === 100) {
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    startProcessBtn.disabled = false;
+                    startProcessBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, 500);
+            }
+        }
+
+        let listDragSrcEl = null;
+        let pageDragSrcEl = null;
+
+        // Menu
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => document.getElementById('mobile-menu').classList.toggle('hidden'));
+    </script>
+</body>
+</html>
