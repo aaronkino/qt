@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>奇諾影像報價單生成器 整合版 v1.11</title>
+    <title>奇諾影像報價單生成器 整合版 v1.13</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -332,6 +331,13 @@
 
         const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
 
+        // [v1.13 Fix] Helper to get local date string (YYYY-MM-DD) correctly handling timezones
+        const getLocalISODate = () => {
+            const d = new Date();
+            // Subtract the timezone offset to get the correct local date when converting to ISO string
+            return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        };
+
         const DEFAULT_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEU";
         const DEFAULT_CATEGORIES = [
             { id: 'preProduction', name: 'I. Pre-production Expenses / 前期' },
@@ -364,8 +370,10 @@
             return notes.map(n => (typeof n === 'string' ? { id: generateId(), text: n } : n));
         };
 
+        const DEFAULT_BANK = { accountName: '奇諾影像有限公司', bankName: '807 永豐銀行 板新分行', accountNumber: '007-018-0005565-8' };
+
         const getInitialData = () => ({
-            header: { title: '奇諾影像報價單(Quotation)', quotationId: '', quotationDate: new Date().toISOString().split('T')[0], validity: '本報價單自發出日起 14 天內有效。' },
+            header: { title: '奇諾影像報價單(Quotation)', quotationId: '', quotationDate: getLocalISODate(), validity: '本報價單自發出日起 14 天內有效。' },
             project: [...DEFAULT_PROJECT],
             categories: [...DEFAULT_CATEGORIES],
             items: JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
@@ -373,11 +381,9 @@
             notes: DEFAULT_NOTES_TEXT.map(text => ({ id: generateId(), text })),
             payment: { terms: [...DEFAULT_PAYMENT] },
             bank: { ...DEFAULT_BANK },
-            signature: { clientCompany: '', clientContact: '', clientTaxId: '', clientPhone: '', vendorCompany: '奇諾影像有限公司', vendorContact: '陳廷安', vendorTaxId: '83115577', vendorPhone: '0911715138', signatureDate: new Date().toISOString().split('T')[0], clientSigImg: '', vendorSigImg: '' },
+            signature: { clientCompany: '', clientContact: '', clientTaxId: '', clientPhone: '', vendorCompany: '奇諾影像有限公司', vendorContact: '陳廷安', vendorTaxId: '83115577', vendorPhone: '0911715138', signatureDate: getLocalISODate(), clientSigImg: '', vendorSigImg: '' },
             logo: '', taxMode: 'excluded', printSettings: { scaledMode: false, showDetails: true, showSigDate: true }
         });
-
-        const DEFAULT_BANK = { accountName: '奇諾影像有限公司', bankName: '807 永豐銀行 板新分行', accountNumber: '007-018-0005565-8' };
         
         const PAYMENT_TEMPLATES = {
             "3stage": [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
@@ -450,6 +456,9 @@
             };
 
             const handleUndo = () => {
+                // [v1.13 Fix] Clear any pending save operations to prevent overwriting the undo state
+                if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
+                
                 if (historyIndex > 0) {
                     const newIndex = historyIndex - 1;
                     setHistoryIndex(newIndex);
@@ -458,6 +467,9 @@
             };
 
             const handleRedo = () => {
+                // [v1.13 Fix] Clear any pending save operations
+                if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
+
                 if (historyIndex < history.length - 1) {
                     const newIndex = historyIndex + 1;
                     setHistoryIndex(newIndex);
@@ -852,7 +864,7 @@
 
                             {/* Footer for version info */}
                             <div className="text-center text-xs text-gray-400 py-4 no-print mt-auto">
-                                奇諾影像報價單生成器 整合版 v1.11
+                                奇諾影像報價單生成器 整合版 v1.13
                             </div>
                         </div>
                     </div>
