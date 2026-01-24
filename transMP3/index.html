@@ -1,0 +1,252 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Music, Image as ImageIcon, Video, CheckCircle, Loader2, Download, AlertCircle, RefreshCw, ShieldAlert } from 'lucide-react';
+
+export default function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('初始化中...');
+  const [audioFile, setAudioFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [outputUrl, setOutputUrl] = useState(null);
+  const [error, setError] = useState(null);
+  const [securityError, setSecurityError] = useState(false);
+
+  const ffmpegRef = useRef(null);
+
+  const loadFFmpeg = async () => {
+    // 檢查瀏覽器是否支援 SharedArrayBuffer (FFmpeg.wasm 必需)
+    if (!window.SharedArrayBuffer) {
+      setSecurityError(true);
+      setError('瀏覽器安全性限制：未偵測到 SharedArrayBuffer。這通常是因為網頁缺少 Cross-Origin Isolation 標頭。請在支援的環境下執行此工具。');
+      return;
+    }
+
+    setLoadingMsg('正在載入 FFmpeg 編碼引擎...');
+    try {
+      const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
+      const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
+      
+      const ffmpeg = new FFmpeg();
+      ffmpegRef.current = ffmpeg;
+
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+      
+      ffmpeg.on('log', ({ message }) => console.log(message));
+      ffmpeg.on('progress', ({ progress }) => setProgress(Math.round(progress * 100)));
+
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+      
+      setLoaded(true);
+    } catch (err) {
+      console.error(err);
+      setError('載入引擎時出錯，請確認您的網路連線或更換瀏覽器試試看。');
+    }
+  };
+
+  useEffect(() => {
+    loadFFmpeg();
+  }, []);
+
+  const handleAudioChange = (e) => {
+    const file = e.target.files[0];
+    if (file?.type.startsWith('audio/')) {
+      setAudioFile(file);
+      setOutputUrl(null);
+      setError(null);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file?.type.startsWith('image/')) {
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setOutputUrl(null);
+    }
+  };
+
+  const generateBlackImageBlob = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  };
+
+  const convertToVideo = async () => {
+    if (!audioFile || !loaded) return;
+
+    setIsProcessing(true);
+    setProgress(0);
+    setError(null);
+
+    const ffmpeg = ffmpegRef.current;
+    const { fetchFile } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
+
+    try {
+      await ffmpeg.writeFile('audio.mp3', await fetchFile(audioFile));
+      
+      if (imageFile) {
+        await ffmpeg.writeFile('cover.png', await fetchFile(imageFile));
+      } else {
+        const blackBlob = await generateBlackImageBlob();
+        await ffmpeg.writeFile('cover.png', await fetchFile(blackBlob));
+      }
+
+      // 最佳化參數：
+      // -r 1 : 強制設定影格率為 1 FPS，極大幅度減少影像體積
+      // -tune stillimage : 針對靜止畫面進行編碼優化
+      // -c:a copy : 直接複製音訊數據（無損且極速）
+      await ffmpeg.exec([
+        '-loop', '1',
+        '-r', '1', 
+        '-i', 'cover.png',
+        '-i', 'audio.mp3',
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-tune', 'stillimage',
+        '-c:a', 'copy',
+        '-shortest',
+        '-pix_fmt', 'yuv420p',
+        '-vf', 'scale=1280:720',
+        'output.mp4'
+      ]);
+
+      const data = await ffmpeg.readFile('output.mp4');
+      const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+      setOutputUrl(url);
+    } catch (err) {
+      console.error(err);
+      setError('轉換失敗：您的檔案格式可能不被支援，或記憶體不足。');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (securityError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 p-6">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-red-100 text-center">
+          <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-black text-slate-800 mb-2">環境安全限制</h2>
+          <p className="text-slate-500 text-sm leading-relaxed mb-6">
+            由於瀏覽器的安全性政策 (COOP/COEP)，此工具無法在目前的預覽環境或直接開啟 HTML 檔案的方式下運作。
+          </p>
+          <div className="bg-slate-50 p-4 rounded-xl text-left mb-6">
+            <p className="text-xs font-bold text-slate-400 uppercase mb-2">建議解決方案</p>
+            <ul className="text-xs text-slate-600 space-y-2 list-disc pl-4">
+              <li>將此代碼部署至支援 HTTPS 且有設定安全標頭的平台 (如 Vercel)。</li>
+              <li>使用 Chrome 或 Edge 瀏覽器。</li>
+              <li>如果您是開發者，請確保伺服器回傳 <code className="bg-slate-200 px-1">Cross-Origin-Opener-Policy: same-origin</code>。</li>
+            </ul>
+          </div>
+          <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">重新整理試試看</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded && !error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <p className="text-slate-700 font-bold">{loadingMsg}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-10 px-4">
+      <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-900 to-blue-900 p-8 text-white">
+          <h1 className="text-2xl font-black flex items-center gap-2">
+            <Video className="text-blue-400" /> MP3 影片封裝助手
+          </h1>
+          <p className="text-blue-200 text-xs mt-1">本地編碼 • 100% 隱私保護 • 支援靜止畫面優化</p>
+        </div>
+
+        <div className="p-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl flex items-start gap-3 animate-pulse">
+              <AlertCircle className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-red-700 text-sm font-medium">{error}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 px-1 uppercase tracking-tighter">1. 選取 MP3 音訊</label>
+              <input type="file" accept="audio/*" onChange={handleAudioChange} id="audio-input" className="hidden" />
+              <label htmlFor="audio-input" className={`flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${audioFile ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-400'}`}>
+                <Music className={`w-8 h-8 mb-2 ${audioFile ? 'text-blue-500' : 'text-slate-300'}`} />
+                <span className="text-xs font-bold text-slate-600 px-4 text-center truncate w-full">{audioFile ? audioFile.name : '點擊上傳'}</span>
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 px-1 uppercase tracking-tighter">2. 封面圖片 (選填)</label>
+              <input type="file" accept="image/*" onChange={handleImageChange} id="image-input" className="hidden" />
+              <label htmlFor="image-input" className="relative flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer overflow-hidden hover:border-indigo-400 transition-all">
+                {previewUrl ? (
+                  <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                ) : null}
+                <div className="relative z-10 flex flex-col items-center">
+                  <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+                  <span className="text-xs font-bold text-slate-600">預設全黑背景</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-slate-100">
+            {isProcessing ? (
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm font-bold text-slate-600">
+                  <span>正在合成影片...</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                  <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                </div>
+              </div>
+            ) : outputUrl ? (
+              <div className="space-y-4 animate-in fade-in duration-500">
+                <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl flex items-center justify-center gap-2 font-black">
+                  <CheckCircle className="w-5 h-5" /> 製作完成！
+                </div>
+                <a href={outputUrl} download={`${audioFile?.name || 'youtube_upload'}.mp4`} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 transition-all active:scale-95">
+                  <Download className="w-6 h-6" /> 立即下載 MP4 檔案
+                </a>
+                <video src={outputUrl} controls className="w-full rounded-xl bg-black border border-slate-200" />
+                <button onClick={() => setOutputUrl(null)} className="w-full text-slate-400 text-xs font-bold flex items-center justify-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> 轉換另一個檔案
+                </button>
+              </div>
+            ) : (
+              <button
+                disabled={!audioFile}
+                onClick={convertToVideo}
+                className={`w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 ${audioFile ? 'bg-slate-900 text-white hover:bg-black shadow-slate-200' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+              >
+                <Video className="w-6 h-6" /> 開始封裝影片
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-slate-50 p-6 border-t border-slate-100">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-loose">
+            技術規格：H.264 影片軌 (1 FPS) + 原始音訊拷貝 (Copy Mode)。此方式生成的檔案體積最小，影像數據量趨近於零，適合 YouTube 上傳。
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
