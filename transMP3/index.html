@@ -1,14 +1,25 @@
-<script src="coi-serviceworker.js"></script>
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Music, Image as ImageIcon, Video, CheckCircle, Loader2, Download, AlertCircle, RefreshCw, ShieldAlert, ExternalLink, Code } from 'lucide-react';
 
 /* 針對 GitHub Pages 的重要提醒：
-  GitHub Pages 預設不發送 Cross-Origin-Opener-Policy (COOP) 標頭。
-  解決方法：
-  1. 下載 coi-serviceworker.js (https://github.com/gzuidhof/coi-serviceworker)
-  2. 將其放在您的 public 資料夾（與 index.html 同層級）
-  3. 在 index.html 的 <head> 中加入：<script src="coi-serviceworker.js"></script>
+  GitHub Pages 預設不發送 SharedArrayBuffer 所需的安全標頭。
+  
+  【修正方式】
+  1. 前往 https://github.com/gzuidhof/coi-serviceworker 下載 coi-serviceworker.js
+  2. 將該檔案上傳到您的 GitHub 倉庫根目錄 (與 index.html 同層級)
+  3. 修改您的 index.html，在 <head> 內加入標籤。
+  
+  您的 index.html 結構應該看起來像這樣：
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <script src="coi-serviceworker.js"></script> <!-- 就是這一行！ -->
+      ... 其他標籤 ...
+    </head>
+    <body>
+      <div id="root"></div>
+    </body>
+  </html>
 */
 
 export default function App() {
@@ -26,9 +37,10 @@ export default function App() {
   const ffmpegRef = useRef(null);
 
   const loadFFmpeg = async () => {
+    // 檢查 SharedArrayBuffer 是否可用
     if (!window.SharedArrayBuffer) {
       setSecurityError(true);
-      setError('瀏覽器安全性限制：未偵測到 SharedArrayBuffer。這通常是因為網頁缺少 Cross-Origin Isolation 標頭。');
+      setError('瀏覽器安全性限制：未偵測到 SharedArrayBuffer。請確保已在 index.html 引入 coi-serviceworker.js 並重新整理。');
       return;
     }
 
@@ -138,34 +150,33 @@ export default function App() {
 
   if (securityError) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 p-6 font-sans">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 p-6 font-sans text-slate-800">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full border border-red-100">
           <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-black text-slate-800 mb-2 text-center">GitHub Pages 安全限制</h2>
+          <h2 className="text-xl font-black mb-2 text-center">GitHub Pages 部署檢查</h2>
           <p className="text-slate-500 text-sm leading-relaxed mb-6 text-center">
-            偵測到您正在 <strong>GitHub Pages</strong> 上執行。
-            預設情況下，GitHub 不會發送 <code>SharedArrayBuffer</code> 所需的安全標頭。
+            您已成功將程式碼上傳至 GitHub，但為了讓編碼引擎運作，您還需要完成最後一個步驟。
           </p>
           
           <div className="bg-blue-50 p-5 rounded-2xl mb-6 space-y-3 border border-blue-100">
             <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2">
-              <Code className="w-4 h-4" /> 如何在 GitHub 上修復？
+              <Code className="w-4 h-4" /> 最後步驟：修改 index.html
             </h3>
-            <ol className="text-xs text-blue-700 space-y-2 list-decimal pl-4 leading-relaxed">
+            <ol className="text-xs text-blue-700 space-y-2 list-decimal pl-4 leading-relaxed font-medium">
               <li>
-                搜尋並下載 <a href="https://github.com/gzuidhof/coi-serviceworker" target="_blank" className="underline font-bold flex inline-flex items-center gap-1">coi-serviceworker.js <ExternalLink className="w-3 h-3"/></a>。
+                確保倉庫根目錄有 <code>coi-serviceworker.js</code> 檔案。
               </li>
               <li>
-                將該檔案放在您的 GitHub 專案根目錄中（與 <code>index.html</code> 同層級）。
+                在您的 <code>index.html</code> 檔案中尋找 <code>&lt;head&gt;</code> 標籤。
               </li>
               <li>
-                在 <code>index.html</code> 的 <code>&lt;head&gt;</code> 內加入：
+                在該標籤內貼上：
                 <div className="bg-blue-900 text-blue-100 p-2 mt-1 rounded font-mono text-[10px]">
                   &lt;script src="coi-serviceworker.js"&gt;&lt;/script&gt;
                 </div>
               </li>
               <li>
-                重新上傳至 GitHub，頁面會自動重新整理並解除限制。
+                提交並推送到 GitHub，稍等片刻後重新整理網頁。
               </li>
             </ol>
           </div>
@@ -174,7 +185,7 @@ export default function App() {
             onClick={() => window.location.reload()} 
             className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
           >
-            我已修復，重新整理頁面
+            完成後點此重新整理
           </button>
         </div>
       </div>
@@ -198,7 +209,7 @@ export default function App() {
             <h1 className="text-2xl font-black flex items-center gap-2">
               <Video className="text-blue-400" /> MP3 影片封裝助手
             </h1>
-            <p className="text-blue-200 text-xs mt-1 font-medium tracking-wide">本地運算 • 無損音訊 • 針對 YouTube 優化</p>
+            <p className="text-blue-200 text-xs mt-1 font-medium tracking-wide">GitHub Pages 專用版 • 本地運算 • 無損音訊</p>
           </div>
         </div>
 
@@ -253,7 +264,7 @@ export default function App() {
                   <div 
                     className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(37,99,235,0.3)]" 
                     style={{ width: `${progress}%` }}
-                  ></div>
+                  ></div>ㄋ
                 </div>
               </div>
             ) : outputUrl ? (
@@ -284,7 +295,7 @@ export default function App() {
                 disabled={!audioFile}
                 onClick={convertToVideo}
                 className={`w-full py-5 rounded-2xl font-black text-xl shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
-                  audioFile ? 'bg-slate-900 text-white hover:bg-black shadow-slate-300' : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                  audioFile ? 'bg-slate-900 text-white hover:bg-black shadow-slate-300' : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
                 }`}
               >
                 <Video className="w-6 h-6" /> 開始封裝影片
@@ -296,7 +307,7 @@ export default function App() {
         <div className="bg-slate-50 p-6 border-t border-slate-100">
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-loose text-center">
             技術規格：H.264 (1 FPS) + 原始音訊流拷貝 (Copy Mode)。<br/>
-            GitHub Pages 使用者請務必安裝 coi-serviceworker 以啟動編碼引擎。
+            GitHub Pages 使用者請務必確保 root 目錄下有 coi-serviceworker.js 檔案。
           </p>
         </div>
       </div>
