@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MP3 轉影片封裝助手 (快取修復版)</title>
+    <title>MP3 轉影片封裝助手 (自動修復版)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -51,10 +51,10 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- 
-      FFmpeg.wasm v0.11.6
-      使用 jsDelivr 並強制版本，這是目前最穩定的單線程版本
+      FFmpeg.wasm v0.9.8 (傳奇通用版)
+      改用 unpkg 作為主要載入點，並移除時間戳記以避免 403 錯誤
     -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.9.8/dist/ffmpeg.min.js"></script>
 
     <style>
       body {
@@ -123,6 +123,24 @@
             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" />
           </svg>
         );
+        
+        const IconGlobe = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+             <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+          </svg>
+        );
+
+        // 定義 v0.9.8 的 CDN 選項 (這些是單執行緒核心)
+        const CDN_OPTIONS = {
+          unpkg: {
+            name: 'Unpkg (v0.9.8)',
+            url: 'https://unpkg.com/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js'
+          },
+          jsdelivr: {
+            name: 'jsDelivr (v0.9.8)',
+            url: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js'
+          }
+        };
 
         function App() {
           const [loaded, setLoaded] = useState(false);
@@ -134,20 +152,30 @@
           const [progress, setProgress] = useState(0);
           const [outputUrl, setOutputUrl] = useState(null);
           const [error, setError] = useState(null);
+          const [currentCdnKey, setCurrentCdnKey] = useState('unpkg'); // 改回預設 unpkg
 
           const audioInputRef = useRef(null);
           const imageInputRef = useRef(null);
           const ffmpegRef = useRef(null);
+          const loadTimeoutRef = useRef(null);
 
-          const loadFFmpeg = async () => {
+          const loadFFmpeg = async (cdnKey) => {
+            const activeKey = cdnKey || currentCdnKey;
+            
             try {
-              setLoadingMsg('下載 FFmpeg 引擎 (約 25MB)...');
+              if (ffmpegRef.current) {
+                try { ffmpegRef.current = null; } catch(e){}
+              }
+              
+              setLoadingMsg(`下載引擎中 (${CDN_OPTIONS[activeKey].name})...`);
+              setError(null);
               
               const { createFFmpeg, fetchFile } = FFmpeg;
               
-              // 關鍵修正：加入 timestamp 參數以防止快取到損壞的檔案
-              const timestamp = new Date().getTime();
-              const corePath = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.6/dist/ffmpeg-core.js?t=${timestamp}`;
+              // 移除時間戳記，避免 CDN 回傳 HTML 錯誤頁
+              let corePath = CDN_OPTIONS[activeKey].url;
+              
+              console.log(`Loading FFmpeg Core (v0.9.8) from: ${corePath}`);
 
               const ffmpeg = createFFmpeg({
                 log: true,
@@ -160,12 +188,30 @@
                 setProgress(Math.min(Math.max(Math.round(ratio * 100), 0), 100));
               });
 
+              if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+              loadTimeoutRef.current = setTimeout(() => {
+                 if (!loaded && !error) {
+                    setError('下載耗時過長，正在切換備用來源...');
+                    cycleCdn(); // 自動切換
+                 }
+              }, 25000);
+
               await ffmpeg.load();
               
+              clearTimeout(loadTimeoutRef.current);
               setLoaded(true);
+              setError(null);
             } catch (err) {
-              console.error(err);
-              setError('無法載入編碼引擎。系統偵測到網路可能封鎖了元件下載，請嘗試使用手機網路或 VPN。');
+              console.error('Load Error:', err);
+              clearTimeout(loadTimeoutRef.current);
+              
+              // 如果失敗，且尚未嘗試所有來源，可考慮自動切換
+              // 這裡只顯示錯誤，讓使用者手動或透過 timeout 自動切換
+              if (err.message && err.message.includes('SharedArrayBuffer')) {
+                 setError('瀏覽器安全性限制：不支援多執行緒。我們已嘗試使用 v0.9.8，如果仍失敗，請換個瀏覽器。');
+              } else {
+                 setError(`載入失敗 (${CDN_OPTIONS[activeKey].name})。請點擊下方按鈕切換來源。`);
+              }
             }
           };
 
@@ -174,8 +220,21 @@
             return () => {
               if (previewUrl) URL.revokeObjectURL(previewUrl);
               if (outputUrl) URL.revokeObjectURL(outputUrl);
+              if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             };
           }, []);
+
+          const cycleCdn = () => {
+             const keys = Object.keys(CDN_OPTIONS);
+             const currentIndex = keys.indexOf(currentCdnKey);
+             const nextIndex = (currentIndex + 1) % keys.length;
+             const nextKey = keys[nextIndex];
+             
+             setCurrentCdnKey(nextKey);
+             setLoaded(false);
+             // 加入一點延遲讓 UI 更新
+             setTimeout(() => loadFFmpeg(nextKey), 100);
+          };
 
           const handleAudioChange = (e) => {
             const file = e.target.files?.[0];
@@ -244,7 +303,6 @@
             const { fetchFile } = FFmpeg;
             
             try {
-              // 寫入檔案 (v0.11 API: ffmpeg.FS)
               ffmpeg.FS('writeFile', 'audio.mp3', await fetchFile(audioFile));
               
               if (imageFile) {
@@ -254,7 +312,7 @@
                 ffmpeg.FS('writeFile', 'cover.png', await fetchFile(blackBlob));
               }
 
-              // 執行指令 (v0.11 API: ffmpeg.run)
+              // v0.9.8 使用 run 方法
               await ffmpeg.run(
                 '-loop', '1',
                 '-r', '1', 
@@ -270,34 +328,51 @@
                 'output.mp4'
               );
 
-              // 讀取結果 (v0.11 API: ffmpeg.FS)
               const data = ffmpeg.FS('readFile', 'output.mp4');
               const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
               setOutputUrl(url);
             } catch (err) {
               console.error(err);
-              setError('轉換失敗。這可能是因為檔案格式不支援或記憶體不足。');
+              setError('轉換失敗。請嘗試重新整理或檢查檔案。');
             } finally {
               setIsProcessing(false);
-              
-              // 清理檔案
               try {
                 ffmpeg.FS('unlink', 'audio.mp3');
                 ffmpeg.FS('unlink', 'cover.png');
                 ffmpeg.FS('unlink', 'output.mp4');
-              } catch (e) {
-                // 忽略清理錯誤
-              }
+              } catch (e) {}
             }
           };
 
-          if (!loaded && !error) {
+          if (!loaded) {
             return (
-              <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-                <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center animate-zoom-in">
+              <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 relative p-4">
+                <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center animate-zoom-in max-w-sm w-full text-center">
                   <IconLoader2 className="w-16 h-16 text-blue-600 mb-6" />
                   <p className="text-slate-800 font-black text-xl animate-pulse">{loadingMsg}</p>
-                  <p className="text-slate-400 text-sm mt-2">首次載入可能需要較長時間</p>
+                  <p className="text-slate-400 text-sm mt-2">首次載入可能需要下載 25MB 組件</p>
+                  
+                  {error && (
+                    <div className="mt-6 w-full animate-fade-in-down">
+                       <p className="text-red-500 text-xs font-bold mb-3 bg-red-50 p-2 rounded-lg">{error}</p>
+                       <button 
+                         onClick={cycleCdn}
+                         className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center justify-center gap-2"
+                       >
+                         <IconGlobe className="w-4 h-4" />
+                         切換下載來源 (嘗試下一個)
+                       </button>
+                    </div>
+                  )}
+                  
+                  {!error && (
+                    <button 
+                         onClick={cycleCdn}
+                         className="mt-8 text-slate-400 hover:text-slate-600 text-xs font-bold underline decoration-dotted underline-offset-4 transition-colors"
+                    >
+                      卡住了？點此切換 CDN
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -317,9 +392,14 @@
                       <h1 className="text-3xl font-black flex items-center gap-3 tracking-tighter">
                         <IconVideo className="text-blue-400 w-8 h-8" /> MP3 影片封裝助手
                       </h1>
-                      <p className="text-blue-200/60 text-sm mt-2 font-medium tracking-wide pl-1">
-                        相容性版本 (FFmpeg v0.11.6) • 本地瀏覽器運算
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <p className="text-blue-200/60 text-sm font-medium tracking-wide pl-1">
+                          v0.9.8 • 通用相容模式
+                        </p>
+                        <span className="text-[10px] bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded border border-blue-400/20">
+                          {CDN_OPTIONS[currentCdnKey].name}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -477,7 +557,7 @@
                 </div>
                 
                 <p className="text-center text-slate-400 text-xs mt-8 font-medium">
-                  相容性版本 (FFmpeg v0.11.6)
+                  v0.9.8 • 通用相容模式
                 </p>
               </div>
             </div>
