@@ -10,9 +10,9 @@ import { Music, Image as ImageIcon, Video, CheckCircle, Loader2, Download, Alert
        <meta charset="UTF-8">
        <meta name="viewport" content="width=device-width, initial-scale=1.0">
        <title>MP3 影片封裝助手</title>
-       <!-- 1. 解決 SharedArrayBuffer 問題 -->
+       <!-- 1. 解決 SharedArrayBuffer 問題 (必需) -->
        <script src="coi-serviceworker.js"></script>
-       <!-- 2. 解決介面亂掉問題 (Tailwind CSS) -->
+       <!-- 2. 解決介面樣式問題 (Tailwind CSS) -->
        <script src="https://cdn.tailwindcss.com"></script>
      </head>
      <body>
@@ -20,12 +20,12 @@ import { Music, Image as ImageIcon, Video, CheckCircle, Loader2, Download, Alert
      </body>
      </html>
 
-  2. 確認專案目錄下有 coi-serviceworker.js 檔案。
+  2. 確認專案根目錄下確實有 coi-serviceworker.js 檔案。
 */
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState('編碼引擎準備中...');
+  const [loadingMsg, setLoadingMsg] = useState('初始化中...');
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -38,7 +38,7 @@ export default function App() {
   const ffmpegRef = useRef(null);
 
   const loadFFmpeg = async () => {
-    // 檢查瀏覽器安全性環境
+    // 檢查瀏覽器安全性環境 (FFmpeg.wasm 需要 SharedArrayBuffer)
     if (!window.SharedArrayBuffer) {
       setSecurityError(true);
       setError('瀏覽器安全性限制：未偵測到 SharedArrayBuffer。');
@@ -46,7 +46,8 @@ export default function App() {
     }
 
     try {
-      setLoadingMsg('載入 FFmpeg 核心組件...');
+      setLoadingMsg('載入 FFmpeg 核心引擎...');
+      // 動態載入解決編譯器解析問題
       const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
       const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
       
@@ -66,9 +67,10 @@ export default function App() {
       });
       
       setLoaded(true);
+      setLoadingMsg('');
     } catch (err) {
       console.error(err);
-      setError('編碼引擎載入失敗，請檢查網路連線或更換瀏覽器。');
+      setError('編碼引擎載入失敗，請確認網路連線或 index.html 是否正確設定標頭。');
     }
   };
 
@@ -117,7 +119,7 @@ export default function App() {
     try {
       const { fetchFile } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
       
-      // 寫入檔案系統
+      // 寫入虛擬檔案系統
       await ffmpeg.writeFile('audio.mp3', await fetchFile(audioFile));
       
       if (imageFile) {
@@ -127,7 +129,7 @@ export default function App() {
         await ffmpeg.writeFile('cover.png', await fetchFile(blackBlob));
       }
 
-      // 執行轉換：-r 1 設定極低影格率，-c:a copy 實現無損音訊封裝
+      // 轉換指令：-r 1 強制極低影格率減小體積，-c:a copy 實現無損封裝
       await ffmpeg.exec([
         '-loop', '1',
         '-r', '1', 
@@ -148,31 +150,31 @@ export default function App() {
       setOutputUrl(url);
     } catch (err) {
       console.error(err);
-      setError('轉換過程中發生錯誤。請嘗試更小的音訊檔案或重新整理網頁。');
+      setError('轉換失敗：請確保您的檔案未損壞，並嘗試更換瀏覽器。');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // 安全錯誤畫面 (GitHub Pages 特殊處理)
+  // 安全警告畫面 (針對 GitHub Pages 或未 isolation 環境)
   if (securityError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100 p-6 font-sans">
-        <div className="bg-white p-10 rounded-[2rem] shadow-2xl max-w-lg w-full border border-red-50 text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-lg w-full border border-red-50 text-center">
           <ShieldAlert className="w-20 h-20 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black text-slate-800 mb-4">GitHub Pages 安全檢查</h2>
+          <h2 className="text-2xl font-black text-slate-800 mb-4 tracking-tight">GitHub Pages 部署檢查</h2>
           <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            偵測到 <code>SharedArrayBuffer</code> 未開啟。這會導致編碼引擎無法執行。
+            偵測到 <code>SharedArrayBuffer</code> 被禁用。這會導致編碼引擎無法執行，您需要完成以下步驟：
           </p>
           
           <div className="bg-slate-50 p-6 rounded-2xl mb-8 text-left space-y-4 border border-slate-200">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Code className="w-4 h-4" /> 快速解決方案
             </h3>
-            <ol className="text-sm text-slate-700 space-y-3 list-decimal pl-5 leading-relaxed">
-              <li>確保專案根目錄有 <code>coi-serviceworker.js</code></li>
+            <ol className="text-sm text-slate-700 space-y-3 list-decimal pl-5 leading-relaxed font-medium">
+              <li>下載 <code>coi-serviceworker.js</code> 並放在 GitHub 倉庫根目錄。</li>
               <li>在 <code>index.html</code> 的 <code>&lt;head&gt;</code> 中加入：
-                <div className="bg-slate-900 text-blue-300 p-3 mt-2 rounded-lg font-mono text-[11px] overflow-x-auto">
+                <div className="bg-slate-900 text-blue-300 p-3 mt-2 rounded-lg font-mono text-[10px] overflow-x-auto select-all">
                   &lt;script src="coi-serviceworker.js"&gt;&lt;/script&gt;
                 </div>
               </li>
@@ -190,14 +192,14 @@ export default function App() {
     );
   }
 
-  // 初始化載入畫面
+  // 載入狀態
   if (!loaded && !error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center">
+        <div className="p-16 bg-white rounded-[3rem] shadow-2xl flex flex-col items-center border border-slate-100">
           <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-6" />
-          <p className="text-slate-800 font-black text-xl animate-pulse">{loadingMsg}</p>
-          <p className="text-slate-400 text-xs mt-4 uppercase tracking-widest">首次載入需時約 10-20 秒</p>
+          <p className="text-slate-800 font-black text-xl tracking-tight">{loadingMsg}</p>
+          <p className="text-slate-400 text-xs mt-4 uppercase tracking-[0.2em]">正在啟動本地編碼沙盒</p>
         </div>
       </div>
     );
@@ -208,34 +210,36 @@ export default function App() {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-[2.5rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden">
           
-          {/* 標題欄 */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-10 text-white relative">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-10 text-white relative overflow-hidden">
             <div className="relative z-10">
               <h1 className="text-3xl font-black flex items-center gap-3 tracking-tighter">
                 <Video className="text-blue-400 w-8 h-8" /> MP3 影片封裝助手
               </h1>
-              <p className="text-blue-200/60 text-sm mt-2 font-medium">針對 YouTube 上傳限制優化的本地封裝工具</p>
+              <p className="text-blue-200/60 text-sm mt-2 font-medium">將音訊轉化為支援 YouTube 上傳的極簡 MP4</p>
             </div>
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute top-0 right-0 p-10 opacity-10">
+              <Music className="w-32 h-32" />
+            </div>
           </div>
 
           <div className="p-10 space-y-8">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl flex items-start gap-4 animate-in fade-in slide-in-from-top-2">
+              <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl flex items-start gap-4">
                 <AlertCircle className="text-red-500 shrink-0 mt-0.5" />
                 <p className="text-red-700 text-sm font-bold">{error}</p>
               </div>
             )}
 
-            {/* 上傳區域 */}
+            {/* 檔案上傳區域 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <label className="text-[11px] font-black text-slate-400 px-1 uppercase tracking-[0.2em] block">1. 選取音訊 (MP3)</label>
+                <label className="text-[11px] font-black text-slate-400 px-1 uppercase tracking-[0.2em] block">1. 選取 MP3 音訊</label>
                 <input type="file" accept="audio/mp3,audio/mpeg" onChange={handleAudioChange} id="audio-input" className="hidden" />
-                <label htmlFor="audio-input" className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${audioFile ? 'border-blue-500 bg-blue-50 shadow-[inset_0_2px_10px_rgba(59,130,246,0.1)]' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}>
-                  <Music className={`w-12 h-12 mb-3 transition-colors ${audioFile ? 'text-blue-500' : 'text-slate-300'}`} />
+                <label htmlFor="audio-input" className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${audioFile ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}>
+                  <Music className={`w-12 h-12 mb-3 ${audioFile ? 'text-blue-500' : 'text-slate-300'}`} />
                   <span className="text-xs font-black text-slate-600 px-6 text-center line-clamp-2 leading-relaxed">
-                    {audioFile ? audioFile.name : '點擊或拖放 MP3 檔案'}
+                    {audioFile ? audioFile.name : '點擊選擇音訊'}
                   </span>
                 </label>
               </div>
@@ -248,8 +252,8 @@ export default function App() {
                     <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt="Preview" />
                   ) : null}
                   <div className="relative z-10 flex flex-col items-center">
-                    <ImageIcon className={`w-12 h-12 mb-3 transition-all ${previewUrl ? 'text-white drop-shadow-xl' : 'text-slate-300'}`} />
-                    <span className={`text-xs font-black ${previewUrl ? 'text-white drop-shadow-xl' : 'text-slate-600'}`}>
+                    <ImageIcon className={`w-12 h-12 mb-3 ${previewUrl ? 'text-white drop-shadow-2xl' : 'text-slate-300'}`} />
+                    <span className={`text-xs font-black ${previewUrl ? 'text-white drop-shadow-lg' : 'text-slate-600'}`}>
                       {imageFile ? '更換圖片' : '自訂圖片'}
                     </span>
                   </div>
@@ -257,14 +261,14 @@ export default function App() {
               </div>
             </div>
 
-            {/* 操作控制區域 */}
+            {/* 執行區 */}
             <div className="pt-8 border-t border-slate-100">
               {isProcessing ? (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-in fade-in">
                   <div className="flex justify-between items-end">
-                    <div className="flex items-center gap-3 text-blue-600 font-black italic">
+                    <div className="flex items-center gap-3 text-blue-600 font-black">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      封裝中...
+                      封裝進行中...
                     </div>
                     <span className="text-slate-400 font-mono text-sm font-bold">{progress}%</span>
                   </div>
@@ -274,31 +278,30 @@ export default function App() {
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
-                  <p className="text-[11px] text-center text-slate-400 font-bold uppercase tracking-widest">此過程完全在本地瀏覽器進行，不消耗任何網路流量</p>
                 </div>
               ) : outputUrl ? (
                 <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
                   <div className="bg-emerald-50 text-emerald-700 py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-black shadow-sm ring-1 ring-emerald-100">
-                    <CheckCircle className="w-6 h-6" /> 轉換成功！
+                    <CheckCircle className="w-6 h-6" /> 轉換完成！符合上傳規範
                   </div>
                   
-                  <div className="rounded-[2rem] overflow-hidden bg-black aspect-video shadow-2xl border-8 border-white ring-1 ring-slate-200">
+                  <div className="rounded-[2.5rem] overflow-hidden bg-black aspect-video shadow-2xl border-4 border-white ring-1 ring-slate-200">
                     <video src={outputUrl} controls className="w-full h-full" />
                   </div>
 
                   <div className="flex flex-col gap-4">
                     <a 
                       href={outputUrl} 
-                      download={`${audioFile?.name.split('.')[0] || 'converted'}.mp4`} 
+                      download={`${audioFile?.name.split('.')[0] || 'video'}.mp4`} 
                       className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-5 rounded-3xl font-black text-xl shadow-2xl transition-all active:scale-[0.98]"
                     >
-                      <Download className="w-6 h-6" /> 立即下載影片檔案
+                      <Download className="w-6 h-6" /> 下載影片 (MP4)
                     </a>
                     <button 
                       onClick={() => setOutputUrl(null)} 
-                      className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-4 transition-colors"
+                      className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-2"
                     >
-                      <RefreshCw className="w-4 h-4" /> 處理另一個檔案
+                      <RefreshCw className="w-4 h-4" /> 轉換另一個音訊
                     </button>
                   </div>
                 </div>
@@ -309,30 +312,25 @@ export default function App() {
                   className={`w-full py-6 rounded-3xl font-black text-2xl shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-4 ${
                     audioFile && loaded
                     ? 'bg-slate-900 text-white hover:bg-black shadow-blue-200' 
-                    : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
+                    : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                   }`}
                 >
-                  <Video className="w-8 h-8" /> 開始封裝影片
+                  <Video className="w-8 h-8" /> 開始生成影片
                 </button>
               )}
             </div>
           </div>
 
-          {/* Footer 規格說明 */}
-          <div className="bg-slate-50/50 p-8 border-t border-slate-100">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">影像編碼</p>
-                <p className="text-xs font-bold text-slate-700">H.264 (1 FPS)</p>
-              </div>
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">音訊品質</p>
-                <p className="text-xs font-bold text-slate-700">Direct Copy (無損)</p>
-              </div>
+          {/* Footer 規格 */}
+          <div className="bg-slate-50/50 p-10 border-t border-slate-100 grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-100">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">影像軌道</p>
+              <p className="text-xs font-bold text-slate-700">H.264 (1 FPS)</p>
             </div>
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center mt-6 leading-relaxed opacity-50">
-              此工具專為解決 YouTube 格式限制而設計，影像數據極小，不增加不必要的體積。
-            </p>
+            <div className="bg-white p-4 rounded-2xl border border-slate-100">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">音訊軌道</p>
+              <p className="text-xs font-bold text-slate-700">無損拷貝 (Direct)</p>
+            </div>
           </div>
         </div>
       </div>
