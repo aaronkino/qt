@@ -3,45 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MP3 轉影片封裝助手 (自動修復版)</title>
+    <title>MP3 轉影片封裝助手 (GitHub Pages 專用版)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 配置 Tailwind 動畫 -->
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            animation: {
-              'fade-in': 'fadeIn 0.5s ease-out',
-              'fade-in-down': 'fadeInDown 0.5s ease-out forwards',
-              'slide-in-up': 'slideInUp 0.5s ease-out forwards',
-              'zoom-in': 'zoomIn 0.3s ease-out forwards',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              fadeInDown: {
-                '0%': { opacity: '0', transform: 'translateY(-10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              slideInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              zoomIn: {
-                '0%': { opacity: '0', transform: 'scale(0.95)' },
-                '100%': { opacity: '1', transform: 'scale(1)' },
-              },
-            },
-          },
-        },
-      }
-    </script>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -50,23 +15,10 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 
-      FFmpeg.wasm v0.9.8 (傳奇通用版)
-      改用 unpkg 作為主要載入點，並移除時間戳記以避免 403 錯誤
-    -->
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.9.8/dist/ffmpeg.min.js"></script>
-
     <style>
-      body {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
+      body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -75,76 +27,32 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
 
-        // 圖標組件
-        const IconMusic = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-          </svg>
-        );
+        // --- Icons (UI 元件) ---
+        const IconMusic = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>);
+        const IconImage = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>);
+        const IconVideo = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 8-6 4 6 4V8Z" /><rect width="14" height="12" x="2" y="6" rx="2" ry="2" /></svg>);
+        const IconCheckCircle = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>);
+        const IconLoader2 = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>);
+        const IconDownload = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>);
+        const IconAlertCircle = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>);
+        const IconRefreshCw = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" /></svg>);
+        const IconUpload = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>);
+        const IconGithub = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>);
 
-        const IconImage = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-          </svg>
-        );
-
-        const IconVideo = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="m22 8-6 4 6 4V8Z" /><rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
-          </svg>
-        );
-
-        const IconCheckCircle = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        );
-
-        const IconLoader2 = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}>
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
-        );
-
-        const IconDownload = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
-          </svg>
-        );
-
-        const IconAlertCircle = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
-          </svg>
-        );
-
-        const IconRefreshCw = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" />
-          </svg>
-        );
+        // 主程式 (ffmpeg.min.js) 必須先載入
+        const MAIN_JS_CDN = "https://unpkg.com/@ffmpeg/ffmpeg@0.9.8/dist/ffmpeg.min.js";
         
-        const IconGlobe = ({ className }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-             <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
-          </svg>
-        );
-
-        // 定義 v0.9.8 的 CDN 選項 (這些是單執行緒核心)
-        const CDN_OPTIONS = {
-          unpkg: {
-            name: 'Unpkg (v0.9.8)',
-            url: 'https://unpkg.com/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js'
-          },
-          jsdelivr: {
-            name: 'jsDelivr (v0.9.8)',
-            url: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js'
-          }
-        };
+        // 核心檔案路徑設定
+        // 1. 本地路徑 (最優先)
+        const LOCAL_JS = "./ffmpeg-core.js";
+        const LOCAL_WASM = "./ffmpeg-core.wasm";
+        // 2. 備用 CDN
+        const CDN_JS = "https://unpkg.com/@ffmpeg/core@0.9.8/dist/ffmpeg-core.js";
+        const CDN_WASM = "https://unpkg.com/@ffmpeg/core@0.9.8/dist/ffmpeg-core.wasm";
 
         function App() {
           const [loaded, setLoaded] = useState(false);
-          const [loadingMsg, setLoadingMsg] = useState('初始化核心組件...');
+          const [loadingMsg, setLoadingMsg] = useState('初始化...');
           const [audioFile, setAudioFile] = useState(null);
           const [imageFile, setImageFile] = useState(null);
           const [previewUrl, setPreviewUrl] = useState(null);
@@ -152,159 +60,165 @@
           const [progress, setProgress] = useState(0);
           const [outputUrl, setOutputUrl] = useState(null);
           const [error, setError] = useState(null);
-          const [currentCdnKey, setCurrentCdnKey] = useState('unpkg'); // 改回預設 unpkg
+          const [manualMode, setManualMode] = useState(false);
+          const [loadSource, setLoadSource] = useState('');
+          
+          const [manualCoreJs, setManualCoreJs] = useState(null);
+          const [manualCoreWasm, setManualCoreWasm] = useState(null);
 
-          const audioInputRef = useRef(null);
-          const imageInputRef = useRef(null);
           const ffmpegRef = useRef(null);
-          const loadTimeoutRef = useRef(null);
 
-          const loadFFmpeg = async (cdnKey) => {
-            const activeKey = cdnKey || currentCdnKey;
-            
-            try {
-              if (ffmpegRef.current) {
-                try { ffmpegRef.current = null; } catch(e){}
-              }
-              
-              setLoadingMsg(`下載引擎中 (${CDN_OPTIONS[activeKey].name})...`);
-              setError(null);
-              
-              const { createFFmpeg, fetchFile } = FFmpeg;
-              
-              // 移除時間戳記，避免 CDN 回傳 HTML 錯誤頁
-              let corePath = CDN_OPTIONS[activeKey].url;
-              
-              console.log(`Loading FFmpeg Core (v0.9.8) from: ${corePath}`);
+          // 載入 <script>
+          const loadMainScript = (src) => {
+            return new Promise((resolve, reject) => {
+              if (window.FFmpeg) { resolve(); return; }
+              const script = document.createElement('script');
+              script.src = src;
+              script.async = true;
+              script.crossOrigin = "anonymous";
+              script.onload = () => resolve();
+              script.onerror = () => reject(new Error(`Script load failed`));
+              document.body.appendChild(script);
+            });
+          };
 
-              const ffmpeg = createFFmpeg({
-                log: true,
-                corePath: corePath,
-              });
-              
-              ffmpegRef.current = ffmpeg;
-              
-              ffmpeg.setProgress(({ ratio }) => {
-                setProgress(Math.min(Math.max(Math.round(ratio * 100), 0), 100));
-              });
+          // 下載 helper
+          const downloadAsText = (url) => {
+            return new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('GET', url, true);
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+                else reject(new Error(`HTTP ${xhr.status}`));
+              };
+              xhr.onerror = () => reject(new Error('Network Error'));
+              xhr.send();
+            });
+          };
 
-              if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-              loadTimeoutRef.current = setTimeout(() => {
-                 if (!loaded && !error) {
-                    setError('下載耗時過長，正在切換備用來源...');
-                    cycleCdn(); // 自動切換
-                 }
-              }, 25000);
+          const downloadAsBlob = (url) => {
+            return new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('GET', url, true);
+              xhr.responseType = 'blob';
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+                else reject(new Error(`HTTP ${xhr.status}`));
+              };
+              xhr.onerror = () => reject(new Error('Network Error'));
+              xhr.send();
+            });
+          };
 
-              await ffmpeg.load();
-              
-              clearTimeout(loadTimeoutRef.current);
-              setLoaded(true);
-              setError(null);
-            } catch (err) {
-              console.error('Load Error:', err);
-              clearTimeout(loadTimeoutRef.current);
-              
-              // 如果失敗，且尚未嘗試所有來源，可考慮自動切換
-              // 這裡只顯示錯誤，讓使用者手動或透過 timeout 自動切換
-              if (err.message && err.message.includes('SharedArrayBuffer')) {
-                 setError('瀏覽器安全性限制：不支援多執行緒。我們已嘗試使用 v0.9.8，如果仍失敗，請換個瀏覽器。');
-              } else {
-                 setError(`載入失敗 (${CDN_OPTIONS[activeKey].name})。請點擊下方按鈕切換來源。`);
-              }
-            }
+          // 核心初始化邏輯 (使用 Blob 注入)
+          const initFFmpegWithBlob = async (coreJsContent, wasmBlob, sourceName) => {
+             try {
+                if (!window.FFmpeg) {
+                   setLoadingMsg('載入主程式...');
+                   await loadMainScript(MAIN_JS_CDN);
+                }
+
+                setLoadingMsg(`啟動引擎 (${sourceName})...`);
+                const { createFFmpeg } = window.FFmpeg;
+
+                const wasmUrl = URL.createObjectURL(wasmBlob);
+                
+                // 替換 JS 內的 WASM 路徑
+                let modifiedJs = coreJsContent;
+                if (modifiedJs.includes('ffmpeg-core.wasm')) {
+                   modifiedJs = modifiedJs.replace(/ffmpeg-core\.wasm/g, wasmUrl);
+                }
+                
+                const coreJsBlob = new Blob([modifiedJs], { type: 'application/javascript' });
+                const coreJsUrl = URL.createObjectURL(coreJsBlob);
+
+                const ffmpeg = createFFmpeg({
+                  log: true,
+                  corePath: coreJsUrl,
+                });
+                
+                ffmpegRef.current = ffmpeg;
+                ffmpeg.setProgress(({ ratio }) => setProgress(Math.min(Math.max(Math.round(ratio * 100), 0), 100)));
+
+                await ffmpeg.load();
+                setLoaded(true);
+                setLoadSource(sourceName);
+                setError(null);
+                setManualMode(false);
+
+             } catch (err) {
+                console.error(err);
+                throw new Error('Engine Init Failed');
+             }
+          };
+
+          const autoLoad = async () => {
+             // 1. 嘗試本地載入 (GitHub Pages 部署時會成功)
+             try {
+                setLoadingMsg('偵測 GitHub / 本地檔案...');
+                // 先只抓 JS 看看是否存在
+                const jsContent = await downloadAsText(LOCAL_JS);
+                // 如果成功，再抓 WASM
+                const wasmBlob = await downloadAsBlob(LOCAL_WASM);
+                
+                await initFFmpegWithBlob(jsContent, wasmBlob, 'GitHub/Local');
+                return; // 成功則結束
+             } catch (e) {
+                console.log("Local load failed, trying CDN...", e);
+             }
+
+             // 2. 嘗試 CDN 載入 (作為備用)
+             try {
+                setLoadingMsg('嘗試 CDN 連線...');
+                const [jsContent, wasmBlob] = await Promise.all([
+                   downloadAsText(CDN_JS),
+                   downloadAsBlob(CDN_WASM)
+                ]);
+                await initFFmpegWithBlob(jsContent, wasmBlob, 'CDN');
+                return;
+             } catch (e) {
+                console.error("CDN load failed", e);
+             }
+
+             // 3. 全失敗 -> 手動模式
+             setError('找不到核心檔案。請確認檔案已上傳至 GitHub，或使用手動上傳。');
+             setManualMode(true);
           };
 
           useEffect(() => {
-            loadFFmpeg();
-            return () => {
-              if (previewUrl) URL.revokeObjectURL(previewUrl);
-              if (outputUrl) URL.revokeObjectURL(outputUrl);
-              if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            };
+             autoLoad();
+             return () => {
+               if (previewUrl) URL.revokeObjectURL(previewUrl);
+               if (outputUrl) URL.revokeObjectURL(outputUrl);
+             };
           }, []);
 
-          const cycleCdn = () => {
-             const keys = Object.keys(CDN_OPTIONS);
-             const currentIndex = keys.indexOf(currentCdnKey);
-             const nextIndex = (currentIndex + 1) % keys.length;
-             const nextKey = keys[nextIndex];
-             
-             setCurrentCdnKey(nextKey);
-             setLoaded(false);
-             // 加入一點延遲讓 UI 更新
-             setTimeout(() => loadFFmpeg(nextKey), 100);
+          const handleManualLoad = async () => {
+             if (!manualCoreJs || !manualCoreWasm) {
+                alert('請先選擇兩個檔案！');
+                return;
+             }
+             setLoadingMsg('讀取本地檔案...');
+             try {
+                const jsText = await manualCoreJs.text();
+                await initFFmpegWithBlob(jsText, manualCoreWasm, 'Manual Upload');
+             } catch (e) {
+                setError('讀取檔案失敗');
+             }
           };
 
-          const handleAudioChange = (e) => {
-            const file = e.target.files?.[0];
-            if (file && file.type.startsWith('audio/')) {
-              setAudioFile(file);
-              if (outputUrl) {
-                URL.revokeObjectURL(outputUrl);
-                setOutputUrl(null);
-              }
-              setError(null);
-            }
-          };
-
-          const handleImageChange = (e) => {
-            const file = e.target.files?.[0];
-            if (file && file.type.startsWith('image/')) {
-              setImageFile(file);
-              if (previewUrl) URL.revokeObjectURL(previewUrl);
-              setPreviewUrl(URL.createObjectURL(file));
-              
-              if (outputUrl) {
-                URL.revokeObjectURL(outputUrl);
-                setOutputUrl(null);
-              }
-            }
-          };
-
-          const handleReset = () => {
-            setAudioFile(null);
-            setImageFile(null);
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
-            setPreviewUrl(null);
-            if (outputUrl) URL.revokeObjectURL(outputUrl);
-            setOutputUrl(null);
-            setError(null);
-            setProgress(0);
-            if (audioInputRef.current) audioInputRef.current.value = '';
-            if (imageInputRef.current) imageInputRef.current.value = '';
-          };
-
-          const generateBlackImageBlob = async () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1280;
-            canvas.height = 720;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.fillStyle = '#333333';
-            ctx.font = 'bold 48px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Audio Only', canvas.width/2, canvas.height/2);
-
-            return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-          };
-
+          // 轉換邏輯保持不變
           const convertToVideo = async () => {
             if (!audioFile || !loaded) return;
-
             setIsProcessing(true);
             setProgress(0);
             setError(null);
 
             const ffmpeg = ffmpegRef.current;
-            const { fetchFile } = FFmpeg;
+            const { fetchFile } = window.FFmpeg; 
             
             try {
               ffmpeg.FS('writeFile', 'audio.mp3', await fetchFile(audioFile));
-              
               if (imageFile) {
                 ffmpeg.FS('writeFile', 'cover.png', await fetchFile(imageFile));
               } else {
@@ -312,66 +226,105 @@
                 ffmpeg.FS('writeFile', 'cover.png', await fetchFile(blackBlob));
               }
 
-              // v0.9.8 使用 run 方法
-              await ffmpeg.run(
-                '-loop', '1',
-                '-r', '1', 
-                '-i', 'cover.png',
-                '-i', 'audio.mp3',
-                '-c:v', 'libx264',
-                '-preset', 'ultrafast',
-                '-tune', 'stillimage',
-                '-c:a', 'copy',
-                '-shortest',
-                '-pix_fmt', 'yuv420p',
-                '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
-                'output.mp4'
-              );
+              await ffmpeg.run('-loop', '1', '-r', '1', '-i', 'cover.png', '-i', 'audio.mp3', '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-c:a', 'copy', '-shortest', '-pix_fmt', 'yuv420p', '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2', 'output.mp4');
 
               const data = ffmpeg.FS('readFile', 'output.mp4');
               const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
               setOutputUrl(url);
             } catch (err) {
               console.error(err);
-              setError('轉換失敗。請嘗試重新整理或檢查檔案。');
+              setError('轉換失敗。請檢查檔案格式。');
             } finally {
               setIsProcessing(false);
-              try {
-                ffmpeg.FS('unlink', 'audio.mp3');
-                ffmpeg.FS('unlink', 'cover.png');
-                ffmpeg.FS('unlink', 'output.mp4');
-              } catch (e) {}
+              try { ffmpeg.FS('unlink', 'audio.mp3'); ffmpeg.FS('unlink', 'cover.png'); ffmpeg.FS('unlink', 'output.mp4'); } catch (e) {}
             }
+          };
+
+          const handleAudioChange = (e) => {
+            const file = e.target.files?.[0];
+            if (file) { setAudioFile(file); if(outputUrl) URL.revokeObjectURL(outputUrl); setOutputUrl(null); setError(null); }
+          };
+          const handleImageChange = (e) => {
+            const file = e.target.files?.[0];
+            if (file) { setImageFile(file); if(previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(URL.createObjectURL(file)); if(outputUrl) URL.revokeObjectURL(outputUrl); setOutputUrl(null); }
+          };
+          const handleReset = () => {
+            setAudioFile(null); setImageFile(null); if(previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(null); if(outputUrl) URL.revokeObjectURL(outputUrl); setOutputUrl(null); setError(null); setProgress(0);
+          };
+          const generateBlackImageBlob = async () => {
+            const canvas = document.createElement('canvas'); canvas.width = 1280; canvas.height = 720;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333333'; ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Audio Only', canvas.width/2, canvas.height/2);
+            return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
           };
 
           if (!loaded) {
             return (
               <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 relative p-4">
-                <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center animate-zoom-in max-w-sm w-full text-center">
-                  <IconLoader2 className="w-16 h-16 text-blue-600 mb-6" />
-                  <p className="text-slate-800 font-black text-xl animate-pulse">{loadingMsg}</p>
-                  <p className="text-slate-400 text-sm mt-2">首次載入可能需要下載 25MB 組件</p>
-                  
-                  {error && (
-                    <div className="mt-6 w-full animate-fade-in-down">
-                       <p className="text-red-500 text-xs font-bold mb-3 bg-red-50 p-2 rounded-lg">{error}</p>
-                       <button 
-                         onClick={cycleCdn}
-                         className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all flex items-center justify-center gap-2"
-                       >
-                         <IconGlobe className="w-4 h-4" />
-                         切換下載來源 (嘗試下一個)
-                       </button>
+                <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center animate-zoom-in max-w-lg w-full text-center">
+                  {!manualMode ? (
+                    <>
+                      <IconLoader2 className="w-16 h-16 text-blue-600 mb-6" />
+                      <p className="text-slate-800 font-black text-xl animate-pulse">{loadingMsg}</p>
+                      <p className="text-slate-400 text-sm mt-2">首次載入約需 30 秒...</p>
+                    </>
+                  ) : (
+                    <div className="w-full space-y-6">
+                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-4 text-left">
+                        <h3 className="text-amber-800 font-bold text-lg mb-2 flex items-center gap-2">
+                          <IconGithub className="w-5 h-5"/> GitHub 部署指南
+                        </h3>
+                        <p className="text-amber-700 text-xs leading-relaxed">
+                          1. 下載下方兩個核心檔案。<br/>
+                          2. 將它們與 <code>index.html</code> 一起上傳到您的 GitHub Repo。<br/>
+                          3. 開啟 GitHub Pages 後，網頁將會自動讀取它們，無需手動上傳。
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <a href={CDN_JS} download className="bg-slate-100 hover:bg-slate-200 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-blue-600">
+                          <IconDownload className="w-4 h-4"/> 下載 Core JS
+                        </a>
+                        <a href={CDN_WASM} download className="bg-slate-100 hover:bg-slate-200 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-blue-600">
+                          <IconDownload className="w-4 h-4"/> 下載 Core WASM
+                        </a>
+                      </div>
+
+                      <div className="space-y-4">
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest text-left pl-1">或者：現在手動載入以進行測試</p>
+                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 relative group hover:border-blue-400 transition-colors">
+                          <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                            accept=".js" onChange={(e) => setManualCoreJs(e.target.files[0])} />
+                          <div className="flex items-center gap-3">
+                            <span className="bg-blue-100 text-blue-600 p-2 rounded-lg"><IconUpload className="w-5 h-5"/></span>
+                            <div className="text-left">
+                              <p className="font-bold text-slate-700">ffmpeg-core.js</p>
+                              <p className="text-xs text-slate-400">{manualCoreJs ? manualCoreJs.name : '尚未選擇'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 relative group hover:border-blue-400 transition-colors">
+                          <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                            accept=".wasm" onChange={(e) => setManualCoreWasm(e.target.files[0])} />
+                          <div className="flex items-center gap-3">
+                            <span className="bg-indigo-100 text-indigo-600 p-2 rounded-lg"><IconUpload className="w-5 h-5"/></span>
+                            <div className="text-left">
+                              <p className="font-bold text-slate-700">ffmpeg-core.wasm</p>
+                              <p className="text-xs text-slate-400">{manualCoreWasm ? manualCoreWasm.name : '尚未選擇'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleManualLoad}
+                        disabled={!manualCoreJs || !manualCoreWasm}
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <IconRefreshCw className="w-4 h-4" /> 啟動轉檔引擎
+                      </button>
                     </div>
-                  )}
-                  
-                  {!error && (
-                    <button 
-                         onClick={cycleCdn}
-                         className="mt-8 text-slate-400 hover:text-slate-600 text-xs font-bold underline decoration-dotted underline-offset-4 transition-colors"
-                    >
-                      卡住了？點此切換 CDN
-                    </button>
                   )}
                 </div>
               </div>
@@ -394,50 +347,33 @@
                       </h1>
                       <div className="flex items-center gap-3 mt-2">
                         <p className="text-blue-200/60 text-sm font-medium tracking-wide pl-1">
-                          v0.9.8 • 通用相容模式
+                          v0.9.8 • {loadSource || (manualMode ? '手動模式' : '初始化...')}
                         </p>
-                        <span className="text-[10px] bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded border border-blue-400/20">
-                          {CDN_OPTIONS[currentCdnKey].name}
-                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-10 space-y-8">
+                    {/* Error Msg */}
                     {error && (
                       <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl flex items-start gap-4 animate-fade-in-down">
                         <IconAlertCircle className="text-red-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <h3 className="text-red-800 font-bold text-sm mb-1">發生錯誤</h3>
                           <p className="text-red-700 text-sm">{error}</p>
-                          <button onClick={() => window.location.reload()} className="text-red-600 underline text-xs mt-2 font-bold">重新整理網頁</button>
                         </div>
                       </div>
                     )}
 
+                    {/* Controls */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {/* 音訊上傳區 */}
                       <div className="space-y-3 group">
                         <div className="flex justify-between items-center px-1">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">1. 選擇音訊 (MP3)</label>
                           {audioFile && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold animate-zoom-in">已就緒</span>}
                         </div>
-                        <input 
-                          type="file" 
-                          accept="audio/mp3,audio/mpeg,audio/wav" 
-                          onChange={handleAudioChange} 
-                          id="audio-input" 
-                          className="hidden" 
-                          ref={audioInputRef}
-                        />
-                        <label 
-                          htmlFor="audio-input" 
-                          className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 relative overflow-hidden
-                            ${audioFile 
-                              ? 'border-blue-500 bg-blue-50/50' 
-                              : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'
-                            }`}
-                        >
+                        <input type="file" accept="audio/mp3,audio/mpeg,audio/wav" onChange={handleAudioChange} id="audio-input" className="hidden" ref={audioInputRef}/>
+                        <label htmlFor="audio-input" className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 relative overflow-hidden ${audioFile ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}>
                           <IconMusic className={`w-12 h-12 mb-3 transition-colors ${audioFile ? 'text-blue-500' : 'text-slate-300 group-hover:text-blue-400'}`} />
                           <div className="z-10 text-center px-4 w-full">
                              {audioFile ? (
@@ -445,39 +381,24 @@
                                  <p className="text-sm font-bold text-slate-700 truncate w-full">{audioFile.name}</p>
                                  <p className="text-xs text-slate-400 mt-1">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                </>
-                             ) : (
-                               <span className="text-xs font-black text-slate-400 group-hover:text-slate-600 transition-colors">點擊上傳 MP3</span>
-                             )}
+                             ) : <span className="text-xs font-black text-slate-400 group-hover:text-slate-600 transition-colors">點擊上傳 MP3</span>}
                           </div>
                         </label>
                       </div>
 
-                      {/* 圖片上傳區 */}
                       <div className="space-y-3 group">
                         <div className="flex justify-between items-center px-1">
                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">2. 封面圖片 (選填)</label>
                            {imageFile && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold animate-zoom-in">已就緒</span>}
                         </div>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleImageChange} 
-                          id="image-input" 
-                          className="hidden" 
-                          ref={imageInputRef}
-                        />
-                        <label 
-                          htmlFor="image-input" 
-                          className={`relative flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer overflow-hidden hover:border-indigo-400 transition-all bg-slate-50/50 hover:bg-slate-50
-                            ${previewUrl ? 'border-indigo-500' : ''}`}
-                        >
+                        <input type="file" accept="image/*" onChange={handleImageChange} id="image-input" className="hidden" ref={imageInputRef}/>
+                        <label htmlFor="image-input" className={`relative flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer overflow-hidden hover:border-indigo-400 transition-all bg-slate-50/50 hover:bg-slate-50 ${previewUrl ? 'border-indigo-500' : ''}`}>
                           {previewUrl ? (
                             <>
                               <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover opacity-60 transition-opacity group-hover:opacity-40 animate-fade-in" alt="Preview" />
                               <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
                             </>
                           ) : null}
-                          
                           <div className="relative z-10 flex flex-col items-center shadow-sm">
                             <IconImage className={`w-12 h-12 mb-3 drop-shadow-sm ${previewUrl ? 'text-white' : 'text-slate-300'}`} />
                             <span className={`text-xs font-black px-3 py-1 rounded-full ${previewUrl ? 'bg-black/50 text-white backdrop-blur-sm' : 'text-slate-400'}`}>
@@ -488,7 +409,7 @@
                       </div>
                     </div>
 
-                    {/* 動作區 */}
+                    {/* Actions */}
                     <div className="pt-8 border-t border-slate-100">
                       {isProcessing ? (
                         <div className="space-y-6 animate-fade-in">
@@ -514,17 +435,10 @@
                           </div>
                           
                           <div className="flex flex-col gap-4">
-                            <a 
-                              href={outputUrl} 
-                              download={`${audioFile?.name.replace(/\.[^/.]+$/, "")}_video.mp4`} 
-                              className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-5 rounded-3xl font-black text-xl shadow-xl shadow-slate-200 transition-all active:scale-[0.98] hover:shadow-2xl"
-                            >
+                            <a href={outputUrl} download={`${audioFile?.name.replace(/\.[^/.]+$/, "")}_video.mp4`} className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-5 rounded-3xl font-black text-xl shadow-xl shadow-slate-200 transition-all active:scale-[0.98] hover:shadow-2xl">
                               <IconDownload className="w-6 h-6" /> 下載影片檔案
                             </a>
-                            <button 
-                              onClick={handleReset} 
-                              className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-4 transition-colors uppercase tracking-widest"
-                            >
+                            <button onClick={handleReset} className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-4 transition-colors uppercase tracking-widest">
                               <IconRefreshCw className="w-4 h-4" /> 轉換另一個檔案
                             </button>
                           </div>
@@ -533,10 +447,7 @@
                         <button
                           disabled={!audioFile || !loaded}
                           onClick={convertToVideo}
-                          className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-4 
-                            ${audioFile && loaded 
-                              ? 'bg-slate-900 text-white hover:bg-black hover:shadow-2xl shadow-blue-900/20' 
-                              : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'}`}
+                          className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-4 ${audioFile && loaded ? 'bg-slate-900 text-white hover:bg-black hover:shadow-2xl shadow-blue-900/20' : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'}`}
                         >
                           <IconVideo className="w-8 h-8" /> 開始生成影片
                         </button>
@@ -557,7 +468,7 @@
                 </div>
                 
                 <p className="text-center text-slate-400 text-xs mt-8 font-medium">
-                  v0.9.8 • 通用相容模式
+                  v0.9.8 • 離線優先/GitHub支援
                 </p>
               </div>
             </div>
