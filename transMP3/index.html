@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 /**
- * 自定義 SVG 圖標組件 - 解決外部導入錯誤
+ * 自定義 SVG 圖標組件
  */
 const IconMusic = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -57,15 +57,10 @@ const IconShieldAlert = ({ className }) => (
   </svg>
 );
 
-const IconCode = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-  </svg>
-);
-
-/* GitHub Pages 部署指南：
-  請確保 index.html 的 <head> 中有引入 Tailwind CSS CDN：
-  <script src="https://cdn.tailwindcss.com"></script>
+/* GitHub Pages 部署特別說明：
+   由於使用了 SharedArrayBuffer (FFmpeg.wasm 必需)，
+   您必須在 index.html 引入 coi-serviceworker.js 
+   並確保部署環境支援 Cross-Origin Isolation。
 */
 
 export default function App() {
@@ -80,9 +75,13 @@ export default function App() {
   const [error, setError] = useState(null);
   const [securityError, setSecurityError] = useState(false);
 
+  // 用於重置 input value，允許重複選擇相同檔案
+  const audioInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const ffmpegRef = useRef(null);
 
   const loadFFmpeg = async () => {
+    // 檢查瀏覽器安全性環境
     if (!window.SharedArrayBuffer) {
       setSecurityError(true);
       setError('瀏覽器安全性限制：未偵測到 SharedArrayBuffer。');
@@ -91,6 +90,7 @@ export default function App() {
 
     try {
       setLoadingMsg('載入 FFmpeg 核心組件...');
+      // 動態導入，避免 SSR 或 bundler 問題
       const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
       const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
       
@@ -99,9 +99,14 @@ export default function App() {
 
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
       
-      ffmpeg.on('log', ({ message }) => console.log(message));
+      ffmpeg.on('log', ({ message }) => {
+        console.log(message);
+        // 過濾一些關鍵日誌顯示給使用者看也是不錯的選擇，但這裡保持簡單
+      });
+
       ffmpeg.on('progress', ({ progress }) => {
-        setProgress(Math.round(progress * 100));
+        // 確保進度在 0-100 之間
+        setProgress(Math.min(Math.max(Math.round(progress * 100), 0), 100));
       });
 
       await ffmpeg.load({
@@ -112,19 +117,28 @@ export default function App() {
       setLoaded(true);
     } catch (err) {
       console.error(err);
-      setError('編碼引擎載入失敗，請確認網路連線或 index.html 設定。');
+      setError('編碼引擎載入失敗，請確認網路連線或 CORS 設定。');
     }
   };
 
   useEffect(() => {
     loadFFmpeg();
+    // 組件卸載時清理 URL 對象
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (outputUrl) URL.revokeObjectURL(outputUrl);
+    };
   }, []);
 
   const handleAudioChange = (e) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('audio/')) {
       setAudioFile(file);
-      setOutputUrl(null);
+      // 清除上一次的結果，讓使用者知道狀態已變更
+      if (outputUrl) {
+        URL.revokeObjectURL(outputUrl);
+        setOutputUrl(null);
+      }
       setError(null);
     }
   };
@@ -135,8 +149,26 @@ export default function App() {
       setImageFile(file);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(file));
-      setOutputUrl(null);
+      
+      if (outputUrl) {
+        URL.revokeObjectURL(outputUrl);
+        setOutputUrl(null);
+      }
     }
+  };
+
+  const handleReset = () => {
+    setAudioFile(null);
+    setImageFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (outputUrl) URL.revokeObjectURL(outputUrl);
+    setOutputUrl(null);
+    setError(null);
+    setProgress(0);
+    // 重置 input 值
+    if (audioInputRef.current) audioInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   const generateBlackImageBlob = async () => {
@@ -144,8 +176,16 @@ export default function App() {
     canvas.width = 1280;
     canvas.height = 720;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 繪製簡單的音符圖標或文字在中間，避免畫面太單調 (選用)
+    ctx.fillStyle = '#333333';
+    ctx.font = 'bold 48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Audio Only', canvas.width/2, canvas.height/2);
+
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   };
 
@@ -161,6 +201,7 @@ export default function App() {
     try {
       const { fetchFile } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
       
+      // 寫入檔案
       await ffmpeg.writeFile('audio.mp3', await fetchFile(audioFile));
       
       if (imageFile) {
@@ -170,6 +211,10 @@ export default function App() {
         await ffmpeg.writeFile('cover.png', await fetchFile(blackBlob));
       }
 
+      // 執行 FFmpeg 指令
+      // -tune stillimage: 優化靜態圖片編碼
+      // -shortest: 影片長度與最短的串流（音訊）一致
+      // pad=...: 確保長寬是偶數 (H.264 要求) 且維持比例並填充黑邊
       await ffmpeg.exec([
         '-loop', '1',
         '-r', '1', 
@@ -190,20 +235,34 @@ export default function App() {
       setOutputUrl(url);
     } catch (err) {
       console.error(err);
-      setError('轉換過程中發生錯誤。請重新整理網頁再試。');
+      setError('轉換過程中發生錯誤。請檢查檔案格式或重新整理網頁。');
     } finally {
       setIsProcessing(false);
+      
+      // 清理 FFmpeg 虛擬檔案系統，釋放記憶體
+      try {
+        await ffmpeg.deleteFile('audio.mp3');
+        await ffmpeg.deleteFile('cover.png');
+        await ffmpeg.deleteFile('output.mp4');
+      } catch (e) {
+        // 忽略清理錯誤
+      }
     }
   };
 
+  // 嚴重安全性錯誤 (GitHub Pages 常見)
   if (securityError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100 p-6">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-lg w-full border border-red-50 text-center">
           <IconShieldAlert className="w-20 h-20 text-red-500 mx-auto mb-6" />
           <h2 className="text-2xl font-black text-slate-800 mb-4">GitHub Pages 安全隔離錯誤</h2>
-          <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            偵測到 <code>SharedArrayBuffer</code> 未啟用。請確認 <code>index.html</code> 的 <code>&lt;head&gt;</code> 中已加入 <code>coi-serviceworker.js</code>。
+          <p className="text-slate-500 text-sm leading-relaxed mb-8 text-left bg-slate-50 p-4 rounded-xl">
+            偵測到 <code>SharedArrayBuffer</code> 未啟用。FFmpeg.wasm 需要跨來源隔離環境。<br/><br/>
+            <strong>解決方案：</strong><br/>
+            1. 下載 <code>coi-serviceworker.js</code> 並放入專案根目錄。<br/>
+            2. 在 <code>index.html</code> 的 <code>&lt;head&gt;</code> 加入：<br/>
+            <code className="block bg-slate-200 p-2 rounded mt-2 text-xs break-all">&lt;script src="coi-serviceworker.js"&gt;&lt;/script&gt;</code>
           </p>
           <button onClick={() => window.location.reload()} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95 shadow-lg">
             我已修復，重新整理
@@ -213,12 +272,14 @@ export default function App() {
     );
   }
 
+  // 載入畫面
   if (!loaded && !error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center">
+        <div className="p-12 bg-white rounded-[3rem] shadow-xl flex flex-col items-center animate-in zoom-in duration-300">
           <IconLoader2 className="w-16 h-16 text-blue-600 mb-6" />
           <p className="text-slate-800 font-black text-xl animate-pulse">{loadingMsg}</p>
+          <p className="text-slate-400 text-sm mt-2">首次載入可能需要較長時間</p>
         </div>
       </div>
     );
@@ -229,74 +290,142 @@ export default function App() {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-[2.5rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white">
           
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-10 text-white relative">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-10 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-10 -translate-y-10">
+              <IconVideo className="w-64 h-64" />
+            </div>
             <div className="relative z-10">
               <h1 className="text-3xl font-black flex items-center gap-3 tracking-tighter">
                 <IconVideo className="text-blue-400 w-8 h-8" /> MP3 影片封裝助手
               </h1>
-              <p className="text-blue-200/60 text-sm mt-2 font-medium tracking-wide">本地瀏覽器無損封裝技術</p>
+              <p className="text-blue-200/60 text-sm mt-2 font-medium tracking-wide pl-1">
+                本地瀏覽器端處理 • 無需上傳伺服器 • 隱私安全
+              </p>
             </div>
           </div>
 
           <div className="p-10 space-y-8">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl flex items-start gap-4 animate-in fade-in">
+              <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl flex items-start gap-4 animate-in fade-in slide-in-from-top-4">
                 <IconAlertCircle className="text-red-500 shrink-0 mt-0.5" />
-                <p className="text-red-700 text-sm font-bold">{error}</p>
+                <div className="flex-1">
+                  <h3 className="text-red-800 font-bold text-sm mb-1">發生錯誤</h3>
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-[11px] font-black text-slate-400 px-1 uppercase tracking-widest block">1. 選擇音訊 (MP3)</label>
-                <input type="file" accept="audio/mp3,audio/mpeg" onChange={handleAudioChange} id="audio-input" className="hidden" />
-                <label htmlFor="audio-input" className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${audioFile ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}>
-                  <IconMusic className={`w-12 h-12 mb-3 ${audioFile ? 'text-blue-500' : 'text-slate-300'}`} />
-                  <span className="text-xs font-black text-slate-600 px-6 text-center line-clamp-2">
-                    {audioFile ? audioFile.name : '點擊上傳 MP3'}
-                  </span>
+              {/* 音訊上傳區 */}
+              <div className="space-y-3 group">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">1. 選擇音訊 (MP3)</label>
+                  {audioFile && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">已就緒</span>}
+                </div>
+                <input 
+                  type="file" 
+                  accept="audio/mp3,audio/mpeg,audio/wav" 
+                  onChange={handleAudioChange} 
+                  id="audio-input" 
+                  className="hidden" 
+                  ref={audioInputRef}
+                />
+                <label 
+                  htmlFor="audio-input" 
+                  className={`flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 relative overflow-hidden
+                    ${audioFile 
+                      ? 'border-blue-500 bg-blue-50/50' 
+                      : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'
+                    }`}
+                >
+                  <IconMusic className={`w-12 h-12 mb-3 transition-colors ${audioFile ? 'text-blue-500' : 'text-slate-300 group-hover:text-blue-400'}`} />
+                  <div className="z-10 text-center px-4 w-full">
+                     {audioFile ? (
+                       <>
+                         <p className="text-sm font-bold text-slate-700 truncate w-full">{audioFile.name}</p>
+                         <p className="text-xs text-slate-400 mt-1">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                       </>
+                     ) : (
+                       <span className="text-xs font-black text-slate-400 group-hover:text-slate-600 transition-colors">點擊上傳 MP3</span>
+                     )}
+                  </div>
                 </label>
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[11px] font-black text-slate-400 px-1 uppercase tracking-widest block">2. 封面圖片 (選填)</label>
-                <input type="file" accept="image/*" onChange={handleImageChange} id="image-input" className="hidden" />
-                <label htmlFor="image-input" className="relative flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer overflow-hidden hover:border-indigo-400 transition-all">
-                  {previewUrl ? <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover opacity-50" alt="Preview" /> : null}
-                  <div className="relative z-10 flex flex-col items-center">
-                    <IconImage className={`w-12 h-12 mb-3 ${previewUrl ? 'text-white' : 'text-slate-300'}`} />
-                    <span className={`text-xs font-black ${previewUrl ? 'text-white' : 'text-slate-600'}`}>{imageFile ? '更換圖片' : '預設黑畫面'}</span>
+              {/* 圖片上傳區 */}
+              <div className="space-y-3 group">
+                <div className="flex justify-between items-center px-1">
+                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">2. 封面圖片 (選填)</label>
+                   {imageFile && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">已就緒</span>}
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageChange} 
+                  id="image-input" 
+                  className="hidden" 
+                  ref={imageInputRef}
+                />
+                <label 
+                  htmlFor="image-input" 
+                  className={`relative flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer overflow-hidden hover:border-indigo-400 transition-all bg-slate-50/50 hover:bg-slate-50
+                    ${previewUrl ? 'border-indigo-500' : ''}`}
+                >
+                  {previewUrl ? (
+                    <>
+                      <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover opacity-60 transition-opacity group-hover:opacity-40" alt="Preview" />
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                    </>
+                  ) : null}
+                  
+                  <div className="relative z-10 flex flex-col items-center shadow-sm">
+                    <IconImage className={`w-12 h-12 mb-3 drop-shadow-sm ${previewUrl ? 'text-white' : 'text-slate-300'}`} />
+                    <span className={`text-xs font-black px-3 py-1 rounded-full ${previewUrl ? 'bg-black/50 text-white backdrop-blur-sm' : 'text-slate-400'}`}>
+                      {imageFile ? '更換圖片' : '預設黑畫面'}
+                    </span>
                   </div>
                 </label>
               </div>
             </div>
 
+            {/* 動作區 */}
             <div className="pt-8 border-t border-slate-100">
               {isProcessing ? (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-in fade-in">
                   <div className="flex justify-between items-end">
                     <div className="flex items-center gap-3 text-blue-600 font-black italic">
-                      <IconLoader2 className="w-5 h-5" /> 封裝中...
+                      <IconLoader2 className="w-5 h-5" /> 
+                      <span>正在封裝影片... <span className="text-xs font-normal not-italic text-slate-400">(大檔案可能需要幾分鐘)</span></span>
                     </div>
                     <span className="text-slate-400 font-mono text-sm font-bold">{progress}%</span>
                   </div>
-                  <div className="h-5 bg-slate-100 rounded-full overflow-hidden p-1">
-                    <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                  <div className="h-5 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300 ease-out shadow-sm" style={{ width: `${progress}%` }}></div>
                   </div>
                 </div>
               ) : outputUrl ? (
-                <div className="space-y-8 animate-in slide-in-from-bottom-8">
+                <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                   <div className="bg-emerald-50 text-emerald-700 py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-black shadow-sm border border-emerald-100">
                     <IconCheckCircle className="w-6 h-6" /> 轉換成功！
                   </div>
-                  <div className="rounded-[2rem] overflow-hidden bg-black aspect-video shadow-2xl border-4 border-white">
+                  
+                  <div className="rounded-[2rem] overflow-hidden bg-black aspect-video shadow-2xl border-4 border-white ring-1 ring-slate-200/50">
                     <video src={outputUrl} controls className="w-full h-full" />
                   </div>
+                  
                   <div className="flex flex-col gap-4">
-                    <a href={outputUrl} download={`${audioFile?.name.split('.')[0] || 'converted'}.mp4`} className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-5 rounded-3xl font-black text-xl shadow-xl transition-all active:scale-[0.98]">
+                    <a 
+                      href={outputUrl} 
+                      download={`${audioFile?.name.replace(/\.[^/.]+$/, "")}_video.mp4`} 
+                      className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-5 rounded-3xl font-black text-xl shadow-xl shadow-slate-200 transition-all active:scale-[0.98] hover:shadow-2xl"
+                    >
                       <IconDownload className="w-6 h-6" /> 下載影片檔案
                     </a>
-                    <button onClick={() => setOutputUrl(null)} className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-4 transition-colors">
+                    <button 
+                      onClick={handleReset} 
+                      className="text-slate-400 hover:text-slate-900 text-xs font-black flex items-center justify-center gap-2 py-4 transition-colors uppercase tracking-widest"
+                    >
                       <IconRefreshCw className="w-4 h-4" /> 轉換另一個檔案
                     </button>
                   </div>
@@ -305,7 +434,10 @@ export default function App() {
                 <button
                   disabled={!audioFile || !loaded}
                   onClick={convertToVideo}
-                  className={`w-full py-6 rounded-3xl font-black text-2xl shadow-2xl transition-all transform active:scale-95 flex items-center justify-center gap-4 ${audioFile && loaded ? 'bg-slate-900 text-white hover:bg-black shadow-blue-200' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                  className={`w-full py-6 rounded-3xl font-black text-2xl shadow-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-4 
+                    ${audioFile && loaded 
+                      ? 'bg-slate-900 text-white hover:bg-black hover:shadow-2xl shadow-blue-900/20' 
+                      : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'}`}
                 >
                   <IconVideo className="w-8 h-8" /> 開始生成影片
                 </button>
@@ -313,17 +445,21 @@ export default function App() {
             </div>
           </div>
 
-          <div className="bg-slate-50 p-10 border-t border-slate-100 grid grid-cols-2 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">影像軌道</p>
-              <p className="text-xs font-bold text-slate-700 text-center">H.264 (1 FPS)</p>
+          <div className="bg-slate-50 p-6 border-t border-slate-200/60 grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">影像規格</p>
+              <p className="text-xs font-bold text-slate-600">H.264 / 720p</p>
             </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">音訊模式</p>
-              <p className="text-xs font-bold text-slate-700 text-center">無損流拷貝</p>
+            <div className="flex flex-col items-center justify-center border-l border-slate-200">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">音訊規格</p>
+              <p className="text-xs font-bold text-slate-600">Copy (無損拷貝)</p>
             </div>
           </div>
         </div>
+        
+        <p className="text-center text-slate-400 text-xs mt-8 font-medium">
+          Powered by FFmpeg.wasm • 瀏覽器本地運算
+        </p>
       </div>
     </div>
   );
