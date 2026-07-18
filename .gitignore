@@ -1,0 +1,19 @@
+# Local project and generated documents must never be published.
+projects/
+private/
+exports/
+*.quotation.json
+*.contract.json
+
+# Credentials and local environment files.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Tooling output.
+node_modules/
+dist/
+.wrangler/
+.dev.vars
