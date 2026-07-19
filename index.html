@@ -643,12 +643,46 @@
                 </div>
             );
         };
-        
+
+        const ContractTemplateControls = ({ templates, onApply, onSaveCurrent, compact = false }) => (
+            <div className={`no-print flex items-center gap-1.5 ${compact ? 'w-full' : ''}`}>
+                <select
+                    className={`border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'flex-1 text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
+                    defaultValue=""
+                    aria-label="套用合約條款範本"
+                    onChange={(event) => {
+                        const templateId = event.target.value;
+                        if (templateId) onApply(templateId);
+                        event.target.value = '';
+                    }}
+                >
+                    <option value="">套用條款範本...</option>
+                    {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
+                </select>
+                <button type="button" onClick={onSaveCurrent} className={`shrink-0 rounded-md border border-kino/30 text-kino hover:bg-kino hover:text-white transition ${compact ? 'px-2 py-1.5 text-xs' : 'px-2 py-1 text-xs'}`}>
+                    <i className="fas fa-bookmark mr-1"></i>存為範本
+                </button>
+            </div>
+        );
+
         const PAYMENT_TEMPLATES = {
             "3stage": [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
             "2stage": [ { phase: "第一期 (訂金)", percent: "50%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (尾款)", percent: "50%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
             "full_pre": [ { phase: "全額付清 (先付)", percent: "100%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "一次性付款 (預付)" } ],
             "full_post": [ { phase: "全額付清 (後付)", percent: "100%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "一次性付款 (驗收後)" } ]
+        };
+        const CONTRACT_TEMPLATE_STORAGE_KEY = 'kino_quotation_contract_templates_v1';
+        const BUILTIN_CONTRACT_TEMPLATES = [
+            { id: 'kino-standard', name: 'KINO 標準影音條款', notes: DEFAULT_NOTES_TEXT }
+        ];
+        const loadContractTemplates = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(CONTRACT_TEMPLATE_STORAGE_KEY) || '[]');
+                return Array.isArray(stored) ? stored.filter(template => template?.id && template?.name && Array.isArray(template?.notes)) : [];
+            } catch (error) {
+                console.warn('Contract template load error', error);
+                return [];
+            }
         };
 
         const formatCurrency = (val) => new Intl.NumberFormat('zh-TW').format(val);
@@ -684,6 +718,8 @@
             const [mode, setMode] = useState(getResponsiveMode);
             const [data, _setData] = useState(getInitialData());
             const [fileHandle, setFileHandle] = useState(null);
+            const [contractTemplates, setContractTemplates] = useState(loadContractTemplates);
+            const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
             const [toast, setToast] = useState(null);
@@ -751,6 +787,7 @@
             }, []);
 
             useEffect(() => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); }, [data]);
+            useEffect(() => { localStorage.setItem(CONTRACT_TEMPLATE_STORAGE_KEY, JSON.stringify(contractTemplates)); }, [contractTemplates]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
                 const syncResponsiveMode = () => setMode(mediaQuery.matches ? 'mobile' : 'desktop');
@@ -832,7 +869,7 @@
                 }
             };
 
-            const handleLegacyLoad = (e) => { 
+            const handleLegacyLoad = (e) => {
                 const file = e.target.files[0]; 
                 if (!file) return; 
                 const reader = new FileReader(); 
@@ -850,6 +887,22 @@
                 reader.readAsText(file); 
             };
             const handleManualSave = () => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); showToast("已儲存至瀏覽器快取"); };
+            const applyContractTemplate = (templateId) => {
+                const template = allContractTemplates.find(item => item.id === templateId);
+                if (!template) return;
+                if (confirm(`套用「${template.name}」？這會取代目前的 ${data.notes.length} 條專案條款。`)) {
+                    setData(prev => ({ ...prev, notes: template.notes.map(text => ({ id: generateId(), text })) }));
+                    showToast(`已套用「${template.name}」`);
+                }
+            };
+            const saveCurrentContractTemplate = () => {
+                const name = prompt('請輸入條款範本名稱：', `專案條款 ${getLocalISODate()}`);
+                if (!name?.trim()) return;
+                const notes = data.notes.map(note => (note.text || note || '').trim()).filter(Boolean);
+                if (!notes.length) { showToast('目前沒有可儲存的條款'); return; }
+                setContractTemplates(prev => [...prev, { id: `custom-${Date.now()}`, name: name.trim(), notes }]);
+                showToast(`已儲存「${name.trim()}」為本機範本`);
+            };
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
             return (
@@ -860,7 +913,8 @@
                     <div id="desktop-root" style={{ display: mode === 'desktop' ? 'block' : 'none' }}>
                         <DesktopView 
                             data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
-                            handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave} 
+                            handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave}
+                            contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             mode={mode}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
@@ -869,7 +923,8 @@
                     <div id="mobile-root" style={{ display: mode === 'mobile' ? 'block' : 'none' }}>
                         <MobileView 
                             data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
-                            handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode} 
+                            handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode}
+                            contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                         />
                     </div>
                 </div>
@@ -988,7 +1043,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             
             // [V54 Change] Desktop Scroll functions
@@ -1095,7 +1150,13 @@
                                 </div>
                                 <div className="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block break-inside-avoid"><div className="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print"><label className="text-xs font-bold text-gray-500 mr-1">稅額計算：</label><select value={data.taxMode} onChange={e => setData({...data, taxMode: e.target.value})} className="text-xs border rounded bg-white"><option value="excluded">報價未稅</option><option value="inclusive_flat">報價含稅</option><option value="included">稅外 (5%)</option></select></div><div className="grid grid-cols-2 font-medium"><div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計 (∆)</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div><div className="bg-kino text-white px-2 py-1 flex flex-col justify-center"><span className="font-bold print-summary-text-sm">本次報價總金額 ({data.taxMode === 'included' || data.taxMode === 'inclusive_flat' ? '含稅' : '未稅'})</span>{calcs.taxText && <span className="text-xs opacity-90 scale-90 origin-left">{calcs.taxText}</span>}</div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div></div></div>
                                 <div className="section-block quick-contract-section">
-                                    <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">三、 客製化專案細節 (Customization Details)</h2><div className="text-xs text-gray-400 no-print"><i className="fas fa-pen mr-1"></i>點擊下方文字即可編輯。</div></div>
+                                    <div className="flex flex-wrap justify-between items-center gap-2 mt-6 mb-2 border-l-4 border-kino pl-3">
+                                        <h2 className="text-lg font-bold">三、 客製化專案細節 (Customization Details)</h2>
+                                        <div className="flex items-center gap-2 no-print">
+                                            <ContractTemplateControls templates={contractTemplates} onApply={applyContractTemplate} onSaveCurrent={saveCurrentContractTemplate} />
+                                            <div className="text-xs text-gray-400"><i className="fas fa-pen mr-1"></i>點擊下方文字即可編輯。</div>
+                                        </div>
+                                    </div>
                                     
                                     {/* [v1.05 Change] Added container styling for print background */}
                                     <div className="quick-contract-list space-y-2 mt-4 print:bg-kino-50 print:p-4 print:rounded-lg">
@@ -1238,7 +1299,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1422,6 +1483,7 @@
                         </div>
                         <div id="m-notes" className="mobile-section">
                             <h2 className="text-kino font-bold text-lg mb-2">專案合約細節</h2>
+                            <div className="mb-3"><ContractTemplateControls templates={contractTemplates} onApply={applyContractTemplate} onSaveCurrent={saveCurrentContractTemplate} compact={true} /></div>
                             <div className="space-y-3">
                                 {data.notes.map((note, i) => (
                                     <div 
