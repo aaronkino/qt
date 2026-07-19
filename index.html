@@ -421,7 +421,8 @@
             .quick-acceptance-table tbody th { width: 18mm; background: #eaf2f7 !important; color: #105482 !important; text-align: left; font-weight: 700 !important; }
             .quick-acceptance-table tr > *:last-child { border-right: 0 !important; }
             .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
-            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 35mm; color: #667085; }
+            /* 內容框 34.2mm + 儲存格內距與邊框後，整個簽署列為 35mm。 */
+            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 34.2mm; color: #667085; }
             .quick-acceptance-signature img { max-width: 95%; max-height: 32mm; object-fit: contain; }
             .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
