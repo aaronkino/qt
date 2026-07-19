@@ -332,39 +332,43 @@
             }
             .quick-print-meta {
                 display: grid;
-                grid-template-columns: 1.2fr .8fr 1fr;
-                gap: 5mm;
-                padding: 1.5mm 0 2mm;
-                border-bottom: 1px solid #d0d5dd;
+                grid-template-columns: 30mm 36mm minmax(0, 1fr);
+                gap: 2.5mm;
+                padding: 2mm 0;
             }
-            .quick-print-meta strong { display: inline; margin-right: 1.5mm; color: #667085; font-size: 7.5pt; letter-spacing: .06em; }
+            .quick-print-meta > div { min-width: 0; padding: 1.2mm 2mm; border-radius: 2mm; background: #f2f6f9; }
+            .quick-print-meta strong { display: block; margin: 0 0 .35mm; color: #667085; font-size: 7pt; line-height: 1.1; letter-spacing: .06em; }
+            .quick-print-validity { font-size: 7.5pt; line-height: 1.2; overflow-wrap: anywhere; }
             .quick-print-flow { display: block; }
             .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
             .quick-print-section + .quick-print-section { margin-top: 2.6mm; }
             .quick-print-section h2 {
                 margin: 0 0 .8mm;
-                padding: 0 0 .8mm;
-                border-bottom: 1px solid #d0d5dd;
-                background: transparent;
+                padding: 1mm 2mm;
+                border: 0;
+                border-radius: 1.8mm;
+                background: #eaf2f7;
                 color: #105482;
                 font-size: 8pt;
                 line-height: 1.15;
                 font-weight: 700;
                 letter-spacing: .12em;
             }
-            .quick-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8mm; }
-            .quick-project-item { display: grid; grid-template-columns: 22mm 1fr; min-width: 0; padding: .55mm 0; border-bottom: 1px solid #eef0f3; }
+            .quick-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2mm 2.5mm; }
+            .quick-project-item { display: grid; grid-template-columns: 22mm 1fr; min-width: 0; padding: .8mm 2mm; border: 0; border-radius: 1.5mm; background: #f7f9fb; }
             .quick-project-item strong { color: #667085; font-size: 8pt; font-weight: 600; }
-            .quick-summary-list { display: grid; gap: 0; font-size: 8.8pt; }
-            .quick-summary-row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; padding: .55mm 0; border-bottom: 1px solid #eef0f3; }
+            .quick-summary-list { display: grid; gap: .7mm; font-size: 8.8pt; }
+            .quick-summary-row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; padding: .55mm 2mm; border: 0; border-radius: 1.3mm; background: #f7f9fb; }
             .quick-summary-row span:last-child { color: #667085; text-align: right; white-space: nowrap; }
             .quick-print-total {
                 display: flex;
                 justify-content: space-between;
                 align-items: baseline;
-                margin-top: 2mm;
-                padding: 2.2mm 0 0;
-                border-top: 1.5px solid #105482;
+                margin-top: .8mm;
+                padding: 1.4mm 2mm;
+                border: 0;
+                border-radius: 1.8mm;
+                background: #eaf2f7;
                 color: #105482;
                 font-weight: 700;
             }
@@ -372,48 +376,51 @@
             .quick-print-terms { margin: 0; padding-left: 6mm; list-style: decimal; font-size: 8.8pt; line-height: 1.34; }
             .quick-print-terms li { margin-bottom: .8mm; padding-left: 1mm; }
             .quick-print-terms li::marker { color: #105482; font-weight: 700; }
-            .quick-payment-list { display: grid; gap: 0; }
+            .quick-payment-list { display: grid; gap: 0; border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
             .quick-payment-header,
             .quick-payment-row {
                 display: grid;
                 grid-template-columns: 31mm 14mm minmax(0, 1fr) 36mm;
                 gap: 3mm;
                 align-items: center;
-                border-bottom: 1px solid #d0d5dd;
+                border: 0;
             }
             .quick-payment-header {
-                padding: .7mm 0;
-                color: #667085;
+                padding: .9mm 2mm;
+                background: #105482;
+                color: white;
                 font-size: 7.5pt;
                 font-weight: 700;
                 letter-spacing: .04em;
             }
-            .quick-payment-row { padding: 1mm 0; }
+            .quick-payment-row { padding: 1mm 2mm; }
+            .quick-payment-row:nth-child(odd) { background: #f4f7f9; }
             .quick-payment-percent { color: #105482; text-align: right; font-weight: 800; }
             .quick-payment-condition,
             .quick-payment-note { color: #4b5563; font-size: 8.1pt; line-height: 1.25; }
             .quick-bank {
                 margin-top: 2mm;
-                padding: 1.8mm 0 0;
-                border-top: 1px solid #d0d5dd;
+                padding: 1.6mm 2mm;
+                border: 0;
+                border-radius: 2mm;
+                background: #f2f6f9;
                 font-size: 8.5pt;
                 line-height: 1.35;
             }
-            .quick-print-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
-            .quick-signature-card { min-width: 0; padding: 1.8mm 0 0; border-top: 1px solid #d0d5dd; }
-            .quick-signature-card + .quick-signature-card { margin-top: 0; }
-            .quick-signature-card h3 { margin: 0 0 1mm; padding: 0; background: transparent; color: #105482; text-align: left; font-size: 8.5pt; }
-            .quick-signature-info { display: flex; flex-wrap: wrap; gap: 1mm 5mm; padding: 0; min-height: 0; font-size: 8pt; line-height: 1.28; }
-            .quick-signature-line {
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                height: 9mm;
-                margin: 1mm 0 0;
-                border-bottom: 1px solid #374151;
-            }
-            .quick-signature-line img { max-width: 95%; max-height: 8mm; object-fit: contain; }
-            .quick-signature-date { padding: 1mm 0 0; text-align: left; font-size: 8.2pt; }
+            .quick-bank-title { display: block; margin-bottom: 1mm; color: #105482; }
+            .quick-bank-grid { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 3mm; }
+            .quick-bank-item span { display: block; margin-bottom: .25mm; color: #667085; font-size: 7.2pt; font-weight: 700; }
+            .quick-bank-item strong { display: block; color: #182230; font-weight: 600; overflow-wrap: anywhere; }
+            .quick-acceptance-wrap { border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
+            .quick-acceptance-table { width: 100%; margin: 0 !important; border: 0 !important; font-size: 8pt; }
+            .quick-acceptance-table th,
+            .quick-acceptance-table td { padding: .65mm 2mm !important; border: 0 !important; border-right: 1px solid #e3e9ee !important; border-bottom: 1px solid #e3e9ee !important; background: white !important; color: #182230 !important; text-align: center; }
+            .quick-acceptance-table thead th { padding: 1mm 2mm !important; background: #105482 !important; color: white !important; font-weight: 700 !important; }
+            .quick-acceptance-table tbody th { width: 18mm; background: #eaf2f7 !important; color: #105482 !important; text-align: left; font-weight: 700 !important; }
+            .quick-acceptance-table tr > *:last-child { border-right: 0 !important; }
+            .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
+            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 8mm; color: #667085; }
+            .quick-acceptance-signature img { max-width: 95%; max-height: 7mm; object-fit: contain; }
             .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
 
@@ -873,22 +880,6 @@
             const taxLabel = data.taxMode === 'included' ? '稅外加 5%' : (data.taxMode === 'inclusive_flat' ? '含稅' : '未稅');
             const quickTitle = (data.header.title || '奇諾影像報價單').replace(/\s*\(Quotation\)\s*/i, '');
 
-            const signatureCard = (party, company, contact, taxId, phone, image) => (
-                <div className="quick-signature-card">
-                    <h3>{party}</h3>
-                    <div className="quick-signature-info">
-                        <div><strong>抬頭：</strong>{company || '　'}</div>
-                        <div><strong>代表：</strong>{contact || '　'}</div>
-                        <div><strong>統編：</strong>{taxId || '　'}</div>
-                        <div><strong>電話：</strong>{phone || '　'}</div>
-                    </div>
-                    <div className="quick-signature-line">
-                        {image ? <img src={image} alt={`${party}簽名`} /> : <span>簽章</span>}
-                    </div>
-                    {data.printSettings.showSigDate && <div className="quick-signature-date">日期：{data.signature.signatureDate || '　　　　'}</div>}
-                </div>
-            );
-
             return (
                 <article className="quick-print-sheet print-only" aria-label="快速報價 A4 列印版">
                     <header className="quick-print-header">
@@ -902,7 +893,7 @@
                     <div className="quick-print-meta">
                         <div><strong>報價單號</strong>{data.header.quotationId || '—'}</div>
                         <div><strong>報價日期</strong>{data.header.quotationDate || '—'}</div>
-                        <div><strong>有效期限</strong>{data.header.validity || '—'}</div>
+                        <div className="quick-print-validity"><strong>有效期限</strong>{data.header.validity || '—'}</div>
                     </div>
 
                     <div className="quick-print-flow">
@@ -950,19 +941,34 @@
                                     ))}
                                 </div>
                                 <div className="quick-bank">
-                                    <strong>乙方收款資訊</strong><br />
-                                    戶名：{data.bank.accountName || '—'}<br />
-                                    銀行：{data.bank.bankName || '—'}<br />
-                                    帳號：{data.bank.accountNumber || '—'}
+                                    <strong className="quick-bank-title">乙方收款資訊</strong>
+                                    <div className="quick-bank-grid">
+                                        <div className="quick-bank-item"><span>戶名</span><strong>{data.bank.accountName || '—'}</strong></div>
+                                        <div className="quick-bank-item"><span>銀行</span><strong>{data.bank.bankName || '—'}</strong></div>
+                                        <div className="quick-bank-item"><span>帳號</span><strong>{data.bank.accountNumber || '—'}</strong></div>
+                                    </div>
                                 </div>
                                 <p className="quick-print-warning">逾期付款：若甲方逾期或未足額支付，乙方得暫停後續製作或交付，直至款項結清。</p>
                         </section>
 
                         <section className="quick-print-section">
                                 <h2>ACCEPTANCE / 報價確認</h2>
-                                <div className="quick-print-signatures">
-                                    {signatureCard('甲方', data.signature.clientCompany, data.signature.clientContact, data.signature.clientTaxId, data.signature.clientPhone, data.signature.clientSigImg)}
-                                    {signatureCard('乙方', data.signature.vendorCompany, data.signature.vendorContact, data.signature.vendorTaxId, data.signature.vendorPhone, data.signature.vendorSigImg)}
+                                <div className="quick-acceptance-wrap">
+                                    <table className="quick-acceptance-table">
+                                        <thead><tr><th></th><th>甲方</th><th>乙方</th></tr></thead>
+                                        <tbody>
+                                            <tr><th>抬頭</th><td>{data.signature.clientCompany || '　'}</td><td>{data.signature.vendorCompany || '　'}</td></tr>
+                                            <tr><th>代表人</th><td>{data.signature.clientContact || '　'}</td><td>{data.signature.vendorContact || '　'}</td></tr>
+                                            <tr><th>統編</th><td>{data.signature.clientTaxId || '　'}</td><td>{data.signature.vendorTaxId || '　'}</td></tr>
+                                            <tr><th>電話</th><td>{data.signature.clientPhone || '　'}</td><td>{data.signature.vendorPhone || '　'}</td></tr>
+                                            <tr>
+                                                <th>簽署</th>
+                                                <td><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : '簽章'}</div></td>
+                                                <td><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : '簽章'}</div></td>
+                                            </tr>
+                                            {data.printSettings.showSigDate && <tr><th>日期</th><td colSpan="2">{data.signature.signatureDate || '　　　　'}</td></tr>}
+                                        </tbody>
+                                    </table>
                                 </div>
                         </section>
                     </div>
