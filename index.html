@@ -332,13 +332,13 @@
             }
             .quick-print-meta {
                 display: grid;
-                grid-template-columns: 30mm 36mm minmax(0, 1fr);
+                grid-template-columns: 48mm 36mm minmax(0, 1fr);
                 gap: 2.5mm;
                 padding: 1.2mm 0;
             }
-            .quick-print-meta > div { min-width: 0; padding: .8mm 2mm; border-radius: 2mm; background: #f2f6f9; }
+            .quick-print-meta > div { min-width: 0; padding: .8mm 2mm; border-radius: 2mm; background: #f2f6f9; font-size: 7.5pt; line-height: 1.2; }
             .quick-print-meta strong { display: block; margin: 0 0 .35mm; color: #667085; font-size: 7pt; line-height: 1.1; letter-spacing: .06em; }
-            .quick-print-validity { font-size: 7.5pt; line-height: 1.2; overflow-wrap: anywhere; }
+            .quick-print-validity { overflow-wrap: anywhere; }
             .quick-print-flow { display: block; }
             .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
             .quick-print-section + .quick-print-section { margin-top: 1.8mm; }
@@ -421,15 +421,16 @@
             .quick-acceptance-table tbody th { width: 18mm; background: #eaf2f7 !important; color: #105482 !important; text-align: left; font-weight: 700 !important; }
             .quick-acceptance-table tr > *:last-child { border-right: 0 !important; }
             .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
-            /* 內容框 34.2mm + 儲存格內距與邊框後，整個簽署列為 35mm。 */
-            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 34.2mm; color: #667085; }
-            .quick-acceptance-signature img { max-width: 95%; max-height: 32mm; object-fit: contain; }
+            /* 內容框 17.2mm + 儲存格內距與邊框後，整個簽署列為 18mm。 */
+            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 17.2mm; color: #667085; }
+            .quick-acceptance-signature img { max-width: 95%; max-height: 15mm; object-fit: contain; }
             .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
 
             /* 詳細報價：細項從新頁開始，允許依內容自動延伸 A4 頁面。 */
             .quotation-detailed { zoom: 1 !important; }
-            .quotation-detailed .quick-print-sheet { display: none !important; }
+            .quotation-detailed .quick-print-sheet { display: block !important; }
+            .quotation-detailed .standard-document-content > :not(.detailed-section) { display: none !important; }
             .quotation-detailed .detailed-section {
                 display: block !important;
                 break-before: page;
@@ -882,13 +883,14 @@
             const paymentTerms = Array.isArray(data.payment?.terms) ? data.payment.terms : [];
             const taxLabel = data.taxMode === 'included' ? '稅外加 5%' : (data.taxMode === 'inclusive_flat' ? '含稅' : '未稅');
             const quickTitle = (data.header.title || '奇諾影像報價單').replace(/\s*\(Quotation\)\s*/i, '');
+            const printModeLabel = data.quotationType === 'detailed' ? 'DETAILED QUOTATION' : 'QUICK QUOTATION';
 
             return (
                 <article className="quick-print-sheet print-only" aria-label="快速報價 A4 列印版">
                     <header className="quick-print-header">
                         <div>{data.logo && <img src={data.logo} className="quick-print-logo" alt="公司標誌" />}</div>
                         <div className="quick-print-title">
-                            <span className="quick-print-badge">QUICK QUOTATION / A4</span>
+                            <span className="quick-print-badge">{printModeLabel} / A4</span>
                             <h1>{quickTitle}</h1>
                         </div>
                     </header>
@@ -981,7 +983,7 @@
                         </section>
                     </div>
 
-                    <footer className="quick-print-footer"><span>KINO STUDIO / QUICK QUOTATION</span><span>A4 · 01 / 01</span></footer>
+                    <footer className="quick-print-footer"><span>KINO STUDIO / {printModeLabel}</span><span>A4 · 01 / {data.quotationType === 'detailed' ? '02+' : '01'}</span></footer>
                 </article>
             );
         };
