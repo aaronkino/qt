@@ -352,8 +352,8 @@
                 font-weight: 700;
                 letter-spacing: .12em;
             }
-            .quick-project-list { display: grid; gap: 0; }
-            .quick-project-item { display: grid; grid-template-columns: 28mm 1fr; min-width: 0; padding: .35mm 0; border-bottom: 1px solid #eef0f3; }
+            .quick-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8mm; }
+            .quick-project-item { display: grid; grid-template-columns: 22mm 1fr; min-width: 0; padding: .55mm 0; border-bottom: 1px solid #eef0f3; }
             .quick-project-item strong { color: #667085; font-size: 8pt; font-weight: 600; }
             .quick-summary-list { display: grid; gap: 0; font-size: 8.8pt; }
             .quick-summary-row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; padding: .55mm 0; border-bottom: 1px solid #eef0f3; }
@@ -373,15 +373,25 @@
             .quick-print-terms li { margin-bottom: .8mm; padding-left: 1mm; }
             .quick-print-terms li::marker { color: #105482; font-weight: 700; }
             .quick-payment-list { display: grid; gap: 0; }
+            .quick-payment-header,
             .quick-payment-row {
                 display: grid;
-                grid-template-columns: 1fr 13mm;
-                gap: 1mm 2mm;
-                padding: .8mm 0;
+                grid-template-columns: 31mm 14mm minmax(0, 1fr) 36mm;
+                gap: 3mm;
+                align-items: center;
                 border-bottom: 1px solid #d0d5dd;
             }
+            .quick-payment-header {
+                padding: .7mm 0;
+                color: #667085;
+                font-size: 7.5pt;
+                font-weight: 700;
+                letter-spacing: .04em;
+            }
+            .quick-payment-row { padding: 1mm 0; }
             .quick-payment-percent { color: #105482; text-align: right; font-weight: 800; }
-            .quick-payment-condition { grid-column: 1 / -1; color: #4b5563; font-size: 8.3pt; }
+            .quick-payment-condition,
+            .quick-payment-note { color: #4b5563; font-size: 8.1pt; line-height: 1.25; }
             .quick-bank {
                 margin-top: 2mm;
                 padding: 1.8mm 0 0;
@@ -927,11 +937,15 @@
                         <section className="quick-print-section">
                                 <h2>PAYMENT / 付款方式</h2>
                                 <div className="quick-payment-list">
+                                    <div className="quick-payment-header" aria-hidden="true">
+                                        <span>階段</span><span style={{textAlign: 'right'}}>比例</span><span>付款條件</span><span>備註</span>
+                                    </div>
                                     {paymentTerms.map((term, index) => (
                                         <div className="quick-payment-row" key={index}>
                                             <strong>{term.phase || `第 ${index + 1} 期`}</strong>
                                             <span className="quick-payment-percent">{term.percent}</span>
-                                            <div className="quick-payment-condition">{term.condition}{term.notes ? `｜${term.notes}` : ''}</div>
+                                            <div className="quick-payment-condition">{term.condition}</div>
+                                            <div className="quick-payment-note">{term.notes || '—'}</div>
                                         </div>
                                     ))}
                                 </div>
