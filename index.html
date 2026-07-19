@@ -81,8 +81,8 @@
 
         /* [V53 Change] 列印核心邏輯修正 */
         @media print {
-            /* 邊界調整為 10mm */
-            @page { size: A4; margin: 10mm; }
+            /* A4 安全邊界：保留印表機裁切空間，同時提高單頁可用高度。 */
+            @page { size: A4; margin: 8mm; }
             body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
             
             .no-print { display: none !important; }
@@ -294,13 +294,126 @@
             .section-block { break-inside: avoid; margin-bottom: 10px !important; }
             h1, h2, h3 { break-after: avoid; }
             
-            /* 快速報價：固定輸出一張 A4，隱藏細項並保留舊版 65% 縮放策略。 */
-            .quotation-quick { zoom: 0.65 !important; }
-            .quotation-quick .detailed-section { display: none !important; }
-            .quotation-quick .section-3-4-break { break-before: auto; page-break-before: auto; }
+            /* 快速報價：專用 A4 結構，以雙欄分配內容，不縮放整張文件。 */
+            .quotation-quick { zoom: 1 !important; }
+            .quotation-quick .standard-document-content { display: none !important; }
+            .quotation-quick .quick-print-sheet { display: block !important; }
+            .quotation-quick .page-container { min-height: 0 !important; }
+            .quotation-quick #desktop-root > .bg-gray-100 {
+                min-height: 0 !important;
+                padding-bottom: 0 !important;
+            }
+
+            .quick-print-sheet {
+                color: #182230;
+                font-size: 9pt;
+                line-height: 1.3;
+            }
+            .quick-print-header {
+                display: grid;
+                grid-template-columns: 34mm 1fr;
+                align-items: center;
+                min-height: 17mm;
+                padding-bottom: 3mm;
+                border-bottom: 1px solid #d0d5dd;
+            }
+            .quick-print-logo { max-width: 30mm; max-height: 13mm; object-fit: contain; }
+            .quick-print-title { text-align: right; }
+            .quick-print-title h1 { margin: 1mm 0 0; font-size: 18pt; line-height: 1.05; font-weight: 800; letter-spacing: .02em; }
+            .quick-print-badge {
+                display: block;
+                margin: 0;
+                padding: 0;
+                background: transparent;
+                color: #105482;
+                font-size: 7.5pt;
+                font-weight: 700;
+                letter-spacing: .16em;
+            }
+            .quick-print-meta {
+                display: grid;
+                grid-template-columns: 1.2fr .8fr 1fr;
+                gap: 5mm;
+                padding: 2.5mm 0 3mm;
+                border-bottom: 1px solid #d0d5dd;
+            }
+            .quick-print-meta strong { display: inline; margin-right: 1.5mm; color: #667085; font-size: 7.5pt; letter-spacing: .06em; }
+            .quick-print-top,
+            .quick-print-columns { display: grid; gap: 8mm; align-items: start; }
+            .quick-print-top { grid-template-columns: .88fr 1.12fr; margin-top: 5mm; }
+            .quick-print-columns { grid-template-columns: 1.18fr .82fr; margin-top: 5mm; }
+            .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
+            .quick-print-section h2 {
+                margin: 0 0 2mm;
+                padding: 0 0 1.4mm;
+                border-bottom: 1px solid #d0d5dd;
+                background: transparent;
+                color: #105482;
+                font-size: 8pt;
+                line-height: 1.15;
+                font-weight: 700;
+                letter-spacing: .12em;
+            }
+            .quick-project-list { display: grid; gap: 1.2mm; }
+            .quick-project-item { min-width: 0; padding: .25mm 0; }
+            .quick-project-item strong { display: inline-block; min-width: 19mm; color: #105482; }
+            .quick-summary-list { display: grid; gap: 0; font-size: 8.8pt; }
+            .quick-summary-row { display: grid; grid-template-columns: 1fr auto; gap: 4mm; padding: 1mm 0; border-bottom: 1px solid #eef0f3; }
+            .quick-summary-row span:last-child { color: #667085; text-align: right; white-space: nowrap; }
+            .quick-print-total {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                margin-top: 2mm;
+                padding: 2.2mm 3mm;
+                border-radius: 2mm;
+                background: #105482;
+                color: white;
+                font-weight: 700;
+            }
+            .quick-print-total strong { font-size: 14pt; letter-spacing: .02em; }
+            .quick-print-terms { margin: 0; padding-left: 6mm; list-style: decimal; font-size: 8.8pt; line-height: 1.34; }
+            .quick-print-terms li { margin-bottom: 2mm; padding-left: 1mm; }
+            .quick-print-terms li::marker { color: #105482; font-weight: 700; }
+            .quick-payment-list { display: grid; gap: 0; }
+            .quick-payment-row {
+                display: grid;
+                grid-template-columns: 1fr 13mm;
+                gap: 1mm 2mm;
+                padding: 1.5mm 0;
+                border-bottom: 1px solid #d0d5dd;
+            }
+            .quick-payment-percent { color: #105482; text-align: right; font-weight: 800; }
+            .quick-payment-condition { grid-column: 1 / -1; color: #4b5563; font-size: 8.3pt; }
+            .quick-bank {
+                margin-top: 3mm;
+                padding: 2.5mm 3mm;
+                border: 0;
+                border-radius: 2mm;
+                background: #f7f9fc;
+                font-size: 8.5pt;
+                line-height: 1.35;
+            }
+            .quick-print-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+            .quick-signature-card { border: 1px solid #d0d5dd; border-radius: 2mm; overflow: hidden; padding: 2mm; }
+            .quick-signature-card h3 { margin: 0 0 1mm; padding: 0 0 1mm; border-bottom: 1px solid #d0d5dd; background: transparent; color: #105482; text-align: left; font-size: 8.5pt; }
+            .quick-signature-info { padding: 1.5mm 2mm 0; min-height: 17mm; font-size: 8pt; line-height: 1.28; }
+            .quick-signature-line {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 16mm;
+                margin: 0 2mm;
+                border-bottom: 1px solid #374151;
+            }
+            .quick-signature-line img { max-width: 95%; max-height: 14mm; object-fit: contain; }
+            .quick-signature-date { padding: 1mm 2mm 1.5mm; text-align: center; font-size: 8.2pt; }
+            .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
+            .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
 
             /* 詳細報價：細項從新頁開始，允許依內容自動延伸 A4 頁面。 */
             .quotation-detailed { zoom: 1 !important; }
+            .quotation-detailed .quick-print-sheet { display: none !important; }
             .quotation-detailed .detailed-section {
                 display: block !important;
                 break-before: page;
@@ -746,6 +859,114 @@
             );
         };
 
+        const QuickPrintView = ({ data, calcs }) => {
+            const categories = Array.isArray(data.categories) ? data.categories : [];
+            const project = Array.isArray(data.project) ? data.project : [];
+            const notes = Array.isArray(data.notes) ? data.notes : [];
+            const paymentTerms = Array.isArray(data.payment?.terms) ? data.payment.terms : [];
+            const taxLabel = data.taxMode === 'included' ? '稅外加 5%' : (data.taxMode === 'inclusive_flat' ? '含稅' : '未稅');
+            const quickTitle = (data.header.title || '奇諾影像報價單').replace(/\s*\(Quotation\)\s*/i, '');
+
+            const signatureCard = (party, company, contact, taxId, phone, image) => (
+                <div className="quick-signature-card">
+                    <h3>{party}</h3>
+                    <div className="quick-signature-info">
+                        <div><strong>抬頭：</strong>{company || '　'}</div>
+                        <div><strong>代表：</strong>{contact || '　'}</div>
+                        <div><strong>統編：</strong>{taxId || '　'}</div>
+                        <div><strong>電話：</strong>{phone || '　'}</div>
+                    </div>
+                    <div className="quick-signature-line">
+                        {image ? <img src={image} alt={`${party}簽名`} /> : <span>簽章</span>}
+                    </div>
+                    {data.printSettings.showSigDate && <div className="quick-signature-date">日期：{data.signature.signatureDate || '　　　　'}</div>}
+                </div>
+            );
+
+            return (
+                <article className="quick-print-sheet print-only" aria-label="快速報價 A4 列印版">
+                    <header className="quick-print-header">
+                        <div>{data.logo && <img src={data.logo} className="quick-print-logo" alt="公司標誌" />}</div>
+                        <div className="quick-print-title">
+                            <span className="quick-print-badge">QUICK QUOTATION / A4</span>
+                            <h1>{quickTitle}</h1>
+                        </div>
+                    </header>
+
+                    <div className="quick-print-meta">
+                        <div><strong>報價單號</strong>{data.header.quotationId || '—'}</div>
+                        <div><strong>報價日期</strong>{data.header.quotationDate || '—'}</div>
+                        <div><strong>有效期限</strong>{data.header.validity || '—'}</div>
+                    </div>
+
+                    <div className="quick-print-top">
+                        <section className="quick-print-section">
+                            <h2>PROJECT / 專案概況</h2>
+                            <div className="quick-project-list">
+                                {project.map((item, index) => (
+                                    <div className="quick-project-item" key={index}>
+                                        <strong>{item.label || '項目'}：</strong>{item.value || '—'}
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="quick-print-section">
+                            <h2>QUOTATION / 報價摘要</h2>
+                            <div className="quick-summary-list">
+                                {categories.map(category => {
+                                    const subtotal = (data.items[category.id] || []).reduce((sum, item) => sum + (item.qty * item.price), 0);
+                                    return <div className="quick-summary-row" key={category.id}><span>{category.name}</span><span>{formatCurrency(subtotal)}</span></div>;
+                                })}
+                            </div>
+                            <div className="quick-print-total"><span>報價總額（{taxLabel}）</span><strong>NT$ {formatCurrency(calcs.grandTotal)}</strong></div>
+                        </section>
+                    </div>
+
+                    <div className="quick-print-columns">
+                        <section className="quick-print-section">
+                            <h2>TERMS / 專案條款</h2>
+                            <ol className="quick-print-terms">
+                                {notes.map((note, index) => <li key={note.id || index}>{note.text || note}</li>)}
+                            </ol>
+                        </section>
+
+                        <div>
+                            <section className="quick-print-section">
+                                <h2>PAYMENT / 付款方式</h2>
+                                <div className="quick-payment-list">
+                                    {paymentTerms.map((term, index) => (
+                                        <div className="quick-payment-row" key={index}>
+                                            <strong>{term.phase || `第 ${index + 1} 期`}</strong>
+                                            <span className="quick-payment-percent">{term.percent}</span>
+                                            <div className="quick-payment-condition">{term.condition}{term.notes ? `｜${term.notes}` : ''}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="quick-bank">
+                                    <strong>乙方收款資訊</strong><br />
+                                    戶名：{data.bank.accountName || '—'}<br />
+                                    銀行：{data.bank.bankName || '—'}<br />
+                                    帳號：{data.bank.accountNumber || '—'}
+                                </div>
+                                <p className="quick-print-warning">逾期付款：若甲方逾期或未足額支付，乙方得暫停後續製作或交付，直至款項結清。</p>
+                            </section>
+
+                            <section className="quick-print-section" style={{marginTop: '3mm'}}>
+                                <h2>ACCEPTANCE / 報價確認</h2>
+                                <div className="quick-print-signatures">
+                                    {signatureCard('甲方', data.signature.clientCompany, data.signature.clientContact, data.signature.clientTaxId, data.signature.clientPhone, data.signature.clientSigImg)}
+                                    {signatureCard('乙方', data.signature.vendorCompany, data.signature.vendorContact, data.signature.vendorTaxId, data.signature.vendorPhone, data.signature.vendorSigImg)}
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <footer className="quick-print-footer"><span>KINO STUDIO / QUICK QUOTATION</span><span>A4 · 01 / 01</span></footer>
+                </article>
+            );
+        };
+
         const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             
@@ -790,10 +1011,10 @@
                         </div>
 
                         <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-10 page-container border border-gray-200 flex flex-col min-h-[calc(100vh-12rem)] mt-6">
-                            
-                            <div className="flex-grow">
+                            <QuickPrintView data={data} calcs={calcs} />
+                            <div className="standard-document-content flex-grow">
                                 {/* [v1.08 Change] Header: Use Flexbox in print mode to prevent title overlapping/cutting */}
-                                <div className="flex items-center justify-between mb-4 border-b-4 border-kino pb-2 relative print:border-b-2">
+                                <div className="document-title-row flex items-center justify-between mb-4 border-b-4 border-kino pb-2 relative print:border-b-2">
                                     {/* Logo Column */}
                                     <div className="flex items-center group cursor-pointer relative flex-shrink-0" onClick={() => document.getElementById('d-logo-upload').click()}>
                                         {data.logo ? <img src={data.logo} className="max-h-[56px] max-w-[120px] object-contain" alt="Logo" /> : <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 border-2 border-dashed border-gray-300 group-hover:bg-gray-200"><i className="fas fa-image"></i></div>}
@@ -809,10 +1030,10 @@
                                             onChange={e => updateField('header', 'title', e.target.value)} 
                                         />
                                         {/* [v1.08 Change] Print Mode: Div with wrap enabled to prevent cutting */}
-                                        <div className="print-only text-2xl font-extrabold text-gray-900 text-center whitespace-pre-wrap leading-tight">
+                                        <div className="document-print-title print-only text-2xl font-extrabold text-gray-900 text-center whitespace-pre-wrap leading-tight">
                                             {data.header.title || "奇諾影像報價單(Quotation)"}
                                         </div>
-                                        <div className="print-only mt-1 text-[9pt] font-bold tracking-widest text-kino">
+                                        <div className="document-print-type print-only mt-1 text-[9pt] font-bold tracking-widest text-kino">
                                             {QUOTATION_TYPES[data.quotationType || 'quick'].label}
                                         </div>
                                     </div>
@@ -826,11 +1047,11 @@
                                     <div className="flex flex-col"><label className="text-xs font-bold text-gray-700">報價日期：</label><input type="date" value={data.header.quotationDate} onChange={e => updateField('header', 'quotationDate', e.target.value)} className="border-b border-gray-300 focus:outline-none" /></div>
                                     <div className="flex flex-col"><label className="text-xs font-bold text-gray-700">有效期限：</label><input type="text" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="text-red-600 border-b border-gray-300 focus:outline-none" /></div>
                                 </div>
-                                <div className="section-block">
+                                <div className="section-block quick-project-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">一、 專案內容概況 (Project Overview)</h2><button className="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded-full p-1 px-2" onClick={() => { const newProj = [...data.project, {label: "項目", value: ""}]; setData({...data, project: newProj}); }}><i className="fas fa-plus"></i></button></div>
-                                    <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{data.project.map((p, idx) => (<div key={idx} className="flex items-center gap-2 group relative"><input className="font-semibold text-gray-700 bg-transparent border-b w-1/3 text-right" value={p.label} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], label: e.target.value}; setData({...data, project: newP}); }} /><span className="text-gray-500">：</span><input className="w-2/3 border-b border-gray-300" value={p.value} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], value: e.target.value}; setData({...data, project: newP}); }} /><button className="no-print absolute right-0 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={() => { const newP = data.project.filter((_, i) => i !== idx); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
+                                    <div className="quick-project-grid mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{data.project.map((p, idx) => (<div key={idx} className="flex items-center gap-2 group relative"><input className="font-semibold text-gray-700 bg-transparent border-b w-1/3 text-right" value={p.label} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], label: e.target.value}; setData({...data, project: newP}); }} /><span className="text-gray-500">：</span><input className="w-2/3 border-b border-gray-300" value={p.value} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], value: e.target.value}; setData({...data, project: newP}); }} /><button className="no-print absolute right-0 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={() => { const newP = data.project.filter((_, i) => i !== idx); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
                                 </div>
-                                <div className="section-block">
+                                <div className="section-block quick-summary-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">二、 專案報價 (Quotation Summary)</h2><button className="no-print bg-gray-200 text-xs px-2 py-1 rounded-full" onClick={() => { const id = generateId(); setData({ ...data, categories: [...data.categories, {id, name: "新摘要"}], items: {...data.items, [id]: []} }); }}><i className="fas fa-plus mr-1"></i>新增摘要</button></div>
                                     <div className="print-table-container border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-sm">
                                         <table className="w-full text-left text-sm summary-table m-0">
@@ -852,11 +1073,11 @@
                                     </div>
                                 </div>
                                 <div className="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block break-inside-avoid"><div className="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print"><label className="text-xs font-bold text-gray-500 mr-1">稅額計算：</label><select value={data.taxMode} onChange={e => setData({...data, taxMode: e.target.value})} className="text-xs border rounded bg-white"><option value="excluded">報價未稅</option><option value="inclusive_flat">報價含稅</option><option value="included">稅外 (5%)</option></select></div><div className="grid grid-cols-2 font-medium"><div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計 (∆)</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div><div className="bg-kino text-white px-2 py-1 flex flex-col justify-center"><span className="font-bold print-summary-text-sm">本次報價總金額 ({data.taxMode === 'included' || data.taxMode === 'inclusive_flat' ? '含稅' : '未稅'})</span>{calcs.taxText && <span className="text-xs opacity-90 scale-90 origin-left">{calcs.taxText}</span>}</div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div></div></div>
-                                <div className="section-block">
+                                <div className="section-block quick-contract-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">三、 客製化專案細節 (Customization Details)</h2><div className="text-xs text-gray-400 no-print"><i className="fas fa-pen mr-1"></i>點擊下方文字即可編輯。</div></div>
                                     
                                     {/* [v1.05 Change] Added container styling for print background */}
-                                    <div className="space-y-2 mt-4 print:bg-kino-50 print:p-4 print:rounded-lg">
+                                    <div className="quick-contract-list space-y-2 mt-4 print:bg-kino-50 print:p-4 print:rounded-lg">
                                         {/* [v1.09 Change] Map using unique ID key */}
                                         {data.notes.map((note, i) => (
                                             <div key={note.id} className="flex items-start group print-list-item">
@@ -878,7 +1099,7 @@
                                     <button className="no-print mt-3 text-xs text-gray-500 hover:text-kino flex items-center" onClick={() => setData({...data, notes: [...data.notes, { id: generateId(), text: "新條款..." }]})}><i className="fas fa-plus mr-1"></i>新增條款</button>
                                 </div>
                                 <div className="section-3-4-break"></div>
-                                <div className="section-block">
+                                <div className="section-block quick-payment-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">四、 付款方式與條款 (Payment Methods)</h2><button className="no-print bg-gray-200 text-xs px-2 rounded-full" onClick={() => { setData({...data, payment: {terms: [...data.payment.terms, {phase: "", percent: "", condition: "", notes: ""}]}}); }}><i className="fas fa-plus"></i></button></div>
                                     <div className="print-table-container border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-sm">
                                         <table className="w-full text-xs summary-table m-0">
@@ -908,7 +1129,7 @@
                                     </div>
                                     <p className="mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
                                 </div>
-                                <div className="section-block signature-block">
+                                <div className="section-block signature-block quick-signature-section">
                                     <h2 className="text-lg font-bold mt-6 mb-2 border-l-4 border-kino pl-3">五、 報價確認與簽署 (Signatures)</h2>
                                     <div className="print-table-container border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-sm signature-table">
                                         <table className="w-full text-sm summary-table m-0">

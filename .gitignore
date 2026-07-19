@@ -15,5 +15,6 @@ exports/
 # Tooling output.
 node_modules/
 dist/
+tmp/
 .wrangler/
 .dev.vars
