@@ -358,7 +358,8 @@
             .quick-project-item { display: grid; grid-template-columns: 22mm 1fr; min-width: 0; padding: .6mm 2mm; border: 0; border-radius: 1.5mm; background: #f7f9fb; }
             .quick-project-item strong { color: #667085; font-size: 8pt; font-weight: 600; }
             .quick-summary-list { display: grid; gap: .7mm; font-size: 8.8pt; }
-            .quick-summary-row { display: grid; grid-template-columns: 1fr 20mm auto; gap: 3mm; padding: .4mm 2mm; border: 0; border-radius: 1.3mm; background: #f7f9fb; }
+            /* 數量欄起點與右側專案欄的「值」起點對齊：半欄 + 類別標籤寬度。 */
+            .quick-summary-row { display: grid; grid-template-columns: calc((100% - 2.5mm) / 2 + 21.5mm) 20mm minmax(0, 1fr); gap: 3mm; padding: .4mm 2mm; border: 0; border-radius: 1.3mm; background: #f7f9fb; }
             .quick-summary-quantity { min-width: 20mm; color: #105482; text-align: center; font-weight: 700; white-space: nowrap; }
             .quick-summary-row span:last-child { color: #667085; text-align: right; white-space: nowrap; }
             .quick-print-total {
@@ -671,6 +672,27 @@
             </div>
         );
 
+        const ProjectLibraryControls = ({ projects, onLoad, onSaveCurrent, compact = false }) => (
+            <div className={`no-print flex items-center gap-1.5 ${compact ? 'w-full' : ''}`}>
+                <select
+                    className={`border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'flex-1 text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
+                    defaultValue=""
+                    aria-label="載入本機專案"
+                    onChange={(event) => {
+                        const projectId = event.target.value;
+                        if (projectId) onLoad(projectId);
+                        event.target.value = '';
+                    }}
+                >
+                    <option value="">本機專案庫...</option>
+                    {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+                <button type="button" onClick={onSaveCurrent} className={`shrink-0 rounded-md border border-kino/30 text-kino hover:bg-kino hover:text-white transition ${compact ? 'px-2 py-1.5 text-xs' : 'px-2 py-1 text-xs'}`}>
+                    <i className="fas fa-folder-plus mr-1"></i>存專案
+                </button>
+            </div>
+        );
+
         const PAYMENT_TEMPLATES = {
             "3stage": [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
             "2stage": [ { phase: "第一期 (訂金)", percent: "50%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (尾款)", percent: "50%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
@@ -678,6 +700,7 @@
             "full_post": [ { phase: "全額付清 (後付)", percent: "100%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "一次性付款 (驗收後)" } ]
         };
         const CONTRACT_TEMPLATE_STORAGE_KEY = 'kino_quotation_contract_templates_v1';
+        const PROJECT_LIBRARY_STORAGE_KEY = 'kino_quotation_project_library_v1';
         const BUILTIN_CONTRACT_TEMPLATES = [
             { id: 'kino-standard', name: 'KINO 標準影音條款', notes: DEFAULT_NOTES_TEXT }
         ];
@@ -687,6 +710,15 @@
                 return Array.isArray(stored) ? stored.filter(template => template?.id && template?.name && Array.isArray(template?.notes)) : [];
             } catch (error) {
                 console.warn('Contract template load error', error);
+                return [];
+            }
+        };
+        const loadProjectLibrary = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(PROJECT_LIBRARY_STORAGE_KEY) || '[]');
+                return Array.isArray(stored) ? stored.filter(project => project?.id && project?.name && project?.data) : [];
+            } catch (error) {
+                console.warn('Project library load error', error);
                 return [];
             }
         };
@@ -725,6 +757,7 @@
             const [data, _setData] = useState(getInitialData());
             const [fileHandle, setFileHandle] = useState(null);
             const [contractTemplates, setContractTemplates] = useState(loadContractTemplates);
+            const [projectLibrary, setProjectLibrary] = useState(loadProjectLibrary);
             const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
@@ -794,6 +827,7 @@
 
             useEffect(() => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); }, [data]);
             useEffect(() => { localStorage.setItem(CONTRACT_TEMPLATE_STORAGE_KEY, JSON.stringify(contractTemplates)); }, [contractTemplates]);
+            useEffect(() => { localStorage.setItem(PROJECT_LIBRARY_STORAGE_KEY, JSON.stringify(projectLibrary)); }, [projectLibrary]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
                 const syncResponsiveMode = () => setMode(mediaQuery.matches ? 'mobile' : 'desktop');
@@ -893,6 +927,30 @@
                 reader.readAsText(file); 
             };
             const handleManualSave = () => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); showToast("已儲存至瀏覽器快取"); };
+            const getSuggestedProjectName = () => {
+                const projectName = data.project.find(item => item.label.includes('專案名稱') || item.label === '名稱')?.value?.trim();
+                return projectName || data.header.quotationId || `專案 ${getLocalISODate()}`;
+            };
+            const saveCurrentProject = () => {
+                const name = prompt('請輸入本機專案名稱：', getSuggestedProjectName());
+                if (!name?.trim()) return;
+                const existing = projectLibrary.find(project => project.name === name.trim());
+                if (existing && !confirm(`「${name.trim()}」已存在，要更新為目前內容嗎？`)) return;
+                const snapshot = { id: existing?.id || `project-${Date.now()}`, name: name.trim(), updatedAt: new Date().toISOString(), data: normalizeQuotationData(data) };
+                setProjectLibrary(prev => [snapshot, ...prev.filter(project => project.id !== snapshot.id)]);
+                showToast(`已儲存本機專案「${snapshot.name}」`);
+            };
+            const loadSavedProject = (projectId) => {
+                const savedProject = projectLibrary.find(project => project.id === projectId);
+                if (!savedProject) return;
+                if (!confirm(`載入「${savedProject.name}」？目前未另存的內容會被取代。`)) return;
+                const loadedData = normalizeQuotationData(savedProject.data);
+                setData(loadedData);
+                setHistory([loadedData]);
+                setHistoryIndex(0);
+                setFileHandle(null);
+                showToast(`已載入本機專案「${savedProject.name}」`);
+            };
             const applyContractTemplate = (templateId) => {
                 const template = allContractTemplates.find(item => item.id === templateId);
                 if (!template) return;
@@ -921,6 +979,7 @@
                             data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
                             handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
+                            projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             mode={mode}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
@@ -931,6 +990,7 @@
                             data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
                             handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
+                            projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                         />
                     </div>
                 </div>
@@ -1050,7 +1110,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             
             // [V54 Change] Desktop Scroll functions
@@ -1077,6 +1137,7 @@
 
                             <div className="flex items-center gap-4">
                                 <QuotationTypeSelector data={data} setData={setData} />
+                                <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
                                 <label className="flex items-center space-x-1.5 cursor-pointer text-xs font-bold text-gray-600 hover:text-kino"><input type="checkbox" checked={data.printSettings.showSigDate} onChange={e => updateField('printSettings', 'showSigDate', e.target.checked)} className="accent-kino" /><span>簽署日期</span></label>
                                 <button onClick={() => window.print()} className="bg-gray-800 hover:bg-black text-white font-bold py-1.5 px-4 text-sm rounded-lg transition flex items-center shadow-md"><i className="fas fa-file-pdf mr-1.5"></i>輸出 PDF</button>
                             </div>
@@ -1135,7 +1196,7 @@
                                     <div className="quick-project-grid mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{data.project.map((p, idx) => (<div key={idx} className="flex items-center gap-2 group relative"><input className="font-semibold text-gray-700 bg-transparent border-b w-1/3 text-right" value={p.label} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], label: e.target.value}; setData({...data, project: newP}); }} /><span className="text-gray-500">：</span><input className="w-2/3 border-b border-gray-300" value={p.value} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], value: e.target.value}; setData({...data, project: newP}); }} /><button className="no-print absolute right-0 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={() => { const newP = data.project.filter((_, i) => i !== idx); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
                                 </div>
                                 <div className="section-block quick-summary-section">
-                                    <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">二、 專案報價 (Quotation Summary)</h2><button className="no-print bg-gray-200 text-xs px-2 py-1 rounded-full" onClick={() => { const id = generateId(); setData({ ...data, categories: [...data.categories, {id, name: "新摘要"}], items: {...data.items, [id]: []} }); }}><i className="fas fa-plus mr-1"></i>新增摘要</button></div>
+                                    <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">二、 專案報價 (Quotation Summary)</h2><button className="no-print bg-gray-200 text-xs px-2 py-1 rounded-full" onClick={() => { const id = generateId(); setData({ ...data, categories: [...data.categories, {id, name: "新摘要", summaryQty: '', summaryUnit: ''}], items: {...data.items, [id]: []} }); }}><i className="fas fa-plus mr-1"></i>新增摘要</button></div>
                                     <div className="print-table-container border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-sm">
                                         <table className="w-full text-left text-sm summary-table m-0">
                                             <thead className="bg-kino text-white">
@@ -1314,7 +1375,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1481,6 +1542,7 @@
                         </div>
                         <div className="px-3 pb-3">
                             <QuotationTypeSelector data={data} setData={setData} />
+                            <div className="mt-2"><ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} /></div>
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
@@ -1492,7 +1554,7 @@
                             <div className="space-y-2 mt-4"><div className="flex justify-between items-center"><span className="text-sm font-bold text-gray-700">專案資訊</span><button className="bg-gray-100 px-2 py-1 rounded text-xs text-kino hover:bg-gray-200" onClick={() => setData({...data, project: [...data.project, {label: "項目", value: ""}]})}><i className="fas fa-plus"></i></button></div>{data.project.map((p, i) => (<div key={i} className="flex gap-2 items-center"><input className="w-1/3 bg-gray-50 rounded px-2 py-1 text-xs" value={p.label} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], label: e.target.value}; setData({...data, project: newP}); }} /><input className="w-full border-b border-gray-200 px-2 py-1 text-sm" value={p.value} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], value: e.target.value}; setData({...data, project: newP}); }} /><button className="text-red-300 px-1" onClick={() => { const newP = data.project.filter((_, idx) => idx !== i); setData({...data, project: newP}); }}><i className="fas fa-trash-alt"></i></button></div>))}</div>
                         </div>
                         <div id="m-summary" className="bg-white p-4 rounded-xl shadow-sm space-y-3 mobile-section">
-                             <div className="flex justify-between items-center border-b pb-2"><h2 className="text-kino font-bold"><i className="fas fa-calculator mr-2"></i>報價摘要</h2><button className="bg-kino-light text-white text-xs px-2 py-1 rounded shadow" onClick={() => { const id = generateId(); setData({...data, categories: [...data.categories, {id, name: "新分類"}], items: {...data.items, [id]: []}}); }}><i className="fas fa-plus"></i> 分類</button></div>
+                             <div className="flex justify-between items-center border-b pb-2"><h2 className="text-kino font-bold"><i className="fas fa-calculator mr-2"></i>報價摘要</h2><button className="bg-kino-light text-white text-xs px-2 py-1 rounded shadow" onClick={() => { const id = generateId(); setData({...data, categories: [...data.categories, {id, name: "新分類", summaryQty: '', summaryUnit: ''}], items: {...data.items, [id]: []}}); }}><i className="fas fa-plus"></i> 分類</button></div>
                              <div className="space-y-2">{data.categories.map(cat => {
                                  const sectionTotal = (data.items[cat.id] || []).reduce((acc, item) => acc + (item.qty * item.price), 0);
                                  return (<div key={cat.id} className="space-y-1 border-b border-gray-50 pb-2">
