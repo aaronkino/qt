@@ -425,6 +425,7 @@
             .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
             /* 內容框 17.2mm + 儲存格內距與邊框後，整個簽署列為 18mm。 */
             .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 17.2mm; color: #667085; }
+            .quick-acceptance-signature-placeholder { opacity: .1; }
             .quick-acceptance-signature img { max-width: 95%; max-height: 15mm; object-fit: contain; }
             .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
@@ -447,14 +448,15 @@
         /* 行動版導覽列遮擋修正 */
         .mobile-section { scroll-margin-top: 80px; }
 
-        /* [V54 Change] 桌面版表格簽署欄高度強制設定為 150px (Screen View Only) */
+        /* 桌面工作區預覽使用 3 cm 簽署列；A4 輸出高度另由列印樣式校準。 */
         .signature-cell-strict-height {
-            height: 150px; 
+            height: 3cm;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        .signature-cell-strict-height.signature-capture-compact { height: 6rem; }
         .signature-cell-strict-height img {
             max-height: 90%;
             max-width: 90%;
@@ -496,6 +498,7 @@
         };
 
         const DEFAULT_LOGO = "data:image/png;base64,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";
+        const DEFAULT_LOGO_SVG = "./assets/kinostudio_fulllogo_line_blue.svg";
         const DEFAULT_CATEGORIES = [
             { id: 'preProduction', name: 'I. Pre-production Expenses / 前期', summaryQty: '', summaryUnit: '' },
             { id: 'crew', name: 'II. Production Crew Expenses / 拍攝', summaryQty: '', summaryUnit: '' },
@@ -560,7 +563,7 @@
             payment: { terms: [...DEFAULT_PAYMENT] },
             bank: { ...DEFAULT_BANK },
             signature: { clientCompany: '', clientContact: '', clientTaxId: '', clientPhone: '', vendorCompany: '奇諾影像有限公司', vendorContact: '陳廷安', vendorTaxId: '83115577', vendorPhone: '0911715138', signatureDate: getLocalISODate(), clientSigImg: '', vendorSigImg: '' },
-            logo: DEFAULT_LOGO, taxMode: 'excluded', printSettings: { scaledMode: true, showDetails: false, showSigDate: true }
+            logo: DEFAULT_LOGO_SVG, taxMode: 'excluded', printSettings: { scaledMode: true, showDetails: false, showSigDate: true }
         });
 
         // 將舊版 showDetails / scaledMode 設定升級成明確的報價分類。
@@ -577,6 +580,9 @@
                 quotationType,
                 header: { ...defaults.header, ...(source.header || {}) },
                 signature: { ...defaults.signature, ...(source.signature || {}) },
+                payment: { ...defaults.payment, ...(source.payment || {}), terms: source.payment?.terms?.length ? source.payment.terms : defaults.payment.terms },
+                // 舊版預設 PNG 自動改用正式 SVG；使用者自行上傳的標誌維持不變。
+                logo: source.logo === DEFAULT_LOGO ? DEFAULT_LOGO_SVG : (source.logo || defaults.logo),
                 printSettings: {
                     ...defaults.printSettings,
                     ...(source.printSettings || {}),
@@ -692,6 +698,81 @@
                 </button>
             </div>
         );
+
+        const PaymentTemplateSelect = ({ onApply, compact = false }) => (
+            <select
+                className={`no-print border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
+                defaultValue=""
+                aria-label="套用付款比例範本"
+                onChange={(event) => {
+                    const templateId = event.target.value;
+                    if (templateId) onApply(templateId);
+                    event.target.value = '';
+                }}
+            >
+                <option value="">套用付款比例...</option>
+                <option value="3stage">三期 40 / 30 / 30</option>
+                <option value="2stage">兩期 50 / 50</option>
+                <option value="full_pre">全額先付 100%</option>
+                <option value="full_post">全額後付 100%</option>
+            </select>
+        );
+
+        const SignatureCapture = ({ label, image, uploadId, onChange, compact = false }) => {
+            const [isSigning, setIsSigning] = useState(false);
+            const canvasRef = useRef(null);
+            const drawingRef = useRef(false);
+            const pointRef = useRef(null);
+            const getPoint = (event) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                return { x: (event.clientX - rect.left) * (canvas.width / rect.width), y: (event.clientY - rect.top) * (canvas.height / rect.height) };
+            };
+            const drawTo = (point) => {
+                const canvas = canvasRef.current;
+                const context = canvas?.getContext('2d');
+                if (!context || !pointRef.current) return;
+                context.lineCap = 'round';
+                context.lineJoin = 'round';
+                context.strokeStyle = '#113850';
+                context.lineWidth = 5;
+                context.beginPath();
+                context.moveTo(pointRef.current.x, pointRef.current.y);
+                context.lineTo(point.x, point.y);
+                context.stroke();
+                pointRef.current = point;
+            };
+            const clearCanvas = () => {
+                const canvas = canvasRef.current;
+                canvas?.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            };
+            const saveSignature = () => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                onChange(canvas.toDataURL('image/png'));
+                setIsSigning(false);
+            };
+            return (
+                <>
+                    <div className={`signature-cell-inner signature-cell-strict-height relative ${compact ? 'signature-capture-compact border border-dashed border-gray-300 rounded-lg bg-gray-50' : ''}`}>
+                        {image ? <img src={image} alt={`${label}簽章`} /> : <span className="no-print text-xs text-gray-300">尚未簽署</span>}
+                        <div className="no-print absolute inset-x-0 bottom-1 flex justify-center gap-1">
+                            <button type="button" onClick={() => setIsSigning(true)} className="rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">手寫簽名</button>
+                            <label className="cursor-pointer rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">上傳印章<input id={uploadId} type="file" className="hidden" accept="image/*" onChange={async event => { if (event.target.files[0]) onChange(await compressImage(event.target.files[0])); event.target.value = ''; }} /></label>
+                            {image && <button type="button" onClick={() => onChange('')} className="rounded bg-white/95 border border-red-200 px-1.5 py-0.5 text-[10px] text-red-500 shadow-sm">清除</button>}
+                        </div>
+                    </div>
+                    {isSigning && <div className="no-print fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4">
+                        <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl">
+                            <div className="mb-3 flex items-center justify-between"><h3 className="font-bold text-kino">{label}手寫簽名</h3><button type="button" onClick={() => setIsSigning(false)} className="text-gray-400 hover:text-gray-700"><i className="fas fa-times"></i></button></div>
+                            <canvas ref={canvasRef} width="900" height="380" className="w-full rounded-xl border-2 border-dashed border-kino/30 bg-[#fbfdff] touch-none" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); drawingRef.current = true; pointRef.current = getPoint(event); }} onPointerMove={event => { if (drawingRef.current) drawTo(getPoint(event)); }} onPointerUp={() => { drawingRef.current = false; pointRef.current = null; }} onPointerCancel={() => { drawingRef.current = false; pointRef.current = null; }} />
+                            <p className="mt-2 text-xs text-gray-400">請以滑鼠、觸控筆或手指簽名；儲存後會直接出現在 PDF 的簽章欄。</p>
+                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={clearCanvas} className="rounded-lg border px-3 py-2 text-sm text-gray-600">清除筆跡</button><button type="button" onClick={saveSignature} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white">使用此簽名</button></div>
+                        </div>
+                    </div>}
+                </>
+            );
+        };
 
         const PAYMENT_TEMPLATES = {
             "3stage": [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
@@ -951,6 +1032,13 @@
                 setFileHandle(null);
                 showToast(`已載入本機專案「${savedProject.name}」`);
             };
+            const applyPaymentTemplate = (templateId) => {
+                const template = PAYMENT_TEMPLATES[templateId];
+                if (!template) return;
+                if (!confirm('套用此付款比例？目前付款條件會被取代。')) return;
+                setData(prev => ({ ...prev, payment: { terms: JSON.parse(JSON.stringify(template)) } }));
+                showToast('已套用付款比例範本');
+            };
             const applyContractTemplate = (templateId) => {
                 const template = allContractTemplates.find(item => item.id === templateId);
                 if (!template) return;
@@ -980,6 +1068,7 @@
                             handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
+                            applyPaymentTemplate={applyPaymentTemplate}
                             mode={mode}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
@@ -991,6 +1080,7 @@
                             handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
+                            applyPaymentTemplate={applyPaymentTemplate}
                         />
                     </div>
                 </div>
@@ -1095,8 +1185,8 @@
                                             <tr><th>電話</th><td>{data.signature.clientPhone || '　'}</td><td>{data.signature.vendorPhone || '　'}</td></tr>
                                             <tr>
                                                 <th>簽署</th>
-                                                <td><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : '簽章'}</div></td>
-                                                <td><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : '簽章'}</div></td>
+                                                <td><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
+                                                <td><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
                                             </tr>
                                             {data.printSettings.showSigDate && <tr><th>日期</th><td colSpan="2">{data.signature.signatureDate || '　　　　'}</td></tr>}
                                         </tbody>
@@ -1110,7 +1200,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             
             // [V54 Change] Desktop Scroll functions
@@ -1258,7 +1348,7 @@
                                 </div>
                                 <div className="section-3-4-break"></div>
                                 <div className="section-block quick-payment-section">
-                                    <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">四、 付款方式與條款 (Payment Methods)</h2><button className="no-print bg-gray-200 text-xs px-2 rounded-full" onClick={() => { setData({...data, payment: {terms: [...data.payment.terms, {phase: "", percent: "", condition: "", notes: ""}]}}); }}><i className="fas fa-plus"></i></button></div>
+                                    <div className="flex justify-between items-center gap-2 mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">四、 付款方式與條款 (Payment Methods)</h2><div className="no-print flex items-center gap-2"><PaymentTemplateSelect onApply={applyPaymentTemplate} /><button className="bg-gray-200 text-xs px-2 rounded-full" onClick={() => { setData({...data, payment: {terms: [...data.payment.terms, {phase: "", percent: "", condition: "", notes: ""}]}}); }}><i className="fas fa-plus"></i></button></div></div>
                                     <div className="print-table-container border border-gray-300 rounded-lg overflow-hidden mb-4 shadow-sm">
                                         <table className="w-full text-xs summary-table m-0">
                                             <thead className="bg-kino text-white">
@@ -1303,22 +1393,8 @@
                                                 {/* Strict Height Signature Row */}
                                                 <tr className="bg-white border-b border-gray-200">
                                                     <td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">簽署</td>
-                                                    <td className="border-r border-gray-200 relative cursor-pointer hover:bg-gray-50 print-signature-row" onClick={() => document.getElementById('client-sig-upload').click()}>
-                                                        <div className="absolute bottom-2 left-0 right-0 border-b border-black mx-4 no-print"></div>
-                                                        <div className="signature-cell-inner signature-cell-strict-height">
-                                                            {data.signature.clientSigImg && <img src={data.signature.clientSigImg} />}
-                                                        </div>
-                                                        <span className="absolute top-2 right-2 text-xs text-gray-300 no-print">上傳</span>
-                                                        <input type="file" id="client-sig-upload" className="hidden" onChange={async e => { if(e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); updateField('signature', 'clientSigImg', base64); } }} />
-                                                    </td>
-                                                    <td className="relative cursor-pointer hover:bg-gray-50 print-signature-row" onClick={() => document.getElementById('vendor-sig-upload').click()}>
-                                                        <div className="absolute bottom-2 left-0 right-0 border-b border-black mx-4 no-print"></div>
-                                                        <div className="signature-cell-inner signature-cell-strict-height">
-                                                            {data.signature.vendorSigImg && <img src={data.signature.vendorSigImg} />}
-                                                        </div>
-                                                        <span className="absolute top-2 right-2 text-xs text-gray-300 no-print">上傳</span>
-                                                        <input type="file" id="vendor-sig-upload" className="hidden" onChange={async e => { if(e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); updateField('signature', 'vendorSigImg', base64); } }} />
-                                                    </td>
+                                                    <td className="border-r border-gray-200 print-signature-row"><SignatureCapture label="甲方" image={data.signature.clientSigImg} uploadId="client-sig-upload" onChange={value => updateField('signature', 'clientSigImg', value)} /></td>
+                                                    <td className="print-signature-row"><SignatureCapture label="乙方" image={data.signature.vendorSigImg} uploadId="vendor-sig-upload" onChange={value => updateField('signature', 'vendorSigImg', value)} /></td>
                                                 </tr>
 
                                                 {data.printSettings.showSigDate && (<tr className="bg-white"><td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">日期</td><td colSpan="2" className="p-2 text-center"><input type="date" value={data.signature.signatureDate} onChange={e => updateField('signature', 'signatureDate', e.target.value)} className="input-bg-print-remove text-kino font-bold" /></td></tr>)}
@@ -1375,7 +1451,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1608,7 +1684,7 @@
                             </div>
                         </div>
                         <div id="m-payment" className="mobile-section">
-                            <div className="flex justify-between items-center mb-2"><h2 className="text-kino font-bold text-lg">付款條件</h2><select className="text-xs border rounded p-1" onChange={(e) => { const val = e.target.value; if(!val) return; const template = JSON.parse(JSON.stringify(PAYMENT_TEMPLATES[val])); if(template && confirm("確定套用此範本？將覆蓋現有條款。")) { setData(prev => ({...prev, payment: {terms: template}})); } e.target.value = ""; }}><option value="">快速套用...</option><option value="3stage">三期 (40/30/30)</option><option value="2stage">兩期 (50/50)</option><option value="full_pre">全額 (先付 100%)</option><option value="full_post">全額 (後付 100%)</option></select></div>
+                            <div className="flex justify-between items-center mb-2"><h2 className="text-kino font-bold text-lg">付款條件</h2><PaymentTemplateSelect onApply={applyPaymentTemplate} compact={true} /></div>
                             <div className="space-y-3">
                                 {data.payment.terms.map((term, i) => (
                                     <div 
@@ -1638,7 +1714,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.clientTaxId} onChange={e => updateField('signature', 'clientTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.clientPhone} onChange={e => updateField('signature', 'clientPhone', e.target.value)} />
-                                    <div className="h-24 bg-gray-50 border border-dashed border-gray-300 rounded-lg flex items-center justify-center relative cursor-pointer" onClick={() => document.getElementById('m-client-sig').click()}>{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} className="max-h-full" /> : <span className="text-gray-400 text-xs">點擊上傳甲方簽名</span>}<input type="file" id="m-client-sig" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); updateField('signature', 'clientSigImg', b64); } }} /></div>
+                                    <SignatureCapture label="甲方" image={data.signature.clientSigImg} uploadId="m-client-sig" onChange={value => updateField('signature', 'clientSigImg', value)} compact={true} />
                                 </div>
                             </div>
                             <div>
@@ -1650,7 +1726,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.vendorTaxId} onChange={e => updateField('signature', 'vendorTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.vendorPhone} onChange={e => updateField('signature', 'vendorPhone', e.target.value)} />
-                                    <div className="h-24 bg-gray-50 border border-dashed border-gray-300 rounded-lg flex items-center justify-center relative cursor-pointer" onClick={() => document.getElementById('m-vendor-sig').click()}>{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} className="max-h-full" /> : <span className="text-gray-400 text-xs">點擊上傳乙方簽名</span>}<input type="file" id="m-vendor-sig" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); updateField('signature', 'vendorSigImg', b64); } }} /></div>
+                                    <SignatureCapture label="乙方" image={data.signature.vendorSigImg} uploadId="m-vendor-sig" onChange={value => updateField('signature', 'vendorSigImg', value)} compact={true} />
                                 </div>
                             </div>
                         </div>
