@@ -85,9 +85,17 @@ export default {
     const browser = await puppeteer.launch(env.BROWSER);
     try {
       const renderPage = await browser.newPage();
-      await renderPage.setContent(payload.html, { waitUntil: 'networkidle0' });
+      // The quotation stylesheet imports web fonts. Waiting for a completely idle
+      // network can therefore keep a Browser Rendering session open indefinitely.
+      // Render once the document exists, then allow a short grace period for fonts.
+      await renderPage.setContent(payload.html, { waitUntil: 'domcontentloaded' });
       await renderPage.emulateMediaType('print');
-      await renderPage.evaluate(() => document.fonts.ready);
+      await renderPage.evaluate(async () => {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise((resolve) => setTimeout(resolve, 3000)),
+        ]);
+      });
       const fieldBoxes = await renderPage.evaluate(() => {
         const fields = [...document.querySelectorAll('[data-pdf-field]')];
         const result = fields.map((element) => {
