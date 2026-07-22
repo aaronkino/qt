@@ -421,8 +421,11 @@
             .quick-acceptance-table td { padding: .4mm 2mm !important; border: 0 !important; border-right: 1px solid #e3e9ee !important; border-bottom: 1px solid #e3e9ee !important; background: white !important; color: #182230 !important; text-align: center; }
             .quick-acceptance-table thead th { padding: .7mm 2mm !important; background: #105482 !important; color: white !important; font-weight: 700 !important; }
             .quick-acceptance-table tbody th { width: 18mm; background: #eaf2f7 !important; color: #105482 !important; text-align: left; font-weight: 700 !important; }
+            .quick-acceptance-table tbody td { vertical-align: middle !important; }
             .quick-acceptance-table tr > *:last-child { border-right: 0 !important; }
             .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
+            /* PDF 欄位只量測文字實際所在的內容區，避開儲存格內距與格線。 */
+            .quick-pdf-field-slot { display: flex; width: 100%; min-height: 3.8mm; align-items: center; justify-content: center; box-sizing: border-box; }
             /* 內容框 29.2mm + 儲存格內距與邊框後，整個簽署列為 30mm（3cm）。 */
             .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; }
             .quick-acceptance-signature-placeholder { opacity: .1; }
@@ -1213,14 +1216,14 @@
                                         </colgroup>
                                         <thead><tr><th></th><th>甲方</th><th>乙方</th></tr></thead>
                                         <tbody>
-                                            <tr><th>抬頭</th><td data-pdf-field="clientCompany">{data.signature.clientCompany || '　'}</td><td data-pdf-field="vendorCompany">{data.signature.vendorCompany || '　'}</td></tr>
-                                            <tr><th>代表人</th><td data-pdf-field="clientContact">{data.signature.clientContact || '　'}</td><td data-pdf-field="vendorContact">{data.signature.vendorContact || '　'}</td></tr>
-                                            <tr><th>統編</th><td data-pdf-field="clientTaxId">{data.signature.clientTaxId || '　'}</td><td data-pdf-field="vendorTaxId">{data.signature.vendorTaxId || '　'}</td></tr>
-                                            <tr><th>電話</th><td data-pdf-field="clientPhone">{data.signature.clientPhone || '　'}</td><td data-pdf-field="vendorPhone">{data.signature.vendorPhone || '　'}</td></tr>
+                                            <tr><th>抬頭</th><td><span className="quick-pdf-field-slot" data-pdf-field="clientCompany">{data.signature.clientCompany || '　'}</span></td><td><span className="quick-pdf-field-slot" data-pdf-field="vendorCompany">{data.signature.vendorCompany || '　'}</span></td></tr>
+                                            <tr><th>代表人</th><td><span className="quick-pdf-field-slot" data-pdf-field="clientContact">{data.signature.clientContact || '　'}</span></td><td><span className="quick-pdf-field-slot" data-pdf-field="vendorContact">{data.signature.vendorContact || '　'}</span></td></tr>
+                                            <tr><th>統編</th><td><span className="quick-pdf-field-slot" data-pdf-field="clientTaxId">{data.signature.clientTaxId || '　'}</span></td><td><span className="quick-pdf-field-slot" data-pdf-field="vendorTaxId">{data.signature.vendorTaxId || '　'}</span></td></tr>
+                                            <tr><th>電話</th><td><span className="quick-pdf-field-slot" data-pdf-field="clientPhone">{data.signature.clientPhone || '　'}</span></td><td><span className="quick-pdf-field-slot" data-pdf-field="vendorPhone">{data.signature.vendorPhone || '　'}</span></td></tr>
                                             <tr>
                                                 <th>簽署</th>
-                                                <td data-pdf-field="clientSignature" data-pdf-field-type="signature"><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
-                                                <td data-pdf-field="vendorSignature" data-pdf-field-type="signature"><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
+                                                <td><div className="quick-acceptance-signature" data-pdf-field="clientSignature" data-pdf-field-type="signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
+                                                <td><div className="quick-acceptance-signature" data-pdf-field="vendorSignature" data-pdf-field-type="signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
                                             </tr>
                                             {data.printSettings.showSigDate && <tr><th>日期</th><td colSpan="2">{data.signature.signatureDate || '　　　　'}</td></tr>}
                                         </tbody>

@@ -1,5 +1,5 @@
 import puppeteer from '@cloudflare/puppeteer';
-import { PDFArray, PDFDict, PDFName, PDFString, PDFDocument, rgb } from 'pdf-lib';
+import { PDFArray, PDFDict, PDFName, PDFString, PDFDocument, rgb, TextAlignment } from 'pdf-lib';
 
 const MAX_HTML_BYTES = 1_500_000;
 const TEXT_FIELDS = new Set([
@@ -121,6 +121,7 @@ export default {
           const textField = form.createTextField(field.name);
           textField.addToPage(page, { ...box, borderWidth: 0, textColor: rgb(0.07, 0.22, 0.31) });
           textField.setFontSize(8);
+          textField.setAlignment(TextAlignment.Center);
         }
       }
       const output = await pdfDoc.save();
