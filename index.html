@@ -1203,6 +1203,17 @@
 
         const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
+            const [draggedNoteId, setDraggedNoteId] = useState(null);
+            const reorderNotes = (sourceId, targetId) => {
+                if (!sourceId || sourceId === targetId) return;
+                const sourceIndex = data.notes.findIndex(note => note.id === sourceId);
+                const targetIndex = data.notes.findIndex(note => note.id === targetId);
+                if (sourceIndex < 0 || targetIndex < 0) return;
+                const notes = [...data.notes];
+                const [moved] = notes.splice(sourceIndex, 1);
+                notes.splice(targetIndex, 0, moved);
+                setData({ ...data, notes });
+            };
             
             // [V54 Change] Desktop Scroll functions
             const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1328,9 +1339,10 @@
                                     <div className="quick-contract-list space-y-2 mt-4 print:bg-kino-50 print:p-4 print:rounded-lg">
                                         {/* [v1.09 Change] Map using unique ID key */}
                                         {data.notes.map((note, i) => (
-                                            <div key={note.id} className="flex items-start group print-list-item">
+                                            <div key={note.id} className={`flex items-start group print-list-item ${draggedNoteId === note.id ? 'opacity-50' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); reorderNotes(draggedNoteId, note.id); setDraggedNoteId(null); }}>
                                                 <span className="print-list-number font-bold text-gray-700 mr-2 mt-2 w-6 text-right select-none">{i + 1}.</span>
                                                 <div className="flex-1 relative">
+                                                    <div className="no-print absolute -left-7 top-1 text-gray-300 hover:text-kino cursor-grab active:cursor-grabbing p-1" draggable={true} title="拖曳調整條款順序" onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDraggedNoteId(note.id); }} onDragEnd={() => setDraggedNoteId(null)}><i className="fas fa-grip-vertical"></i></div>
                                                     <AutoResizeTextarea
                                                         value={note.text}
                                                         mode={mode}
