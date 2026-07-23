@@ -450,6 +450,22 @@
         /* 行動版導覽列遮擋修正 */
         .mobile-section { scroll-margin-top: 80px; }
 
+        /* 所有可刪除項目共用同一個低干擾、可觸控的圓形叉號。 */
+        .delete-action {
+            display: inline-flex;
+            width: 2rem;
+            height: 2rem;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 9999px;
+            color: #fca5a5;
+            background: transparent;
+            transition: color .16s ease, background-color .16s ease, transform .16s ease;
+        }
+        .delete-action:hover { color: #ef4444; background: #fef2f2; transform: scale(1.06); }
+        .delete-action:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
+
         /* 桌面工作區預覽使用 3 cm 簽署列；輸出高度另由列印樣式校準。 */
         .signature-cell-strict-height {
             height: 3cm;
@@ -529,7 +545,10 @@
         // [v1.09 Helper] Ensure notes are objects to fix React keys
         const ensureNoteObjects = (notes) => {
             if (!Array.isArray(notes)) return [];
-            return notes.map(n => (typeof n === 'string' ? { id: generateId(), text: n } : n));
+            return notes.map(n => {
+                if (typeof n === 'string') return { id: generateId(), text: n === '新條款...' ? '' : n };
+                return { ...n, text: n?.text === '新條款...' ? '' : (n?.text || '') };
+            });
         };
         const ensureCategorySummaryFields = (categories) => {
             if (!Array.isArray(categories)) return [];
@@ -1238,7 +1257,7 @@
                                 {/* History */}
                                 <button onClick={undo} disabled={!canUndo} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${canUndo ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'text-gray-300 cursor-not-allowed'}`} title="復原"><i className="fas fa-undo text-sm"></i></button>
                                 <button onClick={redo} disabled={!canRedo} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${canRedo ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'text-gray-300 cursor-not-allowed'}`} title="重做"><i className="fas fa-redo text-sm"></i></button>
-                                <button onClick={handleReset} className="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition" title="重置"><i className="fas fa-trash-alt text-sm"></i></button>
+                                <button onClick={handleReset} className="delete-action ml-1" title="重置"><i className="fas fa-times"></i></button>
                             </div>
 
                             <div className="flex items-center gap-4">
@@ -1298,7 +1317,7 @@
                                 </div>
                                 <div className="section-block quick-project-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">一、 專案內容概況 (Project Overview)</h2><button className="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded-full p-1 px-2" onClick={() => { const newProj = [...data.project, {label: "項目", value: ""}]; setData({...data, project: newProj}); }}><i className="fas fa-plus"></i></button></div>
-                                    <div className="quick-project-grid mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{data.project.map((p, idx) => (<div key={idx} className="flex items-center gap-2 group relative"><input className="font-semibold text-gray-700 bg-transparent border-b w-1/3 text-right" value={p.label} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], label: e.target.value}; setData({...data, project: newP}); }} /><span className="text-gray-500">：</span><input className="w-2/3 border-b border-gray-300" value={p.value} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], value: e.target.value}; setData({...data, project: newP}); }} /><button className="no-print absolute right-0 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={() => { const newP = data.project.filter((_, i) => i !== idx); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
+                                    <div className="quick-project-grid mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">{data.project.map((p, idx) => (<div key={idx} className="flex items-center gap-2 group relative"><input className="font-semibold text-gray-700 bg-transparent border-b w-1/3 text-right" value={p.label} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], label: e.target.value}; setData({...data, project: newP}); }} /><span className="text-gray-500">：</span><input className="w-2/3 border-b border-gray-300" value={p.value} onChange={e => { const newP = [...data.project]; newP[idx] = {...newP[idx], value: e.target.value}; setData({...data, project: newP}); }} /><button className="delete-action no-print absolute right-0 opacity-0 group-hover:opacity-100" title="刪除項目" onClick={() => { const newP = data.project.filter((_, i) => i !== idx); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
                                 </div>
                                 <div className="section-block quick-summary-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">二、 專案報價 (Quotation Summary)</h2><button className="no-print bg-gray-200 text-xs px-2 py-1 rounded-full" onClick={() => { const id = generateId(); setData({ ...data, categories: [...data.categories, {id, name: "新摘要", summaryQty: '', summaryUnit: ''}], items: {...data.items, [id]: []} }); }}><i className="fas fa-plus mr-1"></i>新增摘要</button></div>
@@ -1322,7 +1341,7 @@
                                                             </div>
                                                         </td>
                                                         <td className="p-2 text-right">{formatCurrency(subtotal)}</td>
-                                                        <td className="no-print text-center p-2"><button onClick={() => { if(confirm("確定刪除?")) { const newC = data.categories.filter(c => c.id !== cat.id); const newI = {...data.items}; delete newI[cat.id]; setData({...data, categories: newC, items: newI}); } }} className="text-red-400 hover:text-red-600"><i className="fas fa-minus-circle"></i></button></td>
+                                                        <td className="no-print text-center p-2"><button onClick={() => { if(confirm("確定刪除?")) { const newC = data.categories.filter(c => c.id !== cat.id); const newI = {...data.items}; delete newI[cat.id]; setData({...data, categories: newC, items: newI}); } }} className="delete-action" title="刪除摘要"><i className="fas fa-times"></i></button></td>
                                                     </tr>)
                                                 })}
                                             </tbody>
@@ -1345,7 +1364,7 @@
                                         {data.notes.map((note, i) => (
                                             <div key={note.id} className={`group print-list-item flex items-start gap-2 rounded-lg p-1 transition-all duration-200 ease-out ${draggedNoteId === note.id ? 'scale-[0.98] opacity-45' : ''} ${dragOverNoteId === note.id && draggedNoteId !== note.id ? 'bg-kino-50 ring-2 ring-kino/30 -translate-y-0.5 shadow-sm' : ''} ${recentlyMovedNoteId === note.id ? 'bg-emerald-50 ring-1 ring-emerald-200' : ''}`} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverNoteId(note.id); }} onDrop={e => { e.preventDefault(); reorderNotes(draggedNoteId, note.id); setDraggedNoteId(null); setDragOverNoteId(null); }}>
                                                 <div className="no-print flex shrink-0 items-center gap-1 pt-1">
-                                                    <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-kino rounded-md p-1.5 hover:bg-kino-50 transition" draggable={true} title="拖曳調整條款順序" onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDraggedNoteId(note.id); }} onDragEnd={() => { setDraggedNoteId(null); setDragOverNoteId(null); }}><i className="fas fa-grip-vertical"></i></div>
+                                                    <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-kino rounded-md p-1.5 hover:bg-kino-50 transition" draggable={true} title="拖曳調整條款順序" onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDraggedNoteId(note.id); }} onDragEnd={() => { setDraggedNoteId(null); setDragOverNoteId(null); }}><i className="fas fa-bars"></i></div>
                                                     <span className="w-6 text-right text-sm font-bold text-kino select-none">{i + 1}.</span>
                                                 </div>
                                                 <span className="print-only print-list-number font-bold text-gray-700 mr-2 mt-2 w-6 text-right select-none">{i + 1}.</span>
@@ -1353,17 +1372,18 @@
                                                     <AutoResizeTextarea
                                                         value={note.text}
                                                         mode={mode}
+                                                        placeholder="輸入條款內容…"
                                                         onChange={e => { const newNotes = [...data.notes]; newNotes[i] = {...newNotes[i], text: e.target.value}; setData({...data, notes: newNotes}); }}
                                                         className="w-full flex-1 bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:bg-white focus:border-kino focus:ring-1 focus:ring-kino transition-colors resize-none overflow-hidden no-print"
                                                     />
                                                     <div className="print-only print-list-text-div text-sm text-gray-700 leading-tight whitespace-pre-wrap">{note.text}</div>
-                                                    <button className="no-print shrink-0 text-red-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 hover:text-red-500 transition" title="刪除條款" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-times"></i></button>
+                                                    <button className="delete-action no-print shrink-0" title="刪除條款" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-times"></i></button>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                     
-                                    <button className="no-print mt-3 text-xs text-gray-500 hover:text-kino flex items-center" onClick={() => setData({...data, notes: [...data.notes, { id: generateId(), text: "新條款..." }]})}><i className="fas fa-plus mr-1"></i>新增條款</button>
+                                    <button className="no-print mt-3 text-xs text-gray-500 hover:text-kino flex items-center" onClick={() => setData({...data, notes: [...data.notes, { id: generateId(), text: "" }]})}><i className="fas fa-plus mr-1"></i>新增條款</button>
                                 </div>
                                 <div className="section-3-4-break"></div>
                                 <div className="section-block quick-payment-section">
@@ -1381,7 +1401,7 @@
                                                     <td className="p-1 border-r border-gray-200"><input className="w-full text-center text-kino font-bold input-bg-print-remove" placeholder="比例" value={term.percent} onChange={e => { const newT = [...data.payment.terms]; newT[i] = {...newT[i], percent: e.target.value}; setData({...data, payment: {terms: newT}}); }} /></td>
                                                     <td className="p-1 border-r border-gray-200"><input className="w-full input-bg-print-remove" placeholder="條件..." value={term.condition} onChange={e => { const newT = [...data.payment.terms]; newT[i] = {...newT[i], condition: e.target.value}; setData({...data, payment: {terms: newT}}); }} /></td>
                                                     <td className="p-1"><input className="w-full input-bg-print-remove" placeholder="備註..." value={term.notes} onChange={e => { const newT = [...data.payment.terms]; newT[i] = {...newT[i], notes: e.target.value}; setData({...data, payment: {terms: newT}}); }} /></td>
-                                                    <td className="p-1 text-center no-print"><button className="text-red-500" onClick={() => { const newT = data.payment.terms.filter((_, idx) => idx !== i); setData({...data, payment: {terms: newT}}); }}><i className="fas fa-trash-alt"></i></button></td>
+                                                    <td className="p-1 text-center no-print"><button className="delete-action" title="刪除付款期別" onClick={() => { const newT = data.payment.terms.filter((_, idx) => idx !== i); setData({...data, payment: {terms: newT}}); }}><i className="fas fa-times"></i></button></td>
                                                 </tr>))}
                                             </tbody>
                                         </table>
@@ -1450,7 +1470,7 @@
                                                             }} 
                                                         />
                                                     </td>
-                                                    <td className="p-2 text-right font-bold text-kino">{formatCurrency(item.qty * item.price)}</td><td className="p-2 text-center no-print"><button className="text-red-500" onClick={() => { const newItems = data.items[cat.id].filter((_, idx) => idx !== i); setData({...data, items: {...data.items, [cat.id]: newItems}}); }}><i className="fas fa-trash-alt"></i></button></td></tr>))}</tbody>
+                                                    <td className="p-2 text-right font-bold text-kino">{formatCurrency(item.qty * item.price)}</td><td className="p-2 text-center no-print"><button className="delete-action" title="刪除服務項目" onClick={() => { const newItems = data.items[cat.id].filter((_, idx) => idx !== i); setData({...data, items: {...data.items, [cat.id]: newItems}}); }}><i className="fas fa-times"></i></button></td></tr>))}</tbody>
                                                 </table>
                                                 {/* [v1.09 Change] detailed-services-footer: Use robust CSS class footer-total-area */}
                                                 <div className="text-right p-3 footer-total-area font-bold print-summary-val-sm detailed-services-footer">總計：{formatCurrency(subtotal)} NTD</div>
@@ -1645,7 +1665,7 @@
                             <h2 className="text-kino font-bold border-b pb-2"><i className="fas fa-info-circle mr-2"></i>專案概況</h2>
                             <div className="flex flex-col items-center justify-center py-2 border-b border-gray-100"><label className="text-xs text-gray-500 mb-2">品牌標誌</label><div className="w-full flex justify-center cursor-pointer" onClick={() => document.getElementById('m-logo-upload').click()}>{data.logo ? (<img src={data.logo} className="max-h-[80px] object-contain" />) : (<div className="h-16 w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400"><i className="fas fa-image mr-2"></i> 點擊上傳</div>)}</div><input type="file" id="m-logo-upload" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); setData({...data, logo: b64}); } }} /></div>
                             <div className="grid grid-cols-1 gap-3"><div><label className="text-xs text-gray-500 block">單號</label><input type="text" value={data.header.quotationId} onChange={e => updateField('header', 'quotationId', e.target.value)} className="w-full font-bold text-lg border-b border-gray-300 py-1" /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 block">日期</label><input type="date" value={data.header.quotationDate} onChange={e => updateField('header', 'quotationDate', e.target.value)} className="w-full border-b py-1" /></div><div><label className="text-xs text-gray-500 block">效期</label><input type="text" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="w-full border-b py-1 text-red-500" /></div></div></div>
-                            <div className="space-y-2 mt-4"><div className="flex justify-between items-center"><span className="text-sm font-bold text-gray-700">專案資訊</span><button className="bg-gray-100 px-2 py-1 rounded text-xs text-kino hover:bg-gray-200" onClick={() => setData({...data, project: [...data.project, {label: "項目", value: ""}]})}><i className="fas fa-plus"></i></button></div>{data.project.map((p, i) => (<div key={i} className="flex gap-2 items-center"><input className="w-1/3 bg-gray-50 rounded px-2 py-1 text-xs" value={p.label} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], label: e.target.value}; setData({...data, project: newP}); }} /><input className="w-full border-b border-gray-200 px-2 py-1 text-sm" value={p.value} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], value: e.target.value}; setData({...data, project: newP}); }} /><button className="text-red-300 px-1" onClick={() => { const newP = data.project.filter((_, idx) => idx !== i); setData({...data, project: newP}); }}><i className="fas fa-trash-alt"></i></button></div>))}</div>
+                            <div className="space-y-2 mt-4"><div className="flex justify-between items-center"><span className="text-sm font-bold text-gray-700">專案資訊</span><button className="bg-gray-100 px-2 py-1 rounded text-xs text-kino hover:bg-gray-200" onClick={() => setData({...data, project: [...data.project, {label: "項目", value: ""}]})}><i className="fas fa-plus"></i></button></div>{data.project.map((p, i) => (<div key={i} className="flex gap-2 items-center"><input className="w-1/3 bg-gray-50 rounded px-2 py-1 text-xs" value={p.label} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], label: e.target.value}; setData({...data, project: newP}); }} /><input className="w-full border-b border-gray-200 px-2 py-1 text-sm" value={p.value} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], value: e.target.value}; setData({...data, project: newP}); }} /><button className="delete-action" title="刪除項目" onClick={() => { const newP = data.project.filter((_, idx) => idx !== i); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
                         </div>
                         <div id="m-summary" className="bg-white p-4 rounded-xl shadow-sm space-y-3 mobile-section">
                              <div className="flex justify-between items-center border-b pb-2"><h2 className="text-kino font-bold"><i className="fas fa-calculator mr-2"></i>報價摘要</h2><button className="bg-kino-light text-white text-xs px-2 py-1 rounded shadow" onClick={() => { const id = generateId(); setData({...data, categories: [...data.categories, {id, name: "新分類", summaryQty: '', summaryUnit: ''}], items: {...data.items, [id]: []}}); }}><i className="fas fa-plus"></i> 分類</button></div>
@@ -1655,7 +1675,7 @@
                                      <div className="flex items-center gap-2 text-sm">
                                          <input className="text-gray-600 flex-1 min-w-0 bg-transparent font-medium focus:text-gray-900" value={cat.name} onChange={e => { const newC = data.categories.map(c => c.id === cat.id ? {...c, name: e.target.value} : c); setData({...data, categories: newC}); }} />
                                          <span className="font-bold whitespace-nowrap">{formatCurrency(sectionTotal)}</span>
-                                         <button className="text-red-300 px-1" onClick={() => { if(confirm("確認刪除此分類？")) { const newC = data.categories.filter(c => c.id !== cat.id); const newI = {...data.items}; delete newI[cat.id]; setData({...data, categories: newC, items: newI}); } }}><i className="fas fa-trash-alt"></i></button>
+                                         <button className="delete-action" title="刪除摘要" onClick={() => { if(confirm("確認刪除此分類？")) { const newC = data.categories.filter(c => c.id !== cat.id); const newI = {...data.items}; delete newI[cat.id]; setData({...data, categories: newC, items: newI}); } }}><i className="fas fa-times"></i></button>
                                      </div>
                                      <div className="flex justify-end gap-2">
                                          <input type="number" min="0" placeholder="數量" aria-label={`${cat.name} 數量`} value={cat.summaryQty ?? ''} onChange={e => { const newC = data.categories.map(c => c.id === cat.id ? {...c, summaryQty: e.target.value} : c); setData({...data, categories: newC}); }} className="w-20 rounded border border-gray-200 px-2 py-1 text-xs text-center" />
@@ -1693,12 +1713,12 @@
                                                     <button className={`w-6 h-6 rounded-full flex items-center justify-center ${i===data.notes.length-1 ? 'bg-gray-100 text-gray-300' : 'bg-gray-200 text-gray-600'} hover:bg-kino hover:text-white transition-colors`} onClick={() => moveNote(i, 'down')} disabled={i===data.notes.length-1}><i className="fas fa-chevron-down text-xs"></i></button>
                                                 </div>
                                             </div>
-                                            <button className="text-red-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-times"></i></button>
+                                            <button className="delete-action" title="刪除條款" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-times"></i></button>
                                         </div>
-                                        <AutoResizeTextarea mode={mode} value={note.text} onChange={e => { const newNotes = [...data.notes]; newNotes[i] = {...newNotes[i], text: e.target.value}; setData({...data, notes: newNotes}); }} className="w-full text-sm text-gray-700 bg-transparent border-none resize-none focus:ring-0 p-0 leading-relaxed" />
+                                        <AutoResizeTextarea mode={mode} value={note.text} placeholder="輸入條款內容…" onChange={e => { const newNotes = [...data.notes]; newNotes[i] = {...newNotes[i], text: e.target.value}; setData({...data, notes: newNotes}); }} className="w-full text-sm text-gray-700 bg-transparent border-none resize-none focus:ring-0 p-0 leading-relaxed" />
                                     </div>
                                 ))}
-                                <button className="w-full py-3 bg-white border border-dashed border-gray-300 text-gray-500 rounded-xl hover:bg-gray-50 font-medium" onClick={() => { setData({...data, notes: [...data.notes, { id: generateId(), text: "新條款..." }]}); }}>+ 新增條款</button>
+                                <button className="w-full py-3 bg-white border border-dashed border-gray-300 text-gray-500 rounded-xl hover:bg-gray-50 font-medium" onClick={() => { setData({...data, notes: [...data.notes, { id: generateId(), text: "" }]}); }}>+ 新增條款</button>
                             </div>
                         </div>
                         <div id="m-payment" className="mobile-section">
@@ -1715,7 +1735,7 @@
                                         </div>
                                         <input className="w-full text-sm text-gray-600 mb-1 border-b border-gray-100 pb-1" placeholder="條件..." value={term.condition} onChange={e => { const newT = [...data.payment.terms]; newT[i] = {...newT[i], condition: e.target.value}; setData({...data, payment: {terms: newT}}); }} />
                                         <input className="w-full text-xs text-gray-400" placeholder="備註..." value={term.notes} onChange={e => { const newT = [...data.payment.terms]; newT[i] = {...newT[i], notes: e.target.value}; setData({...data, payment: {terms: newT}}); }} />
-                                        <button className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full w-6 h-6 text-xs shadow-sm flex items-center justify-center" onClick={() => { const newT = data.payment.terms.filter((_, idx) => idx !== i); setData({...data, payment: {terms: newT}}); }}>✕</button>
+                                        <button className="delete-action absolute -top-2 -right-2 bg-white shadow-sm" title="刪除付款期別" onClick={() => { const newT = data.payment.terms.filter((_, idx) => idx !== i); setData({...data, payment: {terms: newT}}); }}><i className="fas fa-times text-xs"></i></button>
                                     </div>
                                 ))}
                                 <button className="w-full py-3 bg-white border border-dashed border-gray-300 text-gray-500 rounded-xl hover:bg-gray-50 font-medium" onClick={() => { setData({...data, payment: {terms: [...data.payment.terms, {phase: "", percent: "", condition: "", notes: ""}]}}); }}>+ 新增款項</button>
