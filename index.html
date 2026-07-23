@@ -465,6 +465,10 @@
         }
         .delete-action:hover { color: #ef4444; background: #fef2f2; transform: scale(1.06); }
         .delete-action:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
+        /* 舊版行動服務細項的按鈕同樣呈現為共用叉號，避免不同元件遺留垃圾桶圖示。 */
+        .mobile-section button.text-red-400.p-1 { display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: 9999px; color: #fca5a5; transition: color .16s ease, background-color .16s ease, transform .16s ease; }
+        .mobile-section button.text-red-400.p-1:hover { color: #ef4444; background: #fef2f2; transform: scale(1.06); }
+        .mobile-section button.text-red-400.p-1 .fa-trash:before { content: "\f00d"; }
 
         /* 桌面工作區預覽使用 3 cm 簽署列；輸出高度另由列印樣式校準。 */
         .signature-cell-strict-height {
