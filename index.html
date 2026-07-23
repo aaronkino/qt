@@ -1204,6 +1204,8 @@
         const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
+            const [dragOverNoteId, setDragOverNoteId] = useState(null);
+            const [recentlyMovedNoteId, setRecentlyMovedNoteId] = useState(null);
             const reorderNotes = (sourceId, targetId) => {
                 if (!sourceId || sourceId === targetId) return;
                 const sourceIndex = data.notes.findIndex(note => note.id === sourceId);
@@ -1213,6 +1215,8 @@
                 const [moved] = notes.splice(sourceIndex, 1);
                 notes.splice(targetIndex, 0, moved);
                 setData({ ...data, notes });
+                setRecentlyMovedNoteId(sourceId);
+                setTimeout(() => setRecentlyMovedNoteId(null), 420);
             };
             
             // [V54 Change] Desktop Scroll functions
@@ -1339,18 +1343,21 @@
                                     <div className="quick-contract-list space-y-2 mt-4 print:bg-kino-50 print:p-4 print:rounded-lg">
                                         {/* [v1.09 Change] Map using unique ID key */}
                                         {data.notes.map((note, i) => (
-                                            <div key={note.id} className={`flex items-start group print-list-item ${draggedNoteId === note.id ? 'opacity-50' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); reorderNotes(draggedNoteId, note.id); setDraggedNoteId(null); }}>
-                                                <span className="print-list-number font-bold text-gray-700 mr-2 mt-2 w-6 text-right select-none">{i + 1}.</span>
-                                                <div className="flex-1 relative">
-                                                    <div className="no-print absolute -left-7 top-1 text-gray-300 hover:text-kino cursor-grab active:cursor-grabbing p-1" draggable={true} title="拖曳調整條款順序" onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDraggedNoteId(note.id); }} onDragEnd={() => setDraggedNoteId(null)}><i className="fas fa-grip-vertical"></i></div>
+                                            <div key={note.id} className={`group print-list-item flex items-start gap-2 rounded-lg p-1 transition-all duration-200 ease-out ${draggedNoteId === note.id ? 'scale-[0.98] opacity-45' : ''} ${dragOverNoteId === note.id && draggedNoteId !== note.id ? 'bg-kino-50 ring-2 ring-kino/30 -translate-y-0.5 shadow-sm' : ''} ${recentlyMovedNoteId === note.id ? 'bg-emerald-50 ring-1 ring-emerald-200' : ''}`} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverNoteId(note.id); }} onDrop={e => { e.preventDefault(); reorderNotes(draggedNoteId, note.id); setDraggedNoteId(null); setDragOverNoteId(null); }}>
+                                                <div className="no-print flex shrink-0 items-center gap-1 pt-1">
+                                                    <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-kino rounded-md p-1.5 hover:bg-kino-50 transition" draggable={true} title="拖曳調整條款順序" onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDraggedNoteId(note.id); }} onDragEnd={() => { setDraggedNoteId(null); setDragOverNoteId(null); }}><i className="fas fa-grip-vertical"></i></div>
+                                                    <span className="w-6 text-right text-sm font-bold text-kino select-none">{i + 1}.</span>
+                                                </div>
+                                                <span className="print-only print-list-number font-bold text-gray-700 mr-2 mt-2 w-6 text-right select-none">{i + 1}.</span>
+                                                <div className="flex flex-1 items-start gap-2 min-w-0">
                                                     <AutoResizeTextarea
                                                         value={note.text}
                                                         mode={mode}
                                                         onChange={e => { const newNotes = [...data.notes]; newNotes[i] = {...newNotes[i], text: e.target.value}; setData({...data, notes: newNotes}); }}
-                                                        className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:bg-white focus:border-kino focus:ring-1 focus:ring-kino transition-colors resize-none overflow-hidden no-print"
+                                                        className="w-full flex-1 bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:bg-white focus:border-kino focus:ring-1 focus:ring-kino transition-colors resize-none overflow-hidden no-print"
                                                     />
                                                     <div className="print-only print-list-text-div text-sm text-gray-700 leading-tight whitespace-pre-wrap">{note.text}</div>
-                                                    <button className="no-print absolute -right-8 top-1 text-red-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-trash-alt"></i></button>
+                                                    <button className="no-print shrink-0 text-red-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 hover:text-red-500 transition" title="刪除條款" onClick={() => { const newNotes = data.notes.filter((_, idx) => idx !== i); setData({...data, notes: newNotes}); }}><i className="fas fa-times"></i></button>
                                                 </div>
                                             </div>
                                         ))}
