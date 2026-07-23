@@ -1074,7 +1074,7 @@
             const saveCurrentContractTemplate = () => {
                 const name = prompt('請輸入條款範本名稱：', `專案條款 ${getLocalISODate()}`);
                 if (!name?.trim()) return;
-                const notes = data.notes.map(note => (note.text || note || '').trim()).filter(Boolean);
+                const notes = data.notes.map(note => (typeof note === 'string' ? note : (note?.text || '')).trim()).filter(Boolean);
                 if (!notes.length) { showToast('目前沒有可儲存的條款'); return; }
                 setContractTemplates(prev => [...prev, { id: `custom-${Date.now()}`, name: name.trim(), notes }]);
                 showToast(`已儲存「${name.trim()}」為本機範本`);
@@ -1162,7 +1162,7 @@
                         <section className="quick-print-section">
                             <h2>TERMS / 專案條款</h2>
                             <ol className="quick-print-terms">
-                                {notes.map((note, index) => <li key={note.id || index}>{note.text || note}</li>)}
+                                {notes.map((note, index) => <li key={note.id || index}>{typeof note === 'string' ? note : (note?.text || '')}</li>)}
                             </ol>
                         </section>
 
