@@ -654,7 +654,7 @@
             );
         };
 
-        const QuotationModeOverview = ({ data, onPrint, compact = false }) => {
+        const QuotationModeOverview = ({ data, onPrint, compact = false, showSigDate, onToggleSigDate }) => {
             const currentType = data.quotationType || 'quick';
             const current = QUOTATION_TYPES[currentType];
 
@@ -676,9 +676,10 @@
                                 {!compact && <p className="text-xs text-gray-500 mt-1">{current.editorHint}</p>}
                             </div>
                         </div>
-                        <button type="button" onClick={onPrint} className="shrink-0 rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black transition shadow-sm">
+                        {!compact && onToggleSigDate && <label className="no-print shrink-0 flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer"><input type="checkbox" checked={showSigDate} onChange={onToggleSigDate} className="accent-kino" /><span>簽署日期</span></label>}
+                        {compact && <button type="button" onClick={onPrint} className="shrink-0 rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black transition shadow-sm">
                             <i className="fas fa-file-pdf mr-1.5"></i>{compact ? '輸出' : '列印／另存 PDF'}
-                        </button>
+                        </button>}
                     </div>
                 </div>
             );
@@ -1061,7 +1062,6 @@
             const applyPaymentTemplate = (templateId) => {
                 const template = PAYMENT_TEMPLATES[templateId];
                 if (!template) return;
-                if (!confirm('套用此付款比例？目前付款條件會被取代。')) return;
                 setData(prev => ({ ...prev, payment: { terms: JSON.parse(JSON.stringify(template)) } }));
                 showToast('已套用付款比例範本');
             };
@@ -1269,14 +1269,14 @@
                             <div className="flex items-center gap-4">
                                 <QuotationTypeSelector data={data} setData={setData} />
                                 <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
-                                <label className="flex items-center space-x-1.5 cursor-pointer text-xs font-bold text-gray-600 hover:text-kino"><input type="checkbox" checked={data.printSettings.showSigDate} onChange={e => updateField('printSettings', 'showSigDate', e.target.checked)} className="accent-kino" /><span>簽署日期</span></label>
+                                <button type="button" onClick={() => window.print()} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印／另存 PDF</button>
                             </div>
                         </div>
                     </div>
 
                     <div className="px-4 sm:px-8 desktop-wrapper relative">
                         <div className="max-w-5xl mx-auto mt-5">
-                            <QuotationModeOverview data={data} onPrint={() => window.print()} />
+                            <QuotationModeOverview data={data} onPrint={() => window.print()} showSigDate={data.printSettings.showSigDate} onToggleSigDate={e => updateField('printSettings', 'showSigDate', e.target.checked)} />
                         </div>
                         {/* Desktop Scroll Buttons */}
                         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print">
