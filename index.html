@@ -376,6 +376,14 @@
                 font-weight: 700;
             }
             .quick-print-total strong { font-size: 14pt; letter-spacing: .02em; }
+            .quick-print-total-vat { display: block; padding: 0; overflow: hidden; }
+            .quick-print-tax-line,
+            .quick-print-tax-grand-total { display: flex; justify-content: space-between; align-items: baseline; padding: 1mm 2mm; }
+            .quick-print-tax-line { background: #f7f9fb; color: #475467; font-size: 8.4pt; }
+            .quick-print-tax-line + .quick-print-tax-line { border-top: 1px solid #d8e2e9; }
+            .quick-print-tax-line strong { font-size: 9.5pt; color: #344054; }
+            .quick-print-tax-grand-total { background: #eaf2f7; color: #105482; font-weight: 700; }
+            .quick-print-tax-grand-total strong { font-size: 14pt; letter-spacing: .02em; }
             .quick-print-terms { margin: 0; padding-left: 6mm; list-style: decimal; font-size: 8.8pt; line-height: 1.34; }
             .quick-print-terms li { margin-bottom: .4mm; padding-left: 1mm; }
             .quick-print-terms li::marker { color: #105482; font-weight: 700; }
@@ -962,7 +970,26 @@
             }, [data.header.quotationDate, data.project]);
 
             const updateField = (section, key, value) => { setData(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } })); };
-            const calculations = useMemo(() => { let totalA = 0; data.categories.forEach(cat => { (data.items[cat.id] || []).forEach(item => totalA += (item.qty * item.price)); }); let grandTotal = totalA; let taxText = ""; if (data.taxMode === 'included') { grandTotal = Math.round(totalA * 1.05); taxText = "(∆ x 1.05)"; } return { totalA, grandTotal, taxText }; }, [data]);
+            const calculations = useMemo(() => {
+                let totalA = 0;
+                data.categories.forEach(cat => {
+                    (data.items[cat.id] || []).forEach(item => totalA += (item.qty * item.price));
+                });
+                let grandTotal = totalA;
+                let taxText = "";
+                if (data.taxMode === 'included') {
+                    grandTotal = Math.round(totalA * 1.05);
+                    taxText = "(∆ x 1.05)";
+                }
+                return { totalA, grandTotal, taxAmount: grandTotal - totalA, taxText };
+            }, [data]);
+            const handlePrint = () => {
+                const originalTitle = document.title;
+                const quotationId = String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-');
+                document.title = quotationId || 'quotation';
+                window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
+                window.print();
+            };
             const handleOpen = async () => {
                 if ('showOpenFilePicker' in window) {
                     try {
@@ -1101,6 +1128,7 @@
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             applyPaymentTemplate={applyPaymentTemplate}
+                            handlePrint={handlePrint}
                             mode={mode}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
@@ -1113,6 +1141,7 @@
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             applyPaymentTemplate={applyPaymentTemplate}
+                            handlePrint={handlePrint}
                         />
                     </div>
                 </div>
@@ -1165,7 +1194,15 @@
                                     return <div className="quick-summary-row" key={category.id}><span>{category.name}</span><span className="quick-summary-quantity">{summaryQuantity}</span><span>{formatCurrency(subtotal)}</span></div>;
                                 })}
                             </div>
-                            <div className="quick-print-total"><span>報價總額（{taxLabel}）</span><strong>NT$ {formatCurrency(calcs.grandTotal)}</strong></div>
+                            {data.taxMode === 'included' ? (
+                                <div className="quick-print-total quick-print-total-vat">
+                                    <div className="quick-print-tax-line"><span>稅前金額</span><strong>NT$ {formatCurrency(calcs.totalA)}</strong></div>
+                                    <div className="quick-print-tax-line"><span>VAT 5%</span><strong>NT$ {formatCurrency(calcs.taxAmount)}</strong></div>
+                                    <div className="quick-print-tax-grand-total"><span>報價總額（VAT 5%）</span><strong>NT$ {formatCurrency(calcs.grandTotal)}</strong></div>
+                                </div>
+                            ) : (
+                                <div className="quick-print-total"><span>報價總額（{taxLabel}）</span><strong>NT$ {formatCurrency(calcs.grandTotal)}</strong></div>
+                            )}
                         </section>
                         <section className="quick-print-section">
                             <h2>TERMS / 專案條款</h2>
@@ -1232,7 +1269,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -1275,14 +1312,14 @@
                             <div className="flex items-center gap-4">
                                 <QuotationTypeSelector data={data} setData={setData} />
                                 <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
-                                <button type="button" onClick={() => window.print()} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
+                                <button type="button" onClick={handlePrint} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
                             </div>
                         </div>
                     </div>
 
                     <div className="px-4 sm:px-8 desktop-wrapper relative">
                         <div className="max-w-5xl mx-auto mt-5">
-                            <QuotationModeOverview data={data} onPrint={() => window.print()} showSigDate={data.printSettings.showSigDate} onToggleSigDate={e => updateField('printSettings', 'showSigDate', e.target.checked)} />
+                            <QuotationModeOverview data={data} onPrint={handlePrint} showSigDate={data.printSettings.showSigDate} onToggleSigDate={e => updateField('printSettings', 'showSigDate', e.target.checked)} />
                         </div>
                         {/* Desktop Scroll Buttons */}
                         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print">
@@ -1360,7 +1397,18 @@
                                         </table>
                                     </div>
                                 </div>
-                                <div className="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block break-inside-avoid"><div className="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print"><label className="text-xs font-bold text-gray-500 mr-1">稅額計算：</label><select value={data.taxMode} onChange={e => setData({...data, taxMode: e.target.value})} className="text-xs border rounded bg-white"><option value="excluded">報價未稅</option><option value="inclusive_flat">報價含稅</option><option value="included">稅外 (5%)</option></select></div><div className="grid grid-cols-2 font-medium"><div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計 (∆)</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div><div className="bg-kino text-white px-2 py-1 flex flex-col justify-center"><span className="font-bold print-summary-text-sm">本次報價總金額 ({data.taxMode === 'included' || data.taxMode === 'inclusive_flat' ? '含稅' : '未稅'})</span>{calcs.taxText && <span className="text-xs opacity-90 scale-90 origin-left">{calcs.taxText}</span>}</div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div></div></div>
+                                <div className="max-w-md ml-auto border border-kino rounded-lg overflow-hidden text-sm summary-block break-inside-avoid">
+                                    <div className="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print"><label className="text-xs font-bold text-gray-500 mr-1">稅額計算：</label><select value={data.taxMode} onChange={e => setData({...data, taxMode: e.target.value})} className="text-xs border rounded bg-white"><option value="excluded">報價未稅</option><option value="inclusive_flat">報價含稅</option><option value="included">稅外 (5%)</option></select></div>
+                                    {data.taxMode === 'included' ? (
+                                        <div className="grid grid-cols-2 font-medium">
+                                            <div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計（稅前）</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div>
+                                            <div className="bg-gray-50 px-2 py-1 flex items-center print-summary-text-sm"><span>VAT 5%</span></div><div className="bg-gray-50 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.taxAmount)}</div>
+                                            <div className="bg-kino text-white px-2 py-1 flex items-center"><span className="font-bold print-summary-text-sm">本次報價總金額（VAT 5%）</span></div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 font-medium"><div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計 (∆)</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div><div className="bg-kino text-white px-2 py-1 flex flex-col justify-center"><span className="font-bold print-summary-text-sm">本次報價總金額 ({data.taxMode === 'inclusive_flat' ? '含稅' : '未稅'})</span></div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div></div>
+                                    )}
+                                </div>
                                 <div className="no-print ml-auto mb-4 w-full max-w-md rounded-xl bg-kino p-3 text-white shadow-md">
                                     <div className="mb-2 flex items-center justify-between text-xs text-white/80"><span>未稅總計</span><span>{formatCurrency(calcs.totalA)}</span></div>
                                     <div className="flex items-center justify-between border-t border-white/20 pt-2">
@@ -1510,7 +1558,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, handlePrint, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1680,7 +1728,7 @@
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
-                        <QuotationModeOverview data={data} onPrint={() => window.print()} compact={true} />
+                        <QuotationModeOverview data={data} onPrint={handlePrint} compact={true} />
                         <div id="m-header" className="bg-white p-4 rounded-xl shadow-sm space-y-4 mobile-section">
                             <h2 className="text-kino font-bold border-b pb-2"><i className="fas fa-info-circle mr-2"></i>專案概況</h2>
                             <div className="flex flex-col items-center justify-center py-2 border-b border-gray-100"><label className="text-xs text-gray-500 mb-2">品牌標誌</label><div className="w-full flex justify-center cursor-pointer" onClick={() => document.getElementById('m-logo-upload').click()}>{data.logo ? (<img src={data.logo} className="max-h-[80px] object-contain" />) : (<div className="h-16 w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400"><i className="fas fa-image mr-2"></i> 點擊上傳</div>)}</div><input type="file" id="m-logo-upload" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); setData({...data, logo: b64}); } }} /></div>
@@ -1797,7 +1845,7 @@
                             <h2 className="font-bold border-b border-gray-600 pb-2 mb-3"><i className="fas fa-print mr-2"></i>列印與輸出設定</h2>
                             <QuotationTypeSelector data={data} setData={setData} compact={true} />
                             <label className="flex items-center space-x-2 text-sm select-none cursor-pointer my-4"><input type="checkbox" checked={data.printSettings.showSigDate} onChange={e => updateField('printSettings', 'showSigDate', e.target.checked)} className="text-kino" /><span>包含簽署日期</span></label>
-                            <button onClick={() => window.print()} className="w-full bg-white text-gray-900 font-bold py-3 rounded-lg hover:bg-gray-200 transition">列印</button>
+                            <button onClick={handlePrint} className="w-full bg-white text-gray-900 font-bold py-3 rounded-lg hover:bg-gray-200 transition">列印</button>
                             <p className="text-xs text-gray-400 mt-2 text-center">快速報價固定單頁。</p>
                         </div>
                         <div className="h-20"></div>
