@@ -981,7 +981,7 @@
                     grandTotal = Math.round(totalA * 1.05);
                     taxText = "(∆ x 1.05)";
                 }
-                return { totalA, grandTotal, taxAmount: grandTotal - totalA, taxText };
+                return { totalA, grandTotal, taxText };
             }, [data]);
             const handlePrint = () => {
                 const originalTitle = document.title;
@@ -1196,8 +1196,7 @@
                             </div>
                             {data.taxMode === 'included' ? (
                                 <div className="quick-print-total quick-print-total-vat">
-                                    <div className="quick-print-tax-line"><span>稅前金額</span><strong>NT$ {formatCurrency(calcs.totalA)}</strong></div>
-                                    <div className="quick-print-tax-line"><span>VAT 5%</span><strong>NT$ {formatCurrency(calcs.taxAmount)}</strong></div>
+                                    <div className="quick-print-tax-line"><span>小計</span><strong>NT$ {formatCurrency(calcs.totalA)}</strong></div>
                                     <div className="quick-print-tax-grand-total"><span>報價總額（VAT 5%）</span><strong>NT$ {formatCurrency(calcs.grandTotal)}</strong></div>
                                 </div>
                             ) : (
@@ -1401,8 +1400,7 @@
                                     <div className="bg-gray-50 px-2 py-1 text-right border-b border-gray-200 no-print"><label className="text-xs font-bold text-gray-500 mr-1">稅額計算：</label><select value={data.taxMode} onChange={e => setData({...data, taxMode: e.target.value})} className="text-xs border rounded bg-white"><option value="excluded">報價未稅</option><option value="inclusive_flat">報價含稅</option><option value="included">稅外 (5%)</option></select></div>
                                     {data.taxMode === 'included' ? (
                                         <div className="grid grid-cols-2 font-medium">
-                                            <div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>服務項目總計（稅前）</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div>
-                                            <div className="bg-gray-50 px-2 py-1 flex items-center print-summary-text-sm"><span>VAT 5%</span></div><div className="bg-gray-50 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.taxAmount)}</div>
+                                            <div className="bg-gray-100 px-2 py-1 flex items-center print-summary-text-sm"><span>小計</span></div><div className="bg-gray-100 px-2 py-1 text-right font-bold text-gray-800 print-summary-val-sm">{formatCurrency(calcs.totalA)}</div>
                                             <div className="bg-kino text-white px-2 py-1 flex items-center"><span className="font-bold print-summary-text-sm">本次報價總金額（VAT 5%）</span></div><div className="bg-kino text-white px-2 py-1 text-right font-extrabold text-lg flex items-center justify-end print-summary-val-sm">{formatCurrency(calcs.grandTotal)}</div>
                                         </div>
                                     ) : (
