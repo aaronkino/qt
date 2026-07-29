@@ -570,6 +570,18 @@
             line-height: .9rem;
             font-weight: 700;
         }
+        #mobile-root .qt-toolbar-shell h1 { display: none; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 {
+            width: 100%;
+            justify-content: space-between;
+        }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(1) { order: 3; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(2) { order: 4; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(3) { order: 5; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(4) { order: 1; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(5) { order: 2; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(6) { order: 6; }
+        #mobile-root .qt-toolbar-shell .flex.shrink-0.items-center.gap-1 > button:nth-child(7) { order: 7; }
         @media (prefers-reduced-motion: reduce) {
             .qt-toolbar-panel,
             .qt-toolbar-button { transition: none; }
@@ -2725,6 +2737,7 @@
                                     <button onClick={handleSave} className="qt-toolbar-control qt-toolbar-button bg-kino text-white shadow-sm hover:bg-kino-dark"><i className="fas fa-save"></i>儲存</button>
                                     <button onClick={handleSaveAs} className="qt-toolbar-control qt-toolbar-button bg-kino-light text-white shadow-sm hover:bg-kino-medium"><i className="fas fa-download"></i>另存</button>
                                     <button onClick={undo} disabled={!canUndo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canUndo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="返回" aria-label="返回"><i className="fas fa-undo"></i></button>
+                                    <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="重做" aria-label="重做"><i className="fas fa-redo"></i></button>
                                     <button onClick={handleReset} className="qt-toolbar-control qt-toolbar-button w-9 border border-red-100 px-0 text-red-400 hover:bg-red-50 hover:text-red-600" title="重置" aria-label="重置"><i className="fas fa-times"></i></button>
                                     {cloudSyncStatus === 'success' && <span className="qt-toolbar-status hidden sm:inline-flex"><i className="fas fa-check"></i>資料庫已同步</span>}
                                     {oneDriveFolder && <span className="qt-toolbar-status hidden max-w-[14rem] sm:inline-flex" title={oneDriveFolder.path || oneDriveFolder.name}><i className="fa-brands fa-microsoft"></i><span className="truncate">{oneDriveAutoSave ? 'OneDrive 自動儲存' : 'OneDrive 已連接'}</span></span>}
@@ -2735,9 +2748,6 @@
                             </div>
                             <div className={`qt-toolbar-panel ${toolbarExpanded ? '' : 'is-collapsed'}`} aria-hidden={!toolbarExpanded}>
                                 <div className="qt-toolbar-panel-inner">
-                                    <div className="flex min-h-[3.25rem] items-center justify-end gap-2 py-2">
-                                        <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="重做" aria-label="重做"><i className="fas fa-redo"></i></button>
-                                    </div>
                                     <div className="flex min-h-[3.25rem] flex-wrap items-center justify-end gap-2 border-t border-gray-100 py-2">
                                         <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
                                         <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} authUser={cloudAuthUser} />
@@ -3151,6 +3161,7 @@
                             <div className="flex shrink-0 items-center gap-1">
                                 <button onClick={handleSaveAs} aria-label="另存 JSON" title="另存 JSON" className="qt-toolbar-control qt-toolbar-button w-9 bg-kino-light px-0 text-white"><i className="fas fa-download"></i></button>
                                 <button onClick={undo} disabled={!canUndo} aria-label="返回" title="返回" className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canUndo ? 'text-kino hover:bg-gray-100' : 'cursor-not-allowed text-gray-300'}`}><i className="fas fa-undo"></i></button>
+                                <button onClick={redo} disabled={!canRedo} aria-label="重做" title="重做" className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canRedo ? 'text-kino hover:bg-gray-100' : 'cursor-not-allowed text-gray-300'}`}><i className="fas fa-redo"></i></button>
                                 <button onClick={handleOpen} aria-label="開啟 JSON" title="開啟 JSON" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-kino hover:bg-gray-100"><i className="fas fa-folder-open"></i></button>
                                 <button onClick={handleSave} aria-label="儲存或分享 JSON" title="儲存或分享 JSON" className="qt-toolbar-control qt-toolbar-button w-9 bg-kino px-0 text-white"><i className="fas fa-save"></i></button>
                                 <button onClick={handleReset} aria-label="重設報價" title="重設報價" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-red-500 hover:bg-red-50"><i className="fas fa-undo"></i></button>
@@ -3161,7 +3172,6 @@
                             <div className="qt-toolbar-panel-inner">
                                 <div className="space-y-2 border-t border-gray-100 px-3 py-3">
                                     <QuotationTypeSelector data={data} setData={setData} />
-                                    <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-full ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`}><i className="fas fa-redo"></i>重做</button>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
                                         <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white hover:bg-black"><i className="fas fa-print"></i>列印</button>
@@ -3173,6 +3183,7 @@
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
+                        <h1 className="text-xl font-bold text-kino">奇諾影像報價系統</h1>
                         <QuotationModeOverview data={data} onPrint={handlePrint} compact={true} />
                         <div id="m-header" className="bg-white p-4 rounded-xl shadow-sm space-y-4 mobile-section">
                             <h2 className="text-kino font-bold border-b pb-2"><i className="fas fa-info-circle mr-2"></i>專案概況</h2>
