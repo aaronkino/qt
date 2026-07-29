@@ -725,14 +725,14 @@
                 <select
                     className={`border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'flex-1 text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
                     defaultValue=""
-                    aria-label="載入本機專案"
+                    aria-label="載入已儲存專案"
                     onChange={(event) => {
                         const projectId = event.target.value;
                         if (projectId) onLoad(projectId);
                         event.target.value = '';
                     }}
                 >
-                    <option value="">本機專案庫...</option>
+                    <option value="">已儲存專案...</option>
                     {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
                 </select>
                 <button type="button" onClick={onSaveCurrent} className={`shrink-0 rounded-md border border-kino/30 text-kino hover:bg-kino hover:text-white transition ${compact ? 'px-2 py-1.5 text-xs' : 'px-2 py-1 text-xs'}`}>
@@ -740,6 +740,82 @@
                 </button>
             </div>
         );
+
+        const CloudSyncControls = ({ onSync, status = 'idle', compact = false }) => {
+            const state = {
+                idle: { icon: 'fa-cloud', label: '雲端同步', className: 'bg-kino hover:bg-kino-darker' },
+                syncing: { icon: 'fa-spinner fa-spin', label: '同步中', className: 'bg-gray-500 cursor-wait' },
+                success: { icon: 'fa-check', label: '已同步', className: 'bg-emerald-600 hover:bg-emerald-700' },
+                error: { icon: 'fa-exclamation-triangle', label: '同步失敗', className: 'bg-red-600 hover:bg-red-700' }
+            }[status] || { icon: 'fa-cloud', label: '雲端同步', className: 'bg-kino hover:bg-kino-darker' };
+            return (
+                <button
+                    type="button"
+                    onClick={onSync}
+                    disabled={status === 'syncing'}
+                    className={`no-print rounded-md px-2.5 py-1.5 text-xs font-bold text-white transition whitespace-nowrap ${state.className} ${compact ? 'w-full mt-2' : ''}`}
+                    title="同步專案與條款範本至 KINO 專用雲端資料庫"
+                >
+                    <i className={`fas ${state.icon} mr-1`}></i>{state.label}
+                </button>
+            );
+        };
+
+        const CloudSyncKeyModal = ({ onSave, onClose }) => {
+            const [syncKey, setSyncKey] = useState('');
+            const [showKey, setShowKey] = useState(false);
+            const [copied, setCopied] = useState(false);
+            const generateSyncKey = () => {
+                const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+                const bytes = crypto.getRandomValues(new Uint8Array(32));
+                const generated = Array.from(bytes, value => alphabet[value % alphabet.length]).join('');
+                setSyncKey(generated);
+                setShowKey(true);
+                setCopied(false);
+            };
+            const copySyncKey = async () => {
+                if (!syncKey) return;
+                await navigator.clipboard.writeText(syncKey);
+                setCopied(true);
+            };
+            return (
+                <div className="no-print fixed inset-0 z-[120] flex items-center justify-center bg-gray-950/55 p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="font-bold text-kino">KINO 雲端同步</h3>
+                                <p className="mt-1 text-xs leading-relaxed text-gray-500">輸入既有金鑰，或在第一次使用時產生新金鑰。相同金鑰會開啟同一個雲端資料空間。</p>
+                            </div>
+                            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="關閉雲端同步登入"><i className="fas fa-times"></i></button>
+                        </div>
+                        <label className="mb-1 block text-xs font-bold text-gray-600" htmlFor="cloud-sync-key">同步金鑰</label>
+                        <input
+                            id="cloud-sync-key"
+                            type={showKey ? 'text' : 'password'}
+                            autoComplete="off"
+                            value={syncKey}
+                            onChange={event => setSyncKey(event.target.value)}
+                            onKeyDown={event => { if (event.key === 'Enter' && syncKey.trim()) onSave(syncKey.trim()); }}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-kino focus:ring-2 focus:ring-kino/15"
+                            placeholder="請輸入同步金鑰"
+                            autoFocus
+                        />
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500"><input type="checkbox" checked={showKey} onChange={event => setShowKey(event.target.checked)} className="accent-kino" />顯示金鑰</label>
+                            <div className="flex gap-1.5">
+                                <button type="button" onClick={generateSyncKey} className="rounded-md border border-kino/30 px-2 py-1 text-xs font-bold text-kino hover:bg-kino/5">產生新金鑰</button>
+                                {syncKey && <button type="button" onClick={copySyncKey} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">{copied ? '已複製' : '複製'}</button>}
+                            </div>
+                        </div>
+                        {showKey && syncKey && <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800">請立即把金鑰存到你的密碼管理器。遺失後無法讀回原本的雲端資料。</p>}
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">取消</button>
+                            <button type="button" disabled={!syncKey.trim()} onClick={() => onSave(syncKey.trim())} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">登入並同步</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const PaymentTemplateSelect = ({ onApply, compact = false }) => (
             <select
@@ -824,6 +900,8 @@
         };
         const CONTRACT_TEMPLATE_STORAGE_KEY = 'kino_quotation_contract_templates_v1';
         const PROJECT_LIBRARY_STORAGE_KEY = 'kino_quotation_project_library_v1';
+        const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
+        const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
             { id: 'kino-standard', name: 'KINO 標準影音條款', notes: DEFAULT_NOTES_TEXT }
         ];
@@ -881,6 +959,8 @@
             const [fileHandle, setFileHandle] = useState(null);
             const [contractTemplates, setContractTemplates] = useState(loadContractTemplates);
             const [projectLibrary, setProjectLibrary] = useState(loadProjectLibrary);
+            const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
+            const [showCloudKeyModal, setShowCloudKeyModal] = useState(false);
             const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
@@ -1068,6 +1148,75 @@
                 reader.readAsText(file); 
             };
             const handleManualSave = () => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); showToast("已儲存至瀏覽器快取"); };
+            const getCloudSyncKey = () => {
+                return sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '';
+            };
+            const cloudRequest = async (path, options = {}, allowPrompt = true) => {
+                const syncKey = allowPrompt ? getCloudSyncKey() : (sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '');
+                if (!syncKey) throw new Error('SYNC_CANCELLED');
+                const response = await fetch(`${CLOUD_SYNC_API_URL}${path}`, {
+                    ...options,
+                    headers: {
+                        'content-type': 'application/json',
+                        authorization: `Bearer ${syncKey}`,
+                        ...(options.headers || {})
+                    }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) sessionStorage.removeItem(CLOUD_SYNC_KEY_STORAGE_KEY);
+                    const body = await response.json().catch(() => ({}));
+                    const error = new Error(body.error || `雲端同步失敗 (${response.status})`);
+                    error.status = response.status;
+                    throw error;
+                }
+                return response.json();
+            };
+            const saveRecordToCloud = async (path, record) => {
+                if (!sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY)) return;
+                try {
+                    await cloudRequest(path, { method: 'PUT', body: JSON.stringify(record) }, false);
+                    setCloudSyncStatus('success');
+                } catch (error) {
+                    console.warn('Cloud save error', error);
+                    setCloudSyncStatus('error');
+                }
+            };
+            const syncCloudData = async () => {
+                if (!getCloudSyncKey()) {
+                    setShowCloudKeyModal(true);
+                    setCloudSyncStatus('idle');
+                    return;
+                }
+                setCloudSyncStatus('syncing');
+                try {
+                    await cloudRequest('/api/sync', {
+                        method: 'POST',
+                        body: JSON.stringify({ projects: projectLibrary, templates: contractTemplates })
+                    });
+                    const remote = await cloudRequest('/api/sync');
+                    const syncedProjects = (Array.isArray(remote.projects) ? remote.projects : [])
+                        .filter(project => project?.id && project?.name && project?.data)
+                        .map(project => ({ ...project, data: normalizeQuotationData(project.data) }));
+                    const syncedTemplates = (Array.isArray(remote.templates) ? remote.templates : [])
+                        .filter(template => template?.id && template?.name && Array.isArray(template?.notes));
+                    setProjectLibrary(syncedProjects);
+                    setContractTemplates(syncedTemplates);
+                    setCloudSyncStatus('success');
+                    showToast(`雲端同步完成：${syncedProjects.length} 個專案、${syncedTemplates.length} 個條款範本`);
+                } catch (error) {
+                    if (error.message !== 'SYNC_CANCELLED') {
+                        console.error('Cloud sync error', error);
+                        showToast(error.status === 401 ? '同步金鑰格式不正確，請重新輸入' : '雲端同步失敗，已保留本機資料');
+                    }
+                    setCloudSyncStatus(error.message === 'SYNC_CANCELLED' ? 'idle' : 'error');
+                }
+            };
+            const saveCloudSyncKey = (syncKey) => {
+                if (!syncKey) return;
+                sessionStorage.setItem(CLOUD_SYNC_KEY_STORAGE_KEY, syncKey);
+                setShowCloudKeyModal(false);
+                setTimeout(syncCloudData, 0);
+            };
             const getSuggestedProjectName = () => {
                 const projectName = data.project.find(item => item.label.includes('專案名稱') || item.label === '名稱')?.value?.trim();
                 return projectName || data.header.quotationId || `專案 ${getLocalISODate()}`;
@@ -1079,7 +1228,8 @@
                 if (existing && !confirm(`「${name.trim()}」已存在，要更新為目前內容嗎？`)) return;
                 const snapshot = { id: existing?.id || `project-${Date.now()}`, name: name.trim(), updatedAt: new Date().toISOString(), data: normalizeQuotationData(data) };
                 setProjectLibrary(prev => [snapshot, ...prev.filter(project => project.id !== snapshot.id)]);
-                showToast(`已儲存本機專案「${snapshot.name}」`);
+                saveRecordToCloud(`/api/projects/${encodeURIComponent(snapshot.id)}`, snapshot);
+                showToast(`已儲存專案「${snapshot.name}」`);
             };
             const loadSavedProject = (projectId) => {
                 const savedProject = projectLibrary.find(project => project.id === projectId);
@@ -1111,7 +1261,9 @@
                 if (!name?.trim()) return;
                 const notes = data.notes.map(note => (typeof note === 'string' ? note : (note?.text || '')).trim()).filter(Boolean);
                 if (!notes.length) { showToast('目前沒有可儲存的條款'); return; }
-                setContractTemplates(prev => [...prev, { id: `custom-${Date.now()}`, name: name.trim(), notes }]);
+                const template = { id: `custom-${Date.now()}`, name: name.trim(), notes, updatedAt: new Date().toISOString() };
+                setContractTemplates(prev => [...prev, template]);
+                saveRecordToCloud(`/api/templates/${encodeURIComponent(template.id)}`, template);
                 showToast(`已儲存「${name.trim()}」為本機範本`);
             };
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
@@ -1119,6 +1271,7 @@
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
+                    {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} />}
                     <input type="file" id="hidden-file-input" className="hidden" accept=".json" onChange={handleLegacyLoad} />
 
                     <div id="desktop-root" style={{ display: mode === 'desktop' ? 'block' : 'none' }}>
@@ -1127,6 +1280,7 @@
                             handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
+                            syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
                             mode={mode}
@@ -1140,6 +1294,7 @@
                             handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode}
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
+                            syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
                         />
@@ -1268,7 +1423,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -1311,6 +1466,7 @@
                             <div className="flex items-center gap-4">
                                 <QuotationTypeSelector data={data} setData={setData} />
                                 <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
+                                <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} />
                                 <button type="button" onClick={handlePrint} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
                             </div>
                         </div>
@@ -1556,7 +1712,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, applyPaymentTemplate, handlePrint, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, applyPaymentTemplate, handlePrint, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1723,6 +1879,7 @@
                         <div className="px-3 pb-3">
                             <QuotationTypeSelector data={data} setData={setData} />
                             <div className="mt-2"><ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} /></div>
+                            <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} compact={true} />
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
