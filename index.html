@@ -817,6 +817,91 @@
             );
         };
 
+        const ProjectManagerRow = ({ project, onLoad, onSave, onDelete }) => {
+            const [name, setName] = useState(project.name);
+            return (
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input value={name} onChange={event => setName(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-kino" />
+                        <div className="flex shrink-0 gap-1.5">
+                            <button type="button" onClick={() => onLoad(project.id)} className="rounded-lg border border-kino/30 px-2.5 py-2 text-xs font-bold text-kino hover:bg-kino/5">載入</button>
+                            <button type="button" disabled={!name.trim() || name.trim() === project.name} onClick={() => onSave(project.id, name.trim())} className="rounded-lg bg-kino px-2.5 py-2 text-xs font-bold text-white disabled:opacity-35">儲存名稱</button>
+                            <button type="button" onClick={() => onDelete(project.id)} className="delete-action" title="刪除專案"><i className="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <p className="mt-2 text-[11px] text-gray-400">更新：{project.updatedAt ? new Date(project.updatedAt).toLocaleString('zh-TW') : '本機舊版資料'}</p>
+                </div>
+            );
+        };
+
+        const TemplateManagerRow = ({ template, onApply, onSave, onDelete }) => {
+            const [name, setName] = useState(template.name);
+            const [notes, setNotes] = useState(Array.isArray(template.notes) && template.notes.length ? template.notes : ['']);
+            const updateNote = (index, value) => setNotes(prev => prev.map((note, noteIndex) => noteIndex === index ? value : note));
+            const removeNote = (index) => setNotes(prev => prev.length > 1 ? prev.filter((_, noteIndex) => noteIndex !== index) : ['']);
+            const cleanNotes = notes.map(note => note.trim()).filter(Boolean);
+            return (
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input value={name} onChange={event => setName(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-bold outline-none focus:border-kino" />
+                        <div className="flex shrink-0 gap-1.5">
+                            <button type="button" onClick={() => onApply(template.id)} className="rounded-lg border border-kino/30 px-2.5 py-2 text-xs font-bold text-kino hover:bg-kino/5">套用</button>
+                            <button type="button" disabled={!name.trim() || !cleanNotes.length} onClick={() => onSave(template.id, name.trim(), cleanNotes)} className="rounded-lg bg-kino px-2.5 py-2 text-xs font-bold text-white disabled:opacity-35">儲存範本</button>
+                            <button type="button" onClick={() => onDelete(template.id)} className="delete-action" title="刪除條款範本"><i className="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                        {notes.map((note, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                                <span className="mt-2 text-xs font-bold text-kino">{index + 1}.</span>
+                                <textarea value={note} onChange={event => updateNote(index, event.target.value)} rows="2" className="min-w-0 flex-1 resize-y rounded-lg border border-gray-200 px-2.5 py-2 text-xs leading-relaxed outline-none focus:border-kino" placeholder="輸入條款內容" />
+                                <button type="button" onClick={() => removeNote(index)} className="delete-action mt-1" title="刪除此條款"><i className="fas fa-times"></i></button>
+                            </div>
+                        ))}
+                        <button type="button" onClick={() => setNotes(prev => [...prev, ''])} className="rounded-lg border border-dashed border-kino/30 px-3 py-2 text-xs font-bold text-kino hover:bg-kino/5"><i className="fas fa-plus mr-1"></i>新增條款</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const DataManagerModal = ({ projects, templates, onClose, onCreateProject, onLoadProject, onRenameProject, onDeleteProject, onCreateTemplate, onApplyTemplate, onSaveTemplate, onDeleteTemplate }) => {
+            const [tab, setTab] = useState('projects');
+            const [newProjectName, setNewProjectName] = useState('');
+            return (
+                <div className="no-print fixed inset-0 z-[110] flex items-center justify-center bg-gray-950/55 p-3 sm:p-6">
+                    <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-5">
+                            <div><h3 className="font-bold text-kino">資料庫管理</h3><p className="text-xs text-gray-400">管理已儲存專案與自訂條款範本</p></div>
+                            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="關閉資料庫管理"><i className="fas fa-times"></i></button>
+                        </div>
+                        <div className="flex border-b border-gray-200 bg-white px-4">
+                            <button type="button" onClick={() => setTab('projects')} className={`border-b-2 px-4 py-3 text-sm font-bold ${tab === 'projects' ? 'border-kino text-kino' : 'border-transparent text-gray-400'}`}>專案（{projects.length}）</button>
+                            <button type="button" onClick={() => setTab('templates')} className={`border-b-2 px-4 py-3 text-sm font-bold ${tab === 'templates' ? 'border-kino text-kino' : 'border-transparent text-gray-400'}`}>條款範本（{templates.length}）</button>
+                        </div>
+                        <div className="overflow-y-auto p-4 sm:p-5">
+                            {tab === 'projects' ? (
+                                <>
+                                    <div className="mb-4 flex flex-col gap-2 rounded-xl bg-kino/5 p-3 sm:flex-row">
+                                        <input value={newProjectName} onChange={event => setNewProjectName(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-kino/20 bg-white px-3 py-2 text-sm outline-none focus:border-kino" placeholder="新專案名稱（以目前畫面內容建立）" />
+                                        <button type="button" disabled={!newProjectName.trim()} onClick={() => { onCreateProject(newProjectName.trim()); setNewProjectName(''); }} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white disabled:opacity-35"><i className="fas fa-plus mr-1"></i>新增專案</button>
+                                    </div>
+                                    <div className="space-y-2">{projects.length ? projects.map(project => <ProjectManagerRow key={project.id} project={project} onLoad={onLoadProject} onSave={onRenameProject} onDelete={onDeleteProject} />) : <p className="py-10 text-center text-sm text-gray-400">尚未儲存任何專案</p>}</div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="mb-4 flex items-center justify-between rounded-xl bg-kino/5 p-3">
+                                        <p className="text-xs text-gray-500">內建標準範本保持唯讀；此處管理自訂範本。</p>
+                                        <button type="button" onClick={onCreateTemplate} className="shrink-0 rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white"><i className="fas fa-plus mr-1"></i>新增範本</button>
+                                    </div>
+                                    <div className="space-y-3">{templates.length ? templates.map(template => <TemplateManagerRow key={template.id} template={template} onApply={onApplyTemplate} onSave={onSaveTemplate} onDelete={onDeleteTemplate} />) : <p className="py-10 text-center text-sm text-gray-400">尚未建立自訂條款範本</p>}</div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const PaymentTemplateSelect = ({ onApply, compact = false }) => (
             <select
                 className={`no-print border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
@@ -900,6 +985,8 @@
         };
         const CONTRACT_TEMPLATE_STORAGE_KEY = 'kino_quotation_contract_templates_v1';
         const PROJECT_LIBRARY_STORAGE_KEY = 'kino_quotation_project_library_v1';
+        const DELETED_PROJECT_STORAGE_KEY = 'kino_quotation_deleted_projects_v1';
+        const DELETED_TEMPLATE_STORAGE_KEY = 'kino_quotation_deleted_templates_v1';
         const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
@@ -920,6 +1007,15 @@
                 return Array.isArray(stored) ? stored.filter(project => project?.id && project?.name && project?.data) : [];
             } catch (error) {
                 console.warn('Project library load error', error);
+                return [];
+            }
+        };
+        const loadDeletedIds = (storageKey) => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                return Array.isArray(stored) ? stored.filter(id => typeof id === 'string' && id) : [];
+            } catch (error) {
+                console.warn('Deleted record list load error', error);
                 return [];
             }
         };
@@ -959,8 +1055,11 @@
             const [fileHandle, setFileHandle] = useState(null);
             const [contractTemplates, setContractTemplates] = useState(loadContractTemplates);
             const [projectLibrary, setProjectLibrary] = useState(loadProjectLibrary);
+            const [deletedProjectIds, setDeletedProjectIds] = useState(() => loadDeletedIds(DELETED_PROJECT_STORAGE_KEY));
+            const [deletedTemplateIds, setDeletedTemplateIds] = useState(() => loadDeletedIds(DELETED_TEMPLATE_STORAGE_KEY));
             const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
             const [showCloudKeyModal, setShowCloudKeyModal] = useState(false);
+            const [showDataManager, setShowDataManager] = useState(false);
             const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
@@ -1031,6 +1130,8 @@
             useEffect(() => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); }, [data]);
             useEffect(() => { localStorage.setItem(CONTRACT_TEMPLATE_STORAGE_KEY, JSON.stringify(contractTemplates)); }, [contractTemplates]);
             useEffect(() => { localStorage.setItem(PROJECT_LIBRARY_STORAGE_KEY, JSON.stringify(projectLibrary)); }, [projectLibrary]);
+            useEffect(() => { localStorage.setItem(DELETED_PROJECT_STORAGE_KEY, JSON.stringify(deletedProjectIds)); }, [deletedProjectIds]);
+            useEffect(() => { localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(deletedTemplateIds)); }, [deletedTemplateIds]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
                 const syncResponsiveMode = () => setMode(mediaQuery.matches ? 'mobile' : 'desktop');
@@ -1191,8 +1292,15 @@
                 try {
                     await cloudRequest('/api/sync', {
                         method: 'POST',
-                        body: JSON.stringify({ projects: projectLibrary, templates: contractTemplates })
+                        body: JSON.stringify({
+                            projects: projectLibrary,
+                            templates: contractTemplates,
+                            deletedProjectIds,
+                            deletedTemplateIds
+                        })
                     });
+                    setDeletedProjectIds([]);
+                    setDeletedTemplateIds([]);
                     const remote = await cloudRequest('/api/sync');
                     const syncedProjects = (Array.isArray(remote.projects) ? remote.projects : [])
                         .filter(project => project?.id && project?.name && project?.data)
@@ -1231,6 +1339,42 @@
                 saveRecordToCloud(`/api/projects/${encodeURIComponent(snapshot.id)}`, snapshot);
                 showToast(`已儲存專案「${snapshot.name}」`);
             };
+            const createProjectFromManager = (name) => {
+                const snapshot = {
+                    id: `project-${Date.now()}`,
+                    name,
+                    updatedAt: new Date().toISOString(),
+                    data: normalizeQuotationData(data)
+                };
+                setProjectLibrary(prev => [snapshot, ...prev]);
+                setDeletedProjectIds(prev => prev.filter(id => id !== snapshot.id));
+                saveRecordToCloud(`/api/projects/${encodeURIComponent(snapshot.id)}`, snapshot);
+                showToast(`已新增專案「${snapshot.name}」`);
+            };
+            const renameSavedProject = (projectId, name) => {
+                const current = projectLibrary.find(project => project.id === projectId);
+                if (!current) return;
+                const updated = { ...current, name, updatedAt: new Date().toISOString() };
+                setProjectLibrary(prev => prev.map(project => project.id === projectId ? updated : project));
+                saveRecordToCloud(`/api/projects/${encodeURIComponent(projectId)}`, updated);
+                showToast(`已更新專案名稱為「${name}」`);
+            };
+            const deleteSavedProject = async (projectId) => {
+                const current = projectLibrary.find(project => project.id === projectId);
+                if (!current || !confirm(`確定刪除專案「${current.name}」？`)) return;
+                setProjectLibrary(prev => prev.filter(project => project.id !== projectId));
+                setDeletedProjectIds(prev => [...new Set([...prev, projectId])]);
+                if (getCloudSyncKey()) {
+                    try {
+                        await cloudRequest(`/api/projects/${encodeURIComponent(projectId)}`, { method: 'DELETE' }, false);
+                        setDeletedProjectIds(prev => prev.filter(id => id !== projectId));
+                    } catch (error) {
+                        console.warn('Cloud project delete error', error);
+                        setCloudSyncStatus('error');
+                    }
+                }
+                showToast(`已刪除專案「${current.name}」`);
+            };
             const loadSavedProject = (projectId) => {
                 const savedProject = projectLibrary.find(project => project.id === projectId);
                 if (!savedProject) return;
@@ -1266,12 +1410,60 @@
                 saveRecordToCloud(`/api/templates/${encodeURIComponent(template.id)}`, template);
                 showToast(`已儲存「${name.trim()}」為本機範本`);
             };
+            const createContractTemplateFromManager = () => {
+                const template = {
+                    id: `custom-${Date.now()}`,
+                    name: '新條款範本',
+                    notes: [''],
+                    updatedAt: new Date().toISOString()
+                };
+                setContractTemplates(prev => [template, ...prev]);
+                setDeletedTemplateIds(prev => prev.filter(id => id !== template.id));
+                showToast('已新增條款範本，編輯後請按儲存範本');
+            };
+            const saveContractTemplateRecord = (templateId, name, notes) => {
+                const current = contractTemplates.find(template => template.id === templateId);
+                if (!current) return;
+                const updated = { ...current, name, notes, updatedAt: new Date().toISOString() };
+                setContractTemplates(prev => prev.map(template => template.id === templateId ? updated : template));
+                saveRecordToCloud(`/api/templates/${encodeURIComponent(templateId)}`, updated);
+                showToast(`已儲存條款範本「${name}」`);
+            };
+            const deleteContractTemplateRecord = async (templateId) => {
+                const current = contractTemplates.find(template => template.id === templateId);
+                if (!current || !confirm(`確定刪除條款範本「${current.name}」？`)) return;
+                setContractTemplates(prev => prev.filter(template => template.id !== templateId));
+                setDeletedTemplateIds(prev => [...new Set([...prev, templateId])]);
+                if (getCloudSyncKey()) {
+                    try {
+                        await cloudRequest(`/api/templates/${encodeURIComponent(templateId)}`, { method: 'DELETE' }, false);
+                        setDeletedTemplateIds(prev => prev.filter(id => id !== templateId));
+                    } catch (error) {
+                        console.warn('Cloud template delete error', error);
+                        setCloudSyncStatus('error');
+                    }
+                }
+                showToast(`已刪除條款範本「${current.name}」`);
+            };
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
                     {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} />}
+                    {showDataManager && <DataManagerModal
+                        projects={projectLibrary}
+                        templates={contractTemplates}
+                        onClose={() => setShowDataManager(false)}
+                        onCreateProject={createProjectFromManager}
+                        onLoadProject={loadSavedProject}
+                        onRenameProject={renameSavedProject}
+                        onDeleteProject={deleteSavedProject}
+                        onCreateTemplate={createContractTemplateFromManager}
+                        onApplyTemplate={applyContractTemplate}
+                        onSaveTemplate={saveContractTemplateRecord}
+                        onDeleteTemplate={deleteContractTemplateRecord}
+                    />}
                     <input type="file" id="hidden-file-input" className="hidden" accept=".json" onChange={handleLegacyLoad} />
 
                     <div id="desktop-root" style={{ display: mode === 'desktop' ? 'block' : 'none' }}>
@@ -1281,6 +1473,7 @@
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
+                            openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
                             mode={mode}
@@ -1295,6 +1488,7 @@
                             contractTemplates={allContractTemplates} applyContractTemplate={applyContractTemplate} saveCurrentContractTemplate={saveCurrentContractTemplate}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
+                            openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
                         />
@@ -1423,7 +1617,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -1466,6 +1660,7 @@
                             <div className="flex items-center gap-4">
                                 <QuotationTypeSelector data={data} setData={setData} />
                                 <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
+                                <button type="button" onClick={openDataManager} className="shrink-0 rounded-md border border-kino/30 px-2.5 py-1.5 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
                                 <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} />
                                 <button type="button" onClick={handlePrint} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
                             </div>
@@ -1712,7 +1907,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, applyPaymentTemplate, handlePrint, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, contractTemplates, applyContractTemplate, saveCurrentContractTemplate, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -1879,6 +2074,7 @@
                         <div className="px-3 pb-3">
                             <QuotationTypeSelector data={data} setData={setData} />
                             <div className="mt-2"><ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} /></div>
+                            <button type="button" onClick={openDataManager} className="mt-2 w-full rounded-md border border-kino/30 px-2.5 py-2 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
                             <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} compact={true} />
                         </div>
                     </div>

@@ -136,15 +136,42 @@ const routeRequest = async (request, env) => {
     const body = await readJson(request);
     const projects = Array.isArray(body.projects) ? body.projects : [];
     const templates = Array.isArray(body.templates) ? body.templates : [];
-    if (projects.length > 200 || templates.length > 200) {
+    const deletedProjectIds = Array.isArray(body.deletedProjectIds)
+      ? body.deletedProjectIds.filter(validId)
+      : [];
+    const deletedTemplateIds = Array.isArray(body.deletedTemplateIds)
+      ? body.deletedTemplateIds.filter(validId)
+      : [];
+    if (
+      projects.length > 200 ||
+      templates.length > 200 ||
+      deletedProjectIds.length > 200 ||
+      deletedTemplateIds.length > 200
+    ) {
       return json({ error: "同步項目過多" }, 400);
     }
     const statements = [
+      ...deletedProjectIds.map((id) =>
+        env.DB.prepare(
+          "DELETE FROM cloud_projects WHERE workspace_id = ?1 AND id = ?2",
+        ).bind(workspaceId, id),
+      ),
+      ...deletedTemplateIds.map((id) =>
+        env.DB.prepare(
+          "DELETE FROM cloud_contract_templates WHERE workspace_id = ?1 AND id = ?2",
+        ).bind(workspaceId, id),
+      ),
       ...projects.map((project) => upsertProject(env, workspaceId, project)),
       ...templates.map((template) => upsertTemplate(env, workspaceId, template)),
     ];
     if (statements.length) await env.DB.batch(statements);
-    return json({ ok: true, projects: projects.length, templates: templates.length });
+    return json({
+      ok: true,
+      projects: projects.length,
+      templates: templates.length,
+      deletedProjects: deletedProjectIds.length,
+      deletedTemplates: deletedTemplateIds.length,
+    });
   }
 
   if (parts[0] === "api" && parts[1] === "projects" && parts[2]) {
