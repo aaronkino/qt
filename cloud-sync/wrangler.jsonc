@@ -7,7 +7,8 @@
     "enabled": true
   },
   "vars": {
-    "ALLOWED_ORIGINS": "https://aaronkino.github.io,http://localhost:8000,http://127.0.0.1:8000"
+    "ALLOWED_ORIGINS": "https://aaronkino.github.io,http://localhost:8000,http://127.0.0.1:8000",
+    "GOOGLE_CLIENT_ID": "832913493589-j804t0j6ri2n4sfq3bthfn25d1pf45ad.apps.googleusercontent.com"
   },
   "d1_databases": [
     {

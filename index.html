@@ -38,6 +38,7 @@
     
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client?hl=zh_TW" async defer></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+CJK+TC:wght@400;500;700&display=swap');
@@ -572,8 +573,23 @@
             '中止與費用',
             '準據法與爭議'
         ];
+        const makeClauseCategoryId = (name) => {
+            let hash = 5381;
+            Array.from(String(name || '')).forEach(character => {
+                hash = ((hash << 5) + hash) ^ character.codePointAt(0);
+            });
+            return `category-${(hash >>> 0).toString(36)}`;
+        };
+        const DEFAULT_CLAUSE_CATEGORIES = [...new Set([...CORE_CLAUSE_CATEGORIES, '檔案保存'])].map((name, index) => ({
+            id: makeClauseCategoryId(name),
+            name,
+            sortOrder: index + 1,
+            updatedAt: CLAUSE_SEED_UPDATED_AT
+        }));
+        const getClauseCategoryId = (name) => DEFAULT_CLAUSE_CATEGORIES.find(category => category.name === name)?.id || makeClauseCategoryId(name);
         const makeClauseRecord = (id, category, text, severity, sortOrder, extra = {}) => ({
             id,
+            categoryId: getClauseCategoryId(category),
             category,
             text,
             severity,
@@ -610,6 +626,10 @@
                 Number(a.severity || 2) - Number(b.severity || 2) ||
                 Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
         });
+        const sortClauseCategories = (categories) => [...categories].sort((a, b) =>
+            Number(a.sortOrder || 0) - Number(b.sortOrder || 0) ||
+            String(a.name).localeCompare(String(b.name), 'zh-TW')
+        );
 
         // [v1.09 Helper] Ensure notes are objects to fix React keys
         const ensureNoteObjects = (notes) => {
@@ -769,14 +789,24 @@
             </button>
         );
 
-        const ClausePickerModal = ({ clauses, onImport, onClose }) => {
-            const [activeCategory, setActiveCategory] = useState('原始預設');
+        const ClausePickerModal = ({ clauses, categories, onImport, onClose, onCreateCategory, onSaveCategory, onDeleteCategory, onCreateClause, onSaveClause, onDeleteClause }) => {
+            const [activeCategory, setActiveCategory] = useState('core');
             const [selectedIds, setSelectedIds] = useState([]);
             const [search, setSearch] = useState('');
-            const categories = ['原始預設', '全部', ...Array.from(new Set(clauses.map(clause => clause.category)))];
+            const [isManaging, setIsManaging] = useState(false);
+            const [newCategoryName, setNewCategoryName] = useState('');
+            const [categoryName, setCategoryName] = useState('');
+            const [newClauseText, setNewClauseText] = useState('');
+            const [newClauseSeverity, setNewClauseSeverity] = useState(2);
+            const sortedCategories = sortClauseCategories(categories);
+            const selectedCategory = sortedCategories.find(category => category.id === activeCategory);
+            useEffect(() => { setCategoryName(selectedCategory?.name || ''); }, [activeCategory, selectedCategory?.name]);
+            useEffect(() => {
+                if (!['core', 'all'].includes(activeCategory) && !categories.some(category => category.id === activeCategory)) setActiveCategory('all');
+            }, [activeCategory, categories]);
             const filteredClauses = sortClauseLibrary(clauses).filter(clause => {
-                const categoryMatch = activeCategory === '全部'
-                    || (activeCategory === '原始預設' ? clause.isCore : clause.category === activeCategory);
+                const categoryMatch = activeCategory === 'all'
+                    || (activeCategory === 'core' ? clause.isCore : clause.categoryId === activeCategory);
                 const searchMatch = !search.trim() || clause.text.includes(search.trim()) || clause.category.includes(search.trim());
                 return categoryMatch && searchMatch;
             });
@@ -791,35 +821,65 @@
                     <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl bg-gray-50 shadow-2xl sm:max-h-[90vh] sm:rounded-3xl">
                         <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
                             <div>
-                                <h3 className="font-black text-kino"><i className="fas fa-layer-group mr-2"></i>選擇條款</h3>
-                                <p className="mt-0.5 text-xs text-gray-400">先依分類篩選，再勾選需要的條款；匯入時不會加入重複文字。</p>
+                                <h3 className="font-black text-kino"><i className="fas fa-layer-group mr-2"></i>{isManaging ? '管理條款資料庫' : '選擇條款'}</h3>
+                                <p className="mt-0.5 text-xs text-gray-400">{isManaging ? '可直接新增、改名或刪除分類，也能編輯分類內的單條條款。' : '先依分類篩選，再勾選需要的條款；匯入時不會加入重複文字。'}</p>
                             </div>
-                            <button type="button" onClick={onClose} className="delete-action" aria-label="關閉條款選擇"><i className="fas fa-times"></i></button>
+                            <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => { setIsManaging(value => !value); setSelectedIds([]); setSearch(''); }} className={`rounded-xl px-3 py-2 text-xs font-bold transition ${isManaging ? 'bg-kino text-white' : 'border border-kino/25 text-kino hover:bg-kino/5'}`}><i className={`fas ${isManaging ? 'fa-check' : 'fa-pen'} mr-1.5`}></i>{isManaging ? '完成' : '管理'}</button>
+                                <button type="button" onClick={onClose} className="delete-action" aria-label="關閉條款選擇"><i className="fas fa-times"></i></button>
+                            </div>
                         </div>
                         <div className="border-b border-gray-200 bg-white px-4 pb-4 sm:px-6">
                             <div className="no-scrollbar flex gap-2 overflow-x-auto py-3">
-                                {categories.map(category => (
-                                    <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${activeCategory === category ? 'bg-kino text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-kino/10 hover:text-kino'}`}>
-                                        {category}
+                                {[{ id: 'core', name: '原始預設' }, { id: 'all', name: '全部' }, ...sortedCategories].map(category => (
+                                    <button key={category.id} type="button" onClick={() => setActiveCategory(category.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${activeCategory === category.id ? 'bg-kino text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-kino/10 hover:text-kino'}`}>
+                                        {category.name}
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <label className="relative min-w-0 flex-1">
-                                    <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-300"></i>
-                                    <input value={search} onChange={event => setSearch(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-kino focus:bg-white" placeholder="搜尋分類或條款內容" />
-                                </label>
-                                <button type="button" onClick={toggleVisible} disabled={!visibleIds.length} className="shrink-0 rounded-xl border border-kino/25 px-3 py-2 text-xs font-bold text-kino disabled:opacity-30">
-                                    {allVisibleSelected ? '取消本頁' : '全選本頁'}
-                                </button>
-                            </div>
+                            {isManaging ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input value={newCategoryName} onChange={event => setNewCategoryName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && newCategoryName.trim()) { onCreateCategory(newCategoryName.trim()); setNewCategoryName(''); } }} className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-kino focus:bg-white" placeholder="新增分類名稱" />
+                                        <button type="button" disabled={!newCategoryName.trim()} onClick={() => { onCreateCategory(newCategoryName.trim()); setNewCategoryName(''); }} className="shrink-0 rounded-xl bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-35"><i className="fas fa-plus mr-1"></i>新增分類</button>
+                                    </div>
+                                    {selectedCategory && <div className="flex items-center gap-2 rounded-xl border border-kino/10 bg-kino/5 p-2">
+                                        <input value={categoryName} onChange={event => setCategoryName(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-kino/20 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-kino" aria-label="分類名稱" />
+                                        <button type="button" disabled={!categoryName.trim() || categoryName.trim() === selectedCategory.name} onClick={() => onSaveCategory(selectedCategory.id, categoryName.trim())} className="shrink-0 rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-35">儲存名稱</button>
+                                        <button type="button" onClick={() => onDeleteCategory(selectedCategory.id)} className="delete-action shrink-0" title="刪除此分類"><i className="fas fa-times"></i></button>
+                                    </div>}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <label className="relative min-w-0 flex-1">
+                                        <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-300"></i>
+                                        <input value={search} onChange={event => setSearch(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-kino focus:bg-white" placeholder="搜尋分類或條款內容" />
+                                    </label>
+                                    <button type="button" onClick={toggleVisible} disabled={!visibleIds.length} className="shrink-0 rounded-xl border border-kino/25 px-3 py-2 text-xs font-bold text-kino disabled:opacity-30">
+                                        {allVisibleSelected ? '取消本頁' : '全選本頁'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-y-auto p-4 sm:p-6">
-                            {activeCategory === '原始預設' && <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700"><i className="fas fa-lock mr-1"></i>這裡固定依原始第 1–6 條順序顯示，不會依分類或嚴謹程度重排。</div>}
+                            {activeCategory === 'core' && <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700"><i className="fas fa-list-ol mr-1"></i>這裡固定依原始第 1–6 條順序顯示，不會依分類或嚴謹程度重排；管理模式仍可編輯內容。</div>}
+                            {isManaging && selectedCategory && <div className="mb-4 rounded-2xl border border-dashed border-kino/25 bg-white p-3">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="text-xs font-bold text-kino"><i className="fas fa-plus-circle mr-1"></i>新增至「{selectedCategory.name}」</p>
+                                    <select value={newClauseSeverity} onChange={event => setNewClauseSeverity(Number(event.target.value))} className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs">
+                                        <option value="1">基本</option><option value="2">一般</option><option value="3">嚴格</option>
+                                    </select>
+                                </div>
+                                <textarea value={newClauseText} onChange={event => setNewClauseText(event.target.value)} rows="3" className="w-full resize-y rounded-xl border border-gray-200 px-3 py-2 text-xs leading-6 outline-none focus:border-kino" placeholder="輸入條款內容" />
+                                <div className="mt-2 flex justify-end"><button type="button" disabled={!newClauseText.trim()} onClick={() => { onCreateClause(selectedCategory.id, newClauseText.trim(), newClauseSeverity); setNewClauseText(''); }} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-35"><i className="fas fa-plus mr-1"></i>新增條款</button></div>
+                            </div>}
+                            {isManaging && !selectedCategory && <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700">請選擇一個實際分類，才能新增條款或修改分類名稱。</p>}
                             <div className="space-y-2">
                                 {filteredClauses.map((clause, index) => {
                                     const checked = selectedIds.includes(clause.id);
-                                    return (
+                                    return isManaging ? (
+                                        <ClauseManagerRow key={clause.id} clause={clause} categories={sortedCategories} onSave={onSaveClause} onDelete={onDeleteClause} />
+                                    ) : (
                                         <label key={clause.id} className={`block cursor-pointer rounded-2xl border p-3 transition sm:p-4 ${checked ? 'border-kino bg-kino/5 ring-1 ring-kino/10' : 'border-gray-200 bg-white hover:border-kino/30'}`}>
                                             <div className="flex items-start gap-3">
                                                 <input type="checkbox" checked={checked} onChange={() => setSelectedIds(prev => checked ? prev.filter(id => id !== clause.id) : [...prev, clause.id])} className="mt-1 h-4 w-4 shrink-0 accent-kino" />
@@ -839,11 +899,11 @@
                             </div>
                         </div>
                         <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-                            <span className="text-xs font-bold text-gray-500">已選 {selectedIds.length} 條</span>
-                            <div className="flex gap-2">
-                                <button type="button" onClick={() => setSelectedIds([])} className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-500">清除</button>
-                                <button type="button" disabled={!selectedIds.length} onClick={() => onImport(selectedIds)} className="rounded-xl bg-kino px-4 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-35"><i className="fas fa-file-import mr-1"></i>匯入已選條款</button>
-                            </div>
+                            {isManaging ? <><span className="text-xs text-gray-400">分類 {categories.length} 個 · 條款 {clauses.length} 條</span><button type="button" onClick={() => setIsManaging(false)} className="rounded-xl bg-kino px-4 py-2 text-xs font-bold text-white">完成管理</button></> : <><span className="text-xs font-bold text-gray-500">已選 {selectedIds.length} 條</span>
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={() => setSelectedIds([])} className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-500">清除</button>
+                                    <button type="button" disabled={!selectedIds.length} onClick={() => onImport(selectedIds)} className="rounded-xl bg-kino px-4 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-35"><i className="fas fa-file-import mr-1"></i>匯入已選條款</button>
+                                </div></>}
                         </div>
                     </div>
                 </div>
@@ -871,30 +931,65 @@
             </div>
         );
 
-        const CloudSyncControls = ({ onSync, status = 'idle', compact = false }) => {
+        const CloudSyncControls = ({ onSync, onManage, status = 'idle', compact = false, authUser = null }) => {
             const state = {
-                idle: { icon: 'fa-cloud', label: '雲端同步', className: 'bg-kino hover:bg-kino-darker' },
+                idle: { icon: authUser ? 'fa-user-check' : 'fa-cloud', label: authUser ? '同步帳號資料' : 'Google 登入／同步', className: 'bg-kino hover:bg-kino-darker' },
                 syncing: { icon: 'fa-spinner fa-spin', label: '同步中', className: 'bg-gray-500 cursor-wait' },
                 success: { icon: 'fa-check', label: '已同步', className: 'bg-emerald-600 hover:bg-emerald-700' },
                 error: { icon: 'fa-exclamation-triangle', label: '同步失敗', className: 'bg-red-600 hover:bg-red-700' }
-            }[status] || { icon: 'fa-cloud', label: '雲端同步', className: 'bg-kino hover:bg-kino-darker' };
+            }[status] || { icon: 'fa-cloud', label: 'Google 登入／同步', className: 'bg-kino hover:bg-kino-darker' };
             return (
-                <button
-                    type="button"
-                    onClick={onSync}
-                    disabled={status === 'syncing'}
-                    className={`no-print rounded-md px-2.5 py-1.5 text-xs font-bold text-white transition whitespace-nowrap ${state.className} ${compact ? 'w-full mt-2' : ''}`}
-                    title="同步完整專案與條款資料庫至 KINO 專用雲端資料庫"
-                >
-                    <i className={`fas ${state.icon} mr-1`}></i>{state.label}
-                </button>
+                <div className={`no-print flex items-center gap-1.5 ${compact ? 'mt-2 w-full' : ''}`}>
+                    <button
+                        type="button"
+                        onClick={onSync}
+                        disabled={status === 'syncing'}
+                        className={`rounded-md px-2.5 py-1.5 text-xs font-bold text-white transition whitespace-nowrap ${state.className} ${compact ? 'min-w-0 flex-1 py-2' : ''}`}
+                        title={authUser ? `已登入 ${authUser.email}` : '使用 Google 帳號登入，或以既有同步金鑰連接 KINO 專用雲端資料庫'}
+                    >
+                        <i className={`fas ${state.icon} mr-1`}></i>{state.label}
+                    </button>
+                    {authUser && <button type="button" onClick={onManage} className={`shrink-0 rounded-md border border-kino/25 bg-white text-kino hover:bg-kino/5 ${compact ? 'px-3 py-2' : 'px-2.5 py-1.5'}`} title="帳號資訊與登出" aria-label="管理 Google 帳號"><i className="fas fa-user-circle"></i></button>}
+                </div>
             );
         };
 
-        const CloudSyncKeyModal = ({ onSave, onClose }) => {
+        const CloudSyncKeyModal = ({ onSave, onClose, googleClientId, onGoogleCredential, authUser, onLogout, authStatus = 'idle' }) => {
             const [syncKey, setSyncKey] = useState('');
             const [showKey, setShowKey] = useState(false);
             const [copied, setCopied] = useState(false);
+            const googleButtonRef = useRef(null);
+            useEffect(() => {
+                if (!googleClientId || authUser) return;
+                let attempts = 0;
+                const render = () => {
+                    if (window.google?.accounts?.id && googleButtonRef.current) {
+                        googleButtonRef.current.innerHTML = '';
+                        window.google.accounts.id.initialize({
+                            client_id: googleClientId,
+                            callback: response => onGoogleCredential(response.credential),
+                            ux_mode: 'popup'
+                        });
+                        window.google.accounts.id.renderButton(googleButtonRef.current, {
+                            type: 'standard',
+                            theme: 'outline',
+                            size: 'large',
+                            text: 'continue_with',
+                            shape: 'pill',
+                            width: Math.min(340, googleButtonRef.current.clientWidth || 320),
+                            locale: 'zh_TW'
+                        });
+                        return true;
+                    }
+                    return false;
+                };
+                if (render()) return;
+                const timer = setInterval(() => {
+                    attempts += 1;
+                    if (render() || attempts >= 20) clearInterval(timer);
+                }, 250);
+                return () => clearInterval(timer);
+            }, [googleClientId, authUser, onGoogleCredential]);
             const generateSyncKey = () => {
                 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
                 const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -913,11 +1008,26 @@
                     <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
                         <div className="mb-4 flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="font-bold text-kino">KINO 雲端同步</h3>
-                                <p className="mt-1 text-xs leading-relaxed text-gray-500">輸入既有金鑰，或在第一次使用時產生新金鑰。相同金鑰會開啟同一個雲端資料空間。</p>
+                                <h3 className="font-bold text-kino">KINO 帳號與雲端同步</h3>
+                                <p className="mt-1 text-xs leading-relaxed text-gray-500">Google 帳號會綁定一個獨立 D1 工作區，保存完整專案、條款與分類。</p>
                             </div>
                             <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="關閉雲端同步登入"><i className="fas fa-times"></i></button>
                         </div>
+                        {authUser ? <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                            <div className="flex items-center gap-3">
+                                {authUser.picture ? <img src={authUser.picture} className="h-10 w-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-kino text-white"><i className="fas fa-user"></i></span>}
+                                <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-800">{authUser.name}</p><p className="truncate text-xs text-gray-500">{authUser.email}</p></div>
+                            </div>
+                            <div className="mt-3 flex gap-2"><button type="button" onClick={onClose} className="flex-1 rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white">繼續使用</button><button type="button" onClick={onLogout} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">登出</button></div>
+                        </div> : <>
+                            {googleClientId ? <div className="rounded-2xl border border-kino/10 bg-kino/5 p-3">
+                                <p className="mb-3 text-center text-xs font-bold text-kino">建議使用 Google 帳號快速登入</p>
+                                <div ref={googleButtonRef} className="flex min-h-[44px] w-full items-center justify-center"></div>
+                                {authStatus === 'loading' && <p className="mt-2 text-center text-xs text-gray-400"><i className="fas fa-spinner fa-spin mr-1"></i>正在驗證 Google 帳號…</p>}
+                            </div> : <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700"><i className="fas fa-info-circle mr-1"></i>Google 登入程式已完成，等待填入 Google OAuth Client ID 後啟用。</div>}
+                            <details className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <summary className="cursor-pointer text-xs font-bold text-gray-500">使用既有同步金鑰</summary>
+                                <p className="mb-3 mt-2 text-xs leading-relaxed text-gray-400">保留給舊資料空間使用；新使用者建議選 Google 登入。</p>
                         <label className="mb-1 block text-xs font-bold text-gray-600" htmlFor="cloud-sync-key">同步金鑰</label>
                         <input
                             id="cloud-sync-key"
@@ -928,7 +1038,6 @@
                             onKeyDown={event => { if (event.key === 'Enter' && syncKey.trim()) onSave(syncKey.trim()); }}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-kino focus:ring-2 focus:ring-kino/15"
                             placeholder="請輸入同步金鑰"
-                            autoFocus
                         />
                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                             <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500"><input type="checkbox" checked={showKey} onChange={event => setShowKey(event.target.checked)} className="accent-kino" />顯示金鑰</label>
@@ -937,11 +1046,13 @@
                                 {syncKey && <button type="button" onClick={copySyncKey} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">{copied ? '已複製' : '複製'}</button>}
                             </div>
                         </div>
-                        {showKey && syncKey && <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800">請立即把金鑰存到你的密碼管理器。遺失後無法讀回原本的雲端資料。</p>}
-                        <div className="mt-4 flex justify-end gap-2">
-                            <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">取消</button>
-                            <button type="button" disabled={!syncKey.trim()} onClick={() => onSave(syncKey.trim())} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">登入並同步</button>
-                        </div>
+                                {showKey && syncKey && <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800">請立即把金鑰存到你的密碼管理器。遺失後無法讀回原本的雲端資料。</p>}
+                                <div className="mt-3 flex justify-end gap-2">
+                                    <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">取消</button>
+                                    <button type="button" disabled={!syncKey.trim()} onClick={() => onSave(syncKey.trim())} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">使用金鑰同步</button>
+                                </div>
+                            </details>
+                        </>}
                     </div>
                 </div>
             );
@@ -995,14 +1106,16 @@
         };
 
         const ClauseManagerRow = ({ clause, categories, onSave, onDelete }) => {
-            const [category, setCategory] = useState(clause.category);
+            const [categoryId, setCategoryId] = useState(clause.categoryId || categories.find(category => category.name === clause.category)?.id || '');
             const [text, setText] = useState(clause.text);
             const [severity, setSeverity] = useState(Number(clause.severity) || 2);
             return (
                 <div data-clause-id={clause.id} className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                         {clause.isCore && <span className="rounded-full bg-kino px-2 py-0.5 text-[10px] font-bold text-white">原始第 {clause.coreOrder} 條</span>}
-                        <input list="clause-category-list" value={category} onChange={event => setCategory(event.target.value)} className="min-w-[10rem] flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold outline-none focus:border-kino" aria-label="條款分類" />
+                        <select value={categoryId} onChange={event => setCategoryId(event.target.value)} className="min-w-[10rem] flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold outline-none focus:border-kino" aria-label="條款分類">
+                            {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                        </select>
                         <select value={severity} onChange={event => setSeverity(Number(event.target.value))} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-kino" aria-label="條款嚴謹程度">
                             <option value="1">基本</option>
                             <option value="2">一般</option>
@@ -1011,22 +1124,22 @@
                     </div>
                     <textarea value={text} onChange={event => setText(event.target.value)} rows="3" className="w-full resize-y rounded-xl border border-gray-200 px-3 py-2 text-xs leading-6 outline-none focus:border-kino" aria-label="條款內容" />
                     <div className="mt-2 flex items-center justify-end gap-2">
-                        <button type="button" disabled={!category.trim() || !text.trim()} onClick={() => onSave(clause.id, category.trim(), text.trim(), severity)} className="rounded-lg bg-kino px-3 py-1.5 text-xs font-bold text-white disabled:opacity-35">儲存修改</button>
+                        <button type="button" disabled={!categoryId || !text.trim()} onClick={() => onSave(clause.id, categoryId, text.trim(), severity)} className="rounded-lg bg-kino px-3 py-1.5 text-xs font-bold text-white disabled:opacity-35">儲存修改</button>
                         <button type="button" onClick={() => onDelete(clause.id)} className="delete-action" title="刪除此條款"><i className="fas fa-times"></i></button>
                     </div>
                 </div>
             );
         };
 
-        const DataManagerModal = ({ projects, clauses, onClose, onCreateProject, onLoadProject, onRenameProject, onDeleteProject, onCreateClause, onSaveClause, onDeleteClause }) => {
+        const DataManagerModal = ({ projects, clauses, categories, onClose, onCreateProject, onLoadProject, onRenameProject, onDeleteProject, onCreateClause, onSaveClause, onDeleteClause }) => {
             const [tab, setTab] = useState('projects');
             const [newProjectName, setNewProjectName] = useState('');
-            const [newClauseCategory, setNewClauseCategory] = useState('智慧財產權');
+            const [newClauseCategory, setNewClauseCategory] = useState(categories.find(category => category.name === '智慧財產權')?.id || categories[0]?.id || '');
             const [newClauseText, setNewClauseText] = useState('');
             const [newClauseSeverity, setNewClauseSeverity] = useState(2);
             const [clauseFilter, setClauseFilter] = useState('全部');
-            const clauseCategories = Array.from(new Set(sortClauseLibrary(clauses).map(clause => clause.category)));
-            const visibleClauses = sortClauseLibrary(clauses).filter(clause => clauseFilter === '全部' || (clauseFilter === '原始預設' ? clause.isCore : clause.category === clauseFilter));
+            const clauseCategories = sortClauseCategories(categories);
+            const visibleClauses = sortClauseLibrary(clauses).filter(clause => clauseFilter === '全部' || (clauseFilter === '原始預設' ? clause.isCore : clause.categoryId === clauseFilter));
             return (
                 <div className="no-print fixed inset-0 z-[110] flex items-center justify-center bg-gray-950/55 p-3 sm:p-6">
                     <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-2xl">
@@ -1059,22 +1172,23 @@
                                 </>
                             ) : (
                                 <>
-                                    <datalist id="clause-category-list">{clauseCategories.map(category => <option key={category} value={category} />)}</datalist>
                                     <div className="mb-4 rounded-2xl border border-kino/10 bg-kino/5 p-3">
                                         <p className="mb-2 text-xs font-bold text-kino"><i className="fas fa-plus-circle mr-1"></i>新增單條條款</p>
                                         <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                                            <input list="clause-category-list" value={newClauseCategory} onChange={event => setNewClauseCategory(event.target.value)} className="rounded-lg border border-kino/20 bg-white px-3 py-2 text-xs outline-none focus:border-kino" placeholder="分類，例如：智慧財產權" />
+                                            <select value={newClauseCategory} onChange={event => setNewClauseCategory(event.target.value)} className="rounded-lg border border-kino/20 bg-white px-3 py-2 text-xs outline-none focus:border-kino">
+                                                {clauseCategories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                                            </select>
                                             <select value={newClauseSeverity} onChange={event => setNewClauseSeverity(Number(event.target.value))} className="rounded-lg border border-kino/20 bg-white px-3 py-2 text-xs outline-none">
                                                 <option value="1">基本</option><option value="2">一般</option><option value="3">嚴格</option>
                                             </select>
                                         </div>
                                         <textarea value={newClauseText} onChange={event => setNewClauseText(event.target.value)} rows="3" className="mt-2 w-full resize-y rounded-xl border border-kino/20 bg-white px-3 py-2 text-xs leading-6 outline-none focus:border-kino" placeholder="輸入要重複使用的條款內容" />
                                         <div className="mt-2 flex justify-end">
-                                            <button type="button" disabled={!newClauseCategory.trim() || !newClauseText.trim()} onClick={() => { onCreateClause(newClauseCategory.trim(), newClauseText.trim(), newClauseSeverity); setNewClauseText(''); }} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-35"><i className="fas fa-plus mr-1"></i>新增至資料庫</button>
+                                            <button type="button" disabled={!newClauseCategory || !newClauseText.trim()} onClick={() => { onCreateClause(newClauseCategory, newClauseText.trim(), newClauseSeverity); setNewClauseText(''); }} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-35"><i className="fas fa-plus mr-1"></i>新增至資料庫</button>
                                         </div>
                                     </div>
                                     <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto">
-                                        {['全部', '原始預設', ...clauseCategories].map(category => <button key={category} type="button" onClick={() => setClauseFilter(category)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${clauseFilter === category ? 'bg-kino text-white' : 'bg-white text-gray-500 border border-gray-200'}`}>{category}</button>)}
+                                        {[{ id: '全部', name: '全部' }, { id: '原始預設', name: '原始預設' }, ...clauseCategories].map(category => <button key={category.id} type="button" onClick={() => setClauseFilter(category.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${clauseFilter === category.id ? 'bg-kino text-white' : 'bg-white text-gray-500 border border-gray-200'}`}>{category.name}</button>)}
                                     </div>
                                     <div className="space-y-3">{visibleClauses.length ? visibleClauses.map(clause => <ClauseManagerRow key={clause.id} clause={clause} categories={clauseCategories} onSave={onSaveClause} onDelete={onDeleteClause} />) : <p className="py-10 text-center text-sm text-gray-400">此分類目前沒有條款</p>}</div>
                                 </>
@@ -1172,7 +1286,11 @@
         const DELETED_TEMPLATE_STORAGE_KEY = 'kino_quotation_deleted_templates_v1';
         const CLAUSE_LIBRARY_STORAGE_KEY = 'kino_quotation_clause_library_v1';
         const DELETED_CLAUSE_STORAGE_KEY = 'kino_quotation_deleted_clauses_v1';
+        const CLAUSE_CATEGORY_STORAGE_KEY = 'kino_quotation_clause_categories_v1';
+        const DELETED_CLAUSE_CATEGORY_STORAGE_KEY = 'kino_quotation_deleted_clause_categories_v1';
         const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
+        const CLOUD_AUTH_TOKEN_STORAGE_KEY = 'kino_quotation_cloud_auth_token';
+        const CLOUD_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_auth_user';
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
             { id: 'kino-standard', name: 'KINO 標準影音條款', notes: DEFAULT_NOTES_TEXT }
@@ -1190,6 +1308,7 @@
             if (!clause?.id || typeof clause?.category !== 'string' || typeof clause?.text !== 'string') return null;
             return {
                 id: String(clause.id),
+                categoryId: typeof clause.categoryId === 'string' && clause.categoryId ? clause.categoryId : makeClauseCategoryId(clause.category),
                 category: clause.category.trim() || '未分類',
                 text: clause.text.trim(),
                 severity: [1, 2, 3].includes(Number(clause.severity)) ? Number(clause.severity) : 2,
@@ -1197,6 +1316,15 @@
                 isCore: Boolean(clause.isCore),
                 coreOrder: clause.coreOrder == null ? null : Number(clause.coreOrder),
                 updatedAt: clause.updatedAt || new Date().toISOString()
+            };
+        };
+        const normalizeClauseCategoryRecord = (category, index = 0) => {
+            if (!category?.id || typeof category?.name !== 'string' || !category.name.trim()) return null;
+            return {
+                id: String(category.id),
+                name: category.name.trim(),
+                sortOrder: Number.isFinite(Number(category.sortOrder)) ? Math.trunc(Number(category.sortOrder)) : index + 1,
+                updatedAt: category.updatedAt || new Date().toISOString()
             };
         };
         const buildInitialClauseLibrary = () => {
@@ -1221,6 +1349,33 @@
             } catch (error) {
                 console.warn('Clause library load error', error);
                 return buildInitialClauseLibrary();
+            }
+        };
+        const buildInitialClauseCategories = (clauses = buildInitialClauseLibrary()) => {
+            const categoryMap = new Map(DEFAULT_CLAUSE_CATEGORIES.map(category => [category.id, { ...category }]));
+            clauses.forEach(clause => {
+                const id = clause.categoryId || makeClauseCategoryId(clause.category);
+                if (!categoryMap.has(id)) {
+                    categoryMap.set(id, {
+                        id,
+                        name: clause.category,
+                        sortOrder: categoryMap.size + 1,
+                        updatedAt: clause.updatedAt || CLAUSE_SEED_UPDATED_AT
+                    });
+                }
+            });
+            return sortClauseCategories([...categoryMap.values()]);
+        };
+        const loadClauseCategories = () => {
+            try {
+                const raw = localStorage.getItem(CLAUSE_CATEGORY_STORAGE_KEY);
+                if (!raw) return buildInitialClauseCategories();
+                const stored = JSON.parse(raw);
+                if (!Array.isArray(stored)) return buildInitialClauseCategories();
+                return sortClauseCategories(stored.map(normalizeClauseCategoryRecord).filter(Boolean));
+            } catch (error) {
+                console.warn('Clause category load error', error);
+                return buildInitialClauseCategories();
             }
         };
         const loadProjectLibrary = () => {
@@ -1278,14 +1433,23 @@
             const [contractTemplates, setContractTemplates] = useState(loadContractTemplates);
             const [projectLibrary, setProjectLibrary] = useState(loadProjectLibrary);
             const [clauseLibrary, setClauseLibrary] = useState(loadClauseLibrary);
+            const [clauseCategories, setClauseCategories] = useState(loadClauseCategories);
             const [deletedProjectIds, setDeletedProjectIds] = useState(() => loadDeletedIds(DELETED_PROJECT_STORAGE_KEY));
             const [deletedTemplateIds, setDeletedTemplateIds] = useState(() => loadDeletedIds(DELETED_TEMPLATE_STORAGE_KEY));
             const [deletedClauseIds, setDeletedClauseIds] = useState(() => loadDeletedIds(DELETED_CLAUSE_STORAGE_KEY));
+            const [deletedClauseCategoryIds, setDeletedClauseCategoryIds] = useState(() => loadDeletedIds(DELETED_CLAUSE_CATEGORY_STORAGE_KEY));
             const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
+            const [cloudAuthStatus, setCloudAuthStatus] = useState('idle');
+            const [googleClientId, setGoogleClientId] = useState('');
+            const [cloudAuthUser, setCloudAuthUser] = useState(() => {
+                try { return JSON.parse(sessionStorage.getItem(CLOUD_AUTH_USER_STORAGE_KEY) || 'null'); }
+                catch { return null; }
+            });
             const [showCloudKeyModal, setShowCloudKeyModal] = useState(false);
             const [showDataManager, setShowDataManager] = useState(false);
             const [showClausePicker, setShowClausePicker] = useState(false);
             const hadLocalClauseLibraryRef = useRef(localStorage.getItem(CLAUSE_LIBRARY_STORAGE_KEY) !== null);
+            const hadLocalClauseCategoriesRef = useRef(localStorage.getItem(CLAUSE_CATEGORY_STORAGE_KEY) !== null);
             const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
@@ -1357,9 +1521,11 @@
             useEffect(() => { localStorage.setItem(CONTRACT_TEMPLATE_STORAGE_KEY, JSON.stringify(contractTemplates)); }, [contractTemplates]);
             useEffect(() => { localStorage.setItem(PROJECT_LIBRARY_STORAGE_KEY, JSON.stringify(projectLibrary)); }, [projectLibrary]);
             useEffect(() => { localStorage.setItem(CLAUSE_LIBRARY_STORAGE_KEY, JSON.stringify(clauseLibrary)); }, [clauseLibrary]);
+            useEffect(() => { localStorage.setItem(CLAUSE_CATEGORY_STORAGE_KEY, JSON.stringify(clauseCategories)); }, [clauseCategories]);
             useEffect(() => { localStorage.setItem(DELETED_PROJECT_STORAGE_KEY, JSON.stringify(deletedProjectIds)); }, [deletedProjectIds]);
             useEffect(() => { localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(deletedTemplateIds)); }, [deletedTemplateIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_STORAGE_KEY, JSON.stringify(deletedClauseIds)); }, [deletedClauseIds]);
+            useEffect(() => { localStorage.setItem(DELETED_CLAUSE_CATEGORY_STORAGE_KEY, JSON.stringify(deletedClauseCategoryIds)); }, [deletedClauseCategoryIds]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
                 const syncResponsiveMode = () => setMode(mediaQuery.matches ? 'mobile' : 'desktop');
@@ -1421,7 +1587,47 @@
                 }
             };
 
+            const getJsonFileName = () => `${String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-') || 'quotation'}.json`;
+            const buildJsonFile = () => new File(
+                [JSON.stringify(data, null, 2)],
+                getJsonFileName(),
+                { type: 'application/json' }
+            );
+            const downloadJsonFile = () => {
+                const file = buildJsonFile();
+                const url = URL.createObjectURL(file);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = file.name;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast(`已下載 ${file.name}`);
+            };
+            const shareJsonFile = async () => {
+                const file = buildJsonFile();
+                if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: data.header.quotationId || 'KINO 報價專案',
+                            text: '儲存或分享這份可再次載入的 KINO 報價 JSON'
+                        });
+                        showToast('已開啟系統儲存／分享面板');
+                        return true;
+                    } catch (error) {
+                        if (error.name === 'AbortError') return true;
+                        console.warn('Share JSON error', error);
+                    }
+                }
+                return false;
+            };
             const handleSave = async () => {
+                if (mode === 'mobile') {
+                    if (!(await shareJsonFile())) downloadJsonFile();
+                    return;
+                }
                 if (fileHandle && 'showOpenFilePicker' in window) {
                     try {
                         const writable = await fileHandle.createWritable();
@@ -1448,14 +1654,7 @@
                         showToast('另存成功');
                     } catch (e) { if(e.name !== 'AbortError') console.error(e); }
                 } else {
-                    const fileName = `${data.header.quotationId || 'quotation'}.json`;
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    if (!(await shareJsonFile())) downloadJsonFile();
                 }
             };
 
@@ -1478,10 +1677,10 @@
             };
             const handleManualSave = () => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); showToast("已儲存至瀏覽器快取"); };
             const getCloudSyncKey = () => {
-                return sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '';
+                return sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY) || sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '';
             };
             const cloudRequest = async (path, options = {}, allowPrompt = true) => {
-                const syncKey = allowPrompt ? getCloudSyncKey() : (sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '');
+                const syncKey = getCloudSyncKey();
                 if (!syncKey) throw new Error('SYNC_CANCELLED');
                 const response = await fetch(`${CLOUD_SYNC_API_URL}${path}`, {
                     ...options,
@@ -1492,7 +1691,11 @@
                     }
                 });
                 if (!response.ok) {
-                    if (response.status === 401) sessionStorage.removeItem(CLOUD_SYNC_KEY_STORAGE_KEY);
+                    if (response.status === 401 && sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY) === syncKey) {
+                        sessionStorage.removeItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
+                        sessionStorage.removeItem(CLOUD_AUTH_USER_STORAGE_KEY);
+                        setCloudAuthUser(null);
+                    }
                     const body = await response.json().catch(() => ({}));
                     const error = new Error(body.error || `雲端同步失敗 (${response.status})`);
                     error.status = response.status;
@@ -1500,8 +1703,63 @@
                 }
                 return response.json();
             };
+            useEffect(() => {
+                fetch(`${CLOUD_SYNC_API_URL}/api/config`)
+                    .then(response => response.ok ? response.json() : Promise.reject(new Error('Config unavailable')))
+                    .then(config => setGoogleClientId(config.googleClientId || ''))
+                    .catch(error => console.warn('Cloud config load error', error));
+            }, []);
+            useEffect(() => {
+                if (!sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY)) return;
+                cloudRequest('/api/auth/me', {}, false)
+                    .then(result => {
+                        if (result.user) {
+                            setCloudAuthUser(result.user);
+                            sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
+                        }
+                    })
+                    .catch(error => console.warn('Cloud session restore error', error));
+            }, []);
+            const handleGoogleCredential = async (credential) => {
+                if (!credential) return;
+                setCloudAuthStatus('loading');
+                try {
+                    const response = await fetch(`${CLOUD_SYNC_API_URL}/api/auth/google`, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ credential })
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(result.error || 'Google 登入失敗');
+                    sessionStorage.setItem(CLOUD_AUTH_TOKEN_STORAGE_KEY, result.token);
+                    sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
+                    sessionStorage.removeItem(CLOUD_SYNC_KEY_STORAGE_KEY);
+                    setCloudAuthUser(result.user);
+                    setCloudAuthStatus('success');
+                    setShowCloudKeyModal(false);
+                    showToast(`已登入 ${result.user.name}`);
+                    setTimeout(syncCloudData, 0);
+                } catch (error) {
+                    console.error('Google login error', error);
+                    setCloudAuthStatus('error');
+                    showToast(error.message || 'Google 登入失敗');
+                }
+            };
+            const logoutCloudAccount = async () => {
+                try {
+                    if (getCloudSyncKey()) await cloudRequest('/api/auth/logout', { method: 'POST', body: '{}' }, false);
+                } catch (error) {
+                    console.warn('Cloud logout error', error);
+                }
+                sessionStorage.removeItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
+                sessionStorage.removeItem(CLOUD_AUTH_USER_STORAGE_KEY);
+                setCloudAuthUser(null);
+                setCloudAuthStatus('idle');
+                setCloudSyncStatus('idle');
+                showToast('已登出 Google 帳號');
+            };
             const saveRecordToCloud = async (path, record) => {
-                if (!sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY)) return;
+                if (!getCloudSyncKey()) return;
                 try {
                     await cloudRequest(path, { method: 'PUT', body: JSON.stringify(record) }, false);
                     setCloudSyncStatus('success');
@@ -1520,20 +1778,25 @@
                 try {
                     const preflight = await cloudRequest('/api/sync');
                     const shouldAdoptRemoteClauses = Boolean(preflight.clauseLibraryInitialized) && !hadLocalClauseLibraryRef.current;
+                    const shouldAdoptRemoteCategories = Boolean(preflight.clauseCategoriesInitialized) && !hadLocalClauseCategoriesRef.current;
                     await cloudRequest('/api/sync', {
                         method: 'POST',
                         body: JSON.stringify({
                             projects: projectLibrary,
                             templates: contractTemplates,
+                            categories: shouldAdoptRemoteCategories ? [] : clauseCategories,
                             clauses: shouldAdoptRemoteClauses ? [] : clauseLibrary,
                             deletedProjectIds,
                             deletedTemplateIds,
+                            deletedCategoryIds: shouldAdoptRemoteCategories ? [] : deletedClauseCategoryIds,
                             deletedClauseIds: shouldAdoptRemoteClauses ? [] : deletedClauseIds,
-                            initializeClauseLibrary: !preflight.clauseLibraryInitialized || hadLocalClauseLibraryRef.current
+                            initializeClauseLibrary: !preflight.clauseLibraryInitialized || hadLocalClauseLibraryRef.current,
+                            initializeClauseCategories: !preflight.clauseCategoriesInitialized || hadLocalClauseCategoriesRef.current
                         })
                     });
                     setDeletedProjectIds([]);
                     setDeletedTemplateIds([]);
+                    setDeletedClauseCategoryIds([]);
                     setDeletedClauseIds([]);
                     const remote = await cloudRequest('/api/sync');
                     const syncedProjects = (Array.isArray(remote.projects) ? remote.projects : [])
@@ -1544,10 +1807,19 @@
                     const syncedClauses = sortClauseLibrary((Array.isArray(remote.clauses) ? remote.clauses : [])
                         .map(normalizeClauseRecord)
                         .filter(clause => clause?.text));
+                    const syncedCategories = sortClauseCategories((Array.isArray(remote.categories) ? remote.categories : [])
+                        .map(normalizeClauseCategoryRecord)
+                        .filter(Boolean));
                     setProjectLibrary(syncedProjects);
                     setContractTemplates(syncedTemplates);
+                    setClauseCategories(syncedCategories.length ? syncedCategories : buildInitialClauseCategories(syncedClauses));
                     setClauseLibrary(syncedClauses);
                     hadLocalClauseLibraryRef.current = true;
+                    hadLocalClauseCategoriesRef.current = true;
+                    if (remote.user) {
+                        setCloudAuthUser(remote.user);
+                        sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(remote.user));
+                    }
                     setCloudSyncStatus('success');
                     showToast(`雲端同步完成：${syncedProjects.length} 個專案、${syncedClauses.length} 條條款`);
                 } catch (error) {
@@ -1561,6 +1833,9 @@
             const saveCloudSyncKey = (syncKey) => {
                 if (!syncKey) return;
                 sessionStorage.setItem(CLOUD_SYNC_KEY_STORAGE_KEY, syncKey);
+                sessionStorage.removeItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
+                sessionStorage.removeItem(CLOUD_AUTH_USER_STORAGE_KEY);
+                setCloudAuthUser(null);
                 setShowCloudKeyModal(false);
                 setTimeout(syncCloudData, 0);
             };
@@ -1634,6 +1909,9 @@
             const markClauseLibraryLocal = () => {
                 hadLocalClauseLibraryRef.current = true;
             };
+            const markClauseCategoriesLocal = () => {
+                hadLocalClauseCategoriesRef.current = true;
+            };
             const importSelectedClauses = (selectedIds) => {
                 const selected = sortClauseLibrary(clauseLibrary).filter(clause => selectedIds.includes(clause.id));
                 const currentTexts = new Set(data.notes.map(note => (typeof note === 'string' ? note : note?.text || '').trim()).filter(Boolean));
@@ -1649,19 +1927,82 @@
                 }
                 setShowClausePicker(false);
             };
-            const createClauseRecord = (category, text, severity) => {
-                const nextSortOrder = Math.max(0, ...clauseLibrary.filter(clause => !clause.isCore && clause.category === category).map(clause => Number(clause.sortOrder) || 0)) + 1;
-                const clause = makeClauseRecord(`clause-${Date.now()}`, category, text, severity, nextSortOrder, { updatedAt: new Date().toISOString() });
+            const createClauseCategory = (name) => {
+                const cleanName = name.trim();
+                if (!cleanName) return;
+                if (clauseCategories.some(category => category.name === cleanName)) {
+                    showToast('已有相同名稱的分類');
+                    return;
+                }
+                const category = {
+                    id: `category-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    name: cleanName,
+                    sortOrder: Math.max(0, ...clauseCategories.map(item => Number(item.sortOrder) || 0)) + 1,
+                    updatedAt: new Date().toISOString()
+                };
+                markClauseCategoriesLocal();
+                setClauseCategories(prev => sortClauseCategories([...prev, category]));
+                setDeletedClauseCategoryIds(prev => prev.filter(id => id !== category.id));
+                saveRecordToCloud(`/api/categories/${encodeURIComponent(category.id)}`, category);
+                showToast(`已新增分類「${cleanName}」`);
+            };
+            const saveClauseCategory = (categoryId, name) => {
+                const current = clauseCategories.find(category => category.id === categoryId);
+                const cleanName = name.trim();
+                if (!current || !cleanName) return;
+                if (clauseCategories.some(category => category.id !== categoryId && category.name === cleanName)) {
+                    showToast('已有相同名稱的分類');
+                    return;
+                }
+                const updatedAt = new Date().toISOString();
+                const updated = { ...current, name: cleanName, updatedAt };
+                markClauseCategoriesLocal();
+                markClauseLibraryLocal();
+                setClauseCategories(prev => sortClauseCategories(prev.map(category => category.id === categoryId ? updated : category)));
+                setClauseLibrary(prev => sortClauseLibrary(prev.map(clause => clause.categoryId === categoryId ? { ...clause, category: cleanName, updatedAt } : clause)));
+                saveRecordToCloud(`/api/categories/${encodeURIComponent(categoryId)}`, updated);
+                showToast(`分類已改名為「${cleanName}」`);
+            };
+            const deleteClauseCategory = async (categoryId) => {
+                const current = clauseCategories.find(category => category.id === categoryId);
+                if (!current) return;
+                const relatedClauses = clauseLibrary.filter(clause => clause.categoryId === categoryId);
+                const warning = relatedClauses.length ? `\n\n此分類內的 ${relatedClauses.length} 條條款也會一併刪除。` : '';
+                if (!confirm(`確定刪除分類「${current.name}」？${warning}`)) return;
+                markClauseCategoriesLocal();
+                markClauseLibraryLocal();
+                setClauseCategories(prev => prev.filter(category => category.id !== categoryId));
+                setClauseLibrary(prev => prev.filter(clause => clause.categoryId !== categoryId));
+                setDeletedClauseCategoryIds(prev => [...new Set([...prev, categoryId])]);
+                setDeletedClauseIds(prev => [...new Set([...prev, ...relatedClauses.map(clause => clause.id)])]);
+                if (getCloudSyncKey()) {
+                    try {
+                        await cloudRequest(`/api/categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' }, false);
+                        setDeletedClauseCategoryIds(prev => prev.filter(id => id !== categoryId));
+                        setDeletedClauseIds(prev => prev.filter(id => !relatedClauses.some(clause => clause.id === id)));
+                    } catch (error) {
+                        console.warn('Cloud category delete error', error);
+                        setCloudSyncStatus('error');
+                    }
+                }
+                showToast(`已刪除分類「${current.name}」`);
+            };
+            const createClauseRecord = (categoryId, text, severity) => {
+                const category = clauseCategories.find(item => item.id === categoryId);
+                if (!category) { showToast('請先選擇條款分類'); return; }
+                const nextSortOrder = Math.max(0, ...clauseLibrary.filter(clause => !clause.isCore && clause.categoryId === categoryId).map(clause => Number(clause.sortOrder) || 0)) + 1;
+                const clause = makeClauseRecord(`clause-${Date.now()}`, category.name, text, severity, nextSortOrder, { categoryId, updatedAt: new Date().toISOString() });
                 markClauseLibraryLocal();
                 setClauseLibrary(prev => sortClauseLibrary([...prev, clause]));
                 setDeletedClauseIds(prev => prev.filter(id => id !== clause.id));
                 saveRecordToCloud(`/api/clauses/${encodeURIComponent(clause.id)}`, clause);
-                showToast(`已新增「${category}」條款`);
+                showToast(`已新增「${category.name}」條款`);
             };
-            const saveClauseRecord = (clauseId, category, text, severity) => {
+            const saveClauseRecord = (clauseId, categoryId, text, severity) => {
                 const current = clauseLibrary.find(clause => clause.id === clauseId);
-                if (!current) return;
-                const updated = { ...current, category, text, severity, updatedAt: new Date().toISOString() };
+                const category = clauseCategories.find(item => item.id === categoryId);
+                if (!current || !category) return;
+                const updated = { ...current, categoryId, category: category.name, text, severity, updatedAt: new Date().toISOString() };
                 markClauseLibraryLocal();
                 setClauseLibrary(prev => sortClauseLibrary(prev.map(clause => clause.id === clauseId ? updated : clause)));
                 saveRecordToCloud(`/api/clauses/${encodeURIComponent(clauseId)}`, updated);
@@ -1742,11 +2083,12 @@
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
-                    {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} />}
-                    {showClausePicker && <ClausePickerModal clauses={clauseLibrary} onImport={importSelectedClauses} onClose={() => setShowClausePicker(false)} />}
+                    {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} onLogout={logoutCloudAccount} authStatus={cloudAuthStatus} />}
+                    {showClausePicker && <ClausePickerModal clauses={clauseLibrary} categories={clauseCategories} onImport={importSelectedClauses} onClose={() => setShowClausePicker(false)} onCreateCategory={createClauseCategory} onSaveCategory={saveClauseCategory} onDeleteCategory={deleteClauseCategory} onCreateClause={createClauseRecord} onSaveClause={saveClauseRecord} onDeleteClause={deleteClauseRecord} />}
                     {showDataManager && <DataManagerModal
                         projects={projectLibrary}
                         clauses={clauseLibrary}
+                        categories={clauseCategories}
                         onClose={() => setShowDataManager(false)}
                         onCreateProject={createProjectFromManager}
                         onLoadProject={loadSavedProject}
@@ -1765,6 +2107,8 @@
                             openClausePicker={() => setShowClausePicker(true)}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
+                            cloudAuthUser={cloudAuthUser}
+                            openCloudAuth={() => setShowCloudKeyModal(true)}
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
@@ -1780,6 +2124,8 @@
                             openClausePicker={() => setShowClausePicker(true)}
                             projectLibrary={projectLibrary} loadSavedProject={loadSavedProject} saveCurrentProject={saveCurrentProject}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
+                            cloudAuthUser={cloudAuthUser}
+                            openCloudAuth={() => setShowCloudKeyModal(true)}
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
@@ -1909,7 +2255,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -1953,7 +2299,7 @@
                                 <QuotationTypeSelector data={data} setData={setData} />
                                 <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
                                 <button type="button" onClick={openDataManager} className="shrink-0 rounded-md border border-kino/30 px-2.5 py-1.5 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
-                                <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} />
+                                <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} authUser={cloudAuthUser} />
                                 <button type="button" onClick={handlePrint} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
                             </div>
                         </div>
@@ -2199,7 +2545,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
             const [draggingIdx, setDraggingIdx] = useState(null); 
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -2357,9 +2703,9 @@
                         <div className="flex justify-between items-center px-3 py-2">
                             <h1 className="text-base font-bold text-kino">奇諾影像報價工作台</h1>
                             <div className="flex items-center gap-2">
-                                <button onClick={handleSave} className="text-kino p-2 rounded hover:bg-gray-100"><i className="fas fa-save fa-lg"></i></button>
-                                <button onClick={handleOpen} className="text-kino p-2 rounded hover:bg-gray-100 cursor-pointer"><i className="fas fa-folder-open fa-lg"></i></button>
-                                <button onClick={handleReset} className="text-red-500 p-2 rounded hover:bg-gray-100"><i className="fas fa-undo fa-lg"></i></button>
+                                <button onClick={handleSave} aria-label="儲存或分享 JSON" title="儲存或分享 JSON" className="text-kino p-2 rounded hover:bg-gray-100"><i className="fas fa-save fa-lg"></i></button>
+                                <button onClick={handleOpen} aria-label="開啟 JSON" title="開啟 JSON" className="text-kino p-2 rounded hover:bg-gray-100 cursor-pointer"><i className="fas fa-folder-open fa-lg"></i></button>
+                                <button onClick={handleReset} aria-label="重設報價" title="重設報價" className="text-red-500 p-2 rounded hover:bg-gray-100"><i className="fas fa-undo fa-lg"></i></button>
                                 <div className="w-px h-6 bg-gray-300 mx-1"></div>
                             </div>
                         </div>
@@ -2367,7 +2713,7 @@
                             <QuotationTypeSelector data={data} setData={setData} />
                             <div className="mt-2"><ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} /></div>
                             <button type="button" onClick={openDataManager} className="mt-2 w-full rounded-md border border-kino/30 px-2.5 py-2 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
-                            <CloudSyncControls onSync={syncCloudData} status={cloudSyncStatus} compact={true} />
+                            <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} compact={true} authUser={cloudAuthUser} />
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
