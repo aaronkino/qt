@@ -2547,7 +2547,7 @@
                     <div id="mobile-root" style={{ display: mode === 'mobile' ? 'block' : 'none' }}>
                         <MobileView 
                             data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
-                            handleOpen={handleOpen} handleSave={handleSave} handleReset={handleReset} mode={mode}
+                            handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} mode={mode}
                             openClausePicker={() => setShowClausePicker(true)}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
                             cloudAuthUser={cloudAuthUser}
@@ -2560,6 +2560,7 @@
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
+                            undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
                     </div>
                 </div>
@@ -2988,7 +2989,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const [draggingIdx, setDraggingIdx] = useState(null);
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -3148,6 +3149,8 @@
                         <div className="flex min-h-[3rem] items-center justify-between gap-2 px-3">
                             <h1 className="qt-toolbar-brand min-w-0 flex-1 truncate text-kino">奇諾影像報價系統</h1>
                             <div className="flex shrink-0 items-center gap-1">
+                                <button onClick={handleSaveAs} aria-label="另存 JSON" title="另存 JSON" className="qt-toolbar-control qt-toolbar-button w-9 bg-kino-light px-0 text-white"><i className="fas fa-download"></i></button>
+                                <button onClick={undo} disabled={!canUndo} aria-label="返回" title="返回" className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canUndo ? 'text-kino hover:bg-gray-100' : 'cursor-not-allowed text-gray-300'}`}><i className="fas fa-undo"></i></button>
                                 <button onClick={handleOpen} aria-label="開啟 JSON" title="開啟 JSON" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-kino hover:bg-gray-100"><i className="fas fa-folder-open"></i></button>
                                 <button onClick={handleSave} aria-label="儲存或分享 JSON" title="儲存或分享 JSON" className="qt-toolbar-control qt-toolbar-button w-9 bg-kino px-0 text-white"><i className="fas fa-save"></i></button>
                                 <button onClick={handleReset} aria-label="重設報價" title="重設報價" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-red-500 hover:bg-red-50"><i className="fas fa-undo"></i></button>
@@ -3158,6 +3161,7 @@
                             <div className="qt-toolbar-panel-inner">
                                 <div className="space-y-2 border-t border-gray-100 px-3 py-3">
                                     <QuotationTypeSelector data={data} setData={setData} />
+                                    <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-full ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`}><i className="fas fa-redo"></i>重做</button>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
                                         <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white hover:bg-black"><i className="fas fa-print"></i>列印</button>
