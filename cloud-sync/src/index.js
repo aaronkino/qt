@@ -75,6 +75,17 @@ const mapTemplate = (row) => ({
   notes: JSON.parse(row.notes_json),
 });
 
+const mapClause = (row) => ({
+  id: row.id,
+  category: row.category,
+  text: row.clause_text,
+  severity: Number(row.severity),
+  sortOrder: Number(row.sort_order),
+  isCore: Boolean(row.is_core),
+  coreOrder: row.core_order == null ? null : Number(row.core_order),
+  updatedAt: row.updated_at,
+});
+
 const upsertProject = (env, workspaceId, project) => {
   if (!validId(project?.id) || !validName(project?.name) || !project?.data) {
     throw new Error("INVALID_PROJECT");
@@ -107,6 +118,53 @@ const upsertTemplate = (env, workspaceId, template) => {
   ).bind(workspaceId, template.id, template.name.trim(), JSON.stringify(template.notes), updatedAt);
 };
 
+const upsertClause = (env, workspaceId, clause) => {
+  const category = typeof clause?.category === "string" ? clause.category.trim() : "";
+  const text = typeof clause?.text === "string" ? clause.text.trim() : "";
+  const severity = Number(clause?.severity);
+  const sortOrder = Number(clause?.sortOrder);
+  const coreOrder = clause?.coreOrder == null ? null : Number(clause.coreOrder);
+  if (
+    !validId(clause?.id) ||
+    !category ||
+    category.length > 120 ||
+    !text ||
+    text.length > 5000 ||
+    !Number.isInteger(severity) ||
+    severity < 1 ||
+    severity > 3 ||
+    !Number.isFinite(sortOrder) ||
+    (coreOrder != null && (!Number.isInteger(coreOrder) || coreOrder < 1))
+  ) {
+    throw new Error("INVALID_CLAUSE");
+  }
+  const updatedAt = normalizeUpdatedAt(clause.updatedAt);
+  return env.DB.prepare(
+    `INSERT INTO cloud_clauses
+       (workspace_id, id, category, clause_text, severity, sort_order, is_core, core_order, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+     ON CONFLICT(workspace_id, id) DO UPDATE SET
+       category = excluded.category,
+       clause_text = excluded.clause_text,
+       severity = excluded.severity,
+       sort_order = excluded.sort_order,
+       is_core = excluded.is_core,
+       core_order = excluded.core_order,
+       updated_at = excluded.updated_at
+     WHERE excluded.updated_at >= cloud_clauses.updated_at`,
+  ).bind(
+    workspaceId,
+    clause.id,
+    category,
+    text,
+    severity,
+    Math.trunc(sortOrder),
+    clause.isCore ? 1 : 0,
+    coreOrder,
+    updatedAt,
+  );
+};
+
 const routeRequest = async (request, env) => {
   const url = new URL(request.url);
   const parts = url.pathname.split("/").filter(Boolean);
@@ -121,13 +179,24 @@ const routeRequest = async (request, env) => {
   }
 
   if (request.method === "GET" && url.pathname === "/api/sync") {
-    const [projects, templates] = await Promise.all([
+    const [projects, templates, clauses, workspaceState] = await Promise.all([
       env.DB.prepare("SELECT id, name, data_json, updated_at FROM cloud_projects WHERE workspace_id = ?1 ORDER BY updated_at DESC").bind(workspaceId).all(),
       env.DB.prepare("SELECT id, name, notes_json, updated_at FROM cloud_contract_templates WHERE workspace_id = ?1 ORDER BY updated_at DESC").bind(workspaceId).all(),
+      env.DB.prepare(
+        `SELECT id, category, clause_text, severity, sort_order, is_core, core_order, updated_at
+         FROM cloud_clauses
+         WHERE workspace_id = ?1
+         ORDER BY CASE WHEN is_core = 1 THEN 0 ELSE 1 END, core_order, category, severity, sort_order`,
+      ).bind(workspaceId).all(),
+      env.DB.prepare(
+        "SELECT clause_library_initialized FROM cloud_workspace_state WHERE workspace_id = ?1",
+      ).bind(workspaceId).first(),
     ]);
     return json({
       projects: projects.results.map(mapProject),
       templates: templates.results.map(mapTemplate),
+      clauses: clauses.results.map(mapClause),
+      clauseLibraryInitialized: Boolean(workspaceState?.clause_library_initialized),
       serverTime: new Date().toISOString(),
     });
   }
@@ -136,17 +205,23 @@ const routeRequest = async (request, env) => {
     const body = await readJson(request);
     const projects = Array.isArray(body.projects) ? body.projects : [];
     const templates = Array.isArray(body.templates) ? body.templates : [];
+    const clauses = Array.isArray(body.clauses) ? body.clauses : [];
     const deletedProjectIds = Array.isArray(body.deletedProjectIds)
       ? body.deletedProjectIds.filter(validId)
       : [];
     const deletedTemplateIds = Array.isArray(body.deletedTemplateIds)
       ? body.deletedTemplateIds.filter(validId)
       : [];
+    const deletedClauseIds = Array.isArray(body.deletedClauseIds)
+      ? body.deletedClauseIds.filter(validId)
+      : [];
     if (
       projects.length > 200 ||
       templates.length > 200 ||
+      clauses.length > 500 ||
       deletedProjectIds.length > 200 ||
-      deletedTemplateIds.length > 200
+      deletedTemplateIds.length > 200 ||
+      deletedClauseIds.length > 500
     ) {
       return json({ error: "同步項目過多" }, 400);
     }
@@ -161,16 +236,35 @@ const routeRequest = async (request, env) => {
           "DELETE FROM cloud_contract_templates WHERE workspace_id = ?1 AND id = ?2",
         ).bind(workspaceId, id),
       ),
+      ...deletedClauseIds.map((id) =>
+        env.DB.prepare(
+          "DELETE FROM cloud_clauses WHERE workspace_id = ?1 AND id = ?2",
+        ).bind(workspaceId, id),
+      ),
       ...projects.map((project) => upsertProject(env, workspaceId, project)),
       ...templates.map((template) => upsertTemplate(env, workspaceId, template)),
+      ...clauses.map((clause) => upsertClause(env, workspaceId, clause)),
     ];
+    if (body.initializeClauseLibrary) {
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO cloud_workspace_state (workspace_id, clause_library_initialized, updated_at)
+           VALUES (?1, 1, ?2)
+           ON CONFLICT(workspace_id) DO UPDATE SET
+             clause_library_initialized = 1,
+             updated_at = excluded.updated_at`,
+        ).bind(workspaceId, new Date().toISOString()),
+      );
+    }
     if (statements.length) await env.DB.batch(statements);
     return json({
       ok: true,
       projects: projects.length,
       templates: templates.length,
+      clauses: clauses.length,
       deletedProjects: deletedProjectIds.length,
       deletedTemplates: deletedTemplateIds.length,
+      deletedClauses: deletedClauseIds.length,
     });
   }
 
@@ -198,6 +292,20 @@ const routeRequest = async (request, env) => {
     }
     if (request.method === "DELETE") {
       await env.DB.prepare("DELETE FROM cloud_contract_templates WHERE workspace_id = ?1 AND id = ?2").bind(workspaceId, id).run();
+      return json({ ok: true });
+    }
+  }
+
+  if (parts[0] === "api" && parts[1] === "clauses" && parts[2]) {
+    const id = decodeURIComponent(parts[2]);
+    if (!validId(id)) return json({ error: "條款 ID 無效" }, 400);
+    if (request.method === "PUT") {
+      const body = await readJson(request);
+      await upsertClause(env, workspaceId, { ...body, id }).run();
+      return json({ ok: true });
+    }
+    if (request.method === "DELETE") {
+      await env.DB.prepare("DELETE FROM cloud_clauses WHERE workspace_id = ?1 AND id = ?2").bind(workspaceId, id).run();
       return json({ ok: true });
     }
   }
