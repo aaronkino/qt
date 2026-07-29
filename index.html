@@ -1044,10 +1044,12 @@
         };
 
         const OneDriveModal = ({
-            onClose, clientId, account, folder, autoSave, status, lastSavedAt,
+            onClose, clientId, account, folder, parentFolder, autoCreateProjectFolder,
+            projectFolderName, autoSave, status, lastSavedAt,
             folders, folderStack, folderLoading, folderError,
             onLogin, onLogout, onBrowse, onOpenFolder, onGoToBreadcrumb,
-            onSelectFolder, onToggleAutoSave, onSaveNow
+            onSelectFolder, onSelectParentFolder, onToggleAutoCreateProjectFolder,
+            onToggleAutoSave, onSaveNow
         }) => {
             const [browseMode, setBrowseMode] = useState(false);
             const openBrowser = async () => {
@@ -1061,7 +1063,7 @@
                         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
                             <div>
                                 <h3 className="font-black text-kino"><i className="fa-brands fa-microsoft mr-2"></i>OneDrive 專案儲存</h3>
-                                <p className="mt-1 text-xs leading-relaxed text-gray-500">登入後選擇專案資料夾；報價內容會以「報價單號.json」直接儲存到你的 OneDrive。</p>
+                                <p className="mt-1 text-xs leading-relaxed text-gray-500">可選擇既有專案資料夾，或指定上級目錄後依報價單號自動建立專案資料夾。</p>
                             </div>
                             <button type="button" onClick={onClose} className="delete-action shrink-0" aria-label="關閉 OneDrive 設定"><i className="fas fa-times"></i></button>
                         </div>
@@ -1100,7 +1102,11 @@
                                     </div>
                                     <div className="mt-4 flex gap-2">
                                         <button type="button" onClick={() => setBrowseMode(false)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-600">返回</button>
-                                        <button type="button" disabled={folderLoading} onClick={() => { onSelectFolder(currentFolder); setBrowseMode(false); }} className="min-w-0 flex-1 rounded-xl bg-kino px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"><i className="fas fa-folder-check mr-1.5"></i>使用「{currentFolder.name}」</button>
+                                        <button type="button" disabled={folderLoading} onClick={() => {
+                                            if (autoCreateProjectFolder) onSelectParentFolder(currentFolder);
+                                            else onSelectFolder(currentFolder);
+                                            setBrowseMode(false);
+                                        }} className="min-w-0 flex-1 rounded-xl bg-kino px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"><i className="fas fa-folder-check mr-1.5"></i>{autoCreateProjectFolder ? '設為上級目錄' : `使用「${currentFolder.name}」`}</button>
                                     </div>
                                 </div>
                             ) : (
@@ -1112,19 +1118,27 @@
                                             <button type="button" onClick={onLogout} className="text-xs font-bold text-gray-400 hover:text-red-500">登出</button>
                                         </div>
                                     </div>
-                                    <div className="rounded-2xl border border-gray-200 p-4">
-                                        <p className="text-xs font-bold text-gray-400">目前專案資料夾</p>
-                                        <div className="mt-2 flex items-center gap-3">
-                                            <i className={`fas ${folder ? 'fa-folder-check text-emerald-500' : 'fa-folder text-amber-400'}`}></i>
-                                            <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">{folder ? (folder.path || folder.name) : '尚未選擇'}</p>
-                                            <button type="button" onClick={openBrowser} className="rounded-lg border border-kino/25 px-3 py-2 text-xs font-bold text-kino hover:bg-kino/5">{folder ? '更換' : '選擇'}</button>
-                                        </div>
-                                    </div>
-                                    <label className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${folder ? 'cursor-pointer border-blue-100 bg-blue-50/60' : 'cursor-not-allowed border-gray-100 bg-gray-50 opacity-55'}`}>
-                                        <span><span className="block text-sm font-bold text-gray-800">自動儲存 JSON</span><span className="mt-1 block text-xs leading-relaxed text-gray-500">停止編輯約 3 秒後，自動覆寫目前報價單號的 JSON。</span></span>
-                                        <input type="checkbox" disabled={!folder} checked={Boolean(folder && autoSave)} onChange={event => onToggleAutoSave(event.target.checked)} className="h-5 w-5 shrink-0 accent-kino" />
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                                        <input type="checkbox" checked={autoCreateProjectFolder} onChange={event => onToggleAutoCreateProjectFolder(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-kino" />
+                                        <span>
+                                            <span className="block text-sm font-bold text-gray-800">依報價單號自動建立專案資料夾</span>
+                                            <span className="mt-1 block text-xs leading-relaxed text-gray-500">例如「260729 形象影片_KS01」會使用或建立「260729 形象影片」，再儲存「260729 形象影片_KS01.json」。</span>
+                                        </span>
                                     </label>
-                                    <button type="button" disabled={!folder || status === 'saving'} onClick={onSaveNow} className="w-full rounded-xl bg-kino px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-35"><i className={`fas ${status === 'saving' ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'} mr-1.5`}></i>{status === 'saving' ? '儲存中…' : '立即儲存到 OneDrive'}</button>
+                                    <div className="rounded-2xl border border-gray-200 p-4">
+                                        <p className="text-xs font-bold text-gray-400">{autoCreateProjectFolder ? '上級目錄（會記住此位置）' : '目前專案資料夾'}</p>
+                                        <div className="mt-2 flex items-center gap-3">
+                                            <i className={`fas ${(autoCreateProjectFolder ? parentFolder : folder) ? 'fa-folder-check text-emerald-500' : 'fa-folder text-amber-400'}`}></i>
+                                            <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">{autoCreateProjectFolder ? (parentFolder ? (parentFolder.path || parentFolder.name) : '尚未選擇上級目錄') : (folder ? (folder.path || folder.name) : '尚未選擇')}</p>
+                                            <button type="button" onClick={openBrowser} className="rounded-lg border border-kino/25 px-3 py-2 text-xs font-bold text-kino hover:bg-kino/5">{(autoCreateProjectFolder ? parentFolder : folder) ? '更換' : '選擇'}</button>
+                                        </div>
+                                        {autoCreateProjectFolder && <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600"><i className="fas fa-folder-plus mr-1.5 text-amber-500"></i>專案資料夾：<strong>{projectFolderName || '請先填寫報價單號'}</strong></div>}
+                                    </div>
+                                    <label className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${(autoCreateProjectFolder ? parentFolder : folder) ? 'cursor-pointer border-blue-100 bg-blue-50/60' : 'cursor-not-allowed border-gray-100 bg-gray-50 opacity-55'}`}>
+                                        <span><span className="block text-sm font-bold text-gray-800">自動儲存 JSON</span><span className="mt-1 block text-xs leading-relaxed text-gray-500">停止編輯約 3 秒後，自動覆寫目前報價單號的 JSON。</span></span>
+                                        <input type="checkbox" disabled={!(autoCreateProjectFolder ? parentFolder : folder)} checked={Boolean((autoCreateProjectFolder ? parentFolder : folder) && autoSave)} onChange={event => onToggleAutoSave(event.target.checked)} className="h-5 w-5 shrink-0 accent-kino" />
+                                    </label>
+                                    <button type="button" disabled={!(autoCreateProjectFolder ? parentFolder : folder) || status === 'saving'} onClick={onSaveNow} className="w-full rounded-xl bg-kino px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-35"><i className={`fas ${status === 'saving' ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'} mr-1.5`}></i>{status === 'saving' ? '儲存中…' : '立即儲存到 OneDrive'}</button>
                                     {lastSavedAt && <p className="text-center text-xs text-gray-400">最近儲存：{new Date(lastSavedAt).toLocaleString('zh-TW')}</p>}
                                 </div>
                             )}
@@ -1473,6 +1487,8 @@
         const CLOUD_AUTH_TOKEN_STORAGE_KEY = 'kino_quotation_cloud_auth_token';
         const CLOUD_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_auth_user';
         const ONEDRIVE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_folder_v1';
+        const ONEDRIVE_PARENT_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_parent_folder_v1';
+        const ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_auto_create_folder_v1';
         const ONEDRIVE_AUTOSAVE_STORAGE_KEY = 'kino_quotation_onedrive_autosave_v1';
         const ONEDRIVE_SCOPES = ['Files.ReadWrite'];
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
@@ -1589,6 +1605,15 @@
                 return null;
             }
         };
+        const loadOneDriveParentFolder = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(ONEDRIVE_PARENT_FOLDER_STORAGE_KEY) || 'null');
+                return stored?.id && stored?.name ? stored : null;
+            } catch (error) {
+                console.warn('OneDrive parent folder load error', error);
+                return null;
+            }
+        };
 
         const formatCurrency = (val) => new Intl.NumberFormat('zh-TW').format(val);
         const parseCurrency = (val) => parseFloat(String(val).replace(/,/g, '')) || 0;
@@ -1643,6 +1668,8 @@
             const [showOneDriveModal, setShowOneDriveModal] = useState(false);
             const [oneDriveAccount, setOneDriveAccount] = useState(null);
             const [oneDriveFolder, setOneDriveFolder] = useState(loadOneDriveFolder);
+            const [oneDriveParentFolder, setOneDriveParentFolder] = useState(loadOneDriveParentFolder);
+            const [oneDriveAutoCreateProjectFolder, setOneDriveAutoCreateProjectFolder] = useState(() => localStorage.getItem(ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY) === 'true');
             const [oneDriveAutoSave, setOneDriveAutoSave] = useState(() => localStorage.getItem(ONEDRIVE_AUTOSAVE_STORAGE_KEY) === 'true');
             const [oneDriveStatus, setOneDriveStatus] = useState('idle');
             const [oneDriveLastSavedAt, setOneDriveLastSavedAt] = useState('');
@@ -1736,6 +1763,11 @@
                 if (oneDriveFolder) localStorage.setItem(ONEDRIVE_FOLDER_STORAGE_KEY, JSON.stringify(oneDriveFolder));
                 else localStorage.removeItem(ONEDRIVE_FOLDER_STORAGE_KEY);
             }, [oneDriveFolder]);
+            useEffect(() => {
+                if (oneDriveParentFolder) localStorage.setItem(ONEDRIVE_PARENT_FOLDER_STORAGE_KEY, JSON.stringify(oneDriveParentFolder));
+                else localStorage.removeItem(ONEDRIVE_PARENT_FOLDER_STORAGE_KEY);
+            }, [oneDriveParentFolder]);
+            useEffect(() => { localStorage.setItem(ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY, String(oneDriveAutoCreateProjectFolder)); }, [oneDriveAutoCreateProjectFolder]);
             useEffect(() => { localStorage.setItem(ONEDRIVE_AUTOSAVE_STORAGE_KEY, String(oneDriveAutoSave)); }, [oneDriveAutoSave]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
@@ -1799,6 +1831,15 @@
             };
 
             const getJsonFileName = () => `${String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-') || 'quotation'}.json`;
+            const getOneDriveProjectFolderName = () => {
+                const quotationId = String(data.header.quotationId || '').trim();
+                if (!quotationId) return '';
+                return quotationId
+                    .replace(/\s*[_-]\s*KS\d+\s*$/i, '')
+                    .trim()
+                    .replace(/[\\/:*?"<>|]+/g, '-')
+                    .replace(/[. ]+$/g, '');
+            };
             const buildJsonFile = () => new File(
                 [JSON.stringify(data, null, 2)],
                 getJsonFileName(),
@@ -1948,8 +1989,12 @@
                         setOneDriveAccount(account);
                         setOneDriveStatus('idle');
                         const savedFolder = loadOneDriveFolder();
-                        if (savedFolder?.accountHomeId && account && savedFolder.accountHomeId !== account.homeAccountId) {
+                        const savedParentFolder = loadOneDriveParentFolder();
+                        const folderAccountMismatch = savedFolder?.accountHomeId && account && savedFolder.accountHomeId !== account.homeAccountId;
+                        const parentAccountMismatch = savedParentFolder?.accountHomeId && account && savedParentFolder.accountHomeId !== account.homeAccountId;
+                        if (folderAccountMismatch || parentAccountMismatch) {
                             setOneDriveFolder(null);
+                            setOneDriveParentFolder(null);
                             setOneDriveAutoSave(false);
                         }
                     } catch (error) {
@@ -2063,7 +2108,10 @@
                 });
                 if (!response.ok) {
                     const body = await response.json().catch(() => ({}));
-                    throw new Error(body?.error?.message || `OneDrive 請求失敗 (${response.status})`);
+                    const requestError = new Error(body?.error?.message || `OneDrive 請求失敗 (${response.status})`);
+                    requestError.status = response.status;
+                    requestError.code = body?.error?.code || '';
+                    throw requestError;
                 }
                 return response;
             };
@@ -2098,6 +2146,14 @@
             };
             const browseOneDriveRoot = async () => {
                 const root = { id: 'root', name: 'OneDrive', path: '/' };
+                const rememberedFolder = oneDriveAutoCreateProjectFolder ? oneDriveParentFolder : oneDriveFolder;
+                if (rememberedFolder?.id && (!rememberedFolder.accountHomeId || rememberedFolder.accountHomeId === oneDriveAccount?.homeAccountId)) {
+                    const rememberedStack = Array.isArray(rememberedFolder.stack) && rememberedFolder.stack.length
+                        ? rememberedFolder.stack
+                        : (rememberedFolder.id === 'root' ? [root] : [root, rememberedFolder]);
+                    await loadOneDriveFolders(rememberedFolder, rememberedStack);
+                    return;
+                }
                 await loadOneDriveFolders(root, [root]);
             };
             const openOneDriveFolder = async (item) => {
@@ -2115,24 +2171,97 @@
                 if (target) await loadOneDriveFolders(target, nextStack);
             };
             const selectOneDriveFolder = (folder) => {
-                const selected = { ...folder, accountHomeId: oneDriveAccount?.homeAccountId || '' };
+                const selected = {
+                    ...folder,
+                    stack: oneDriveFolderStack.map(item => ({ id: item.id, name: item.name, path: item.path })),
+                    accountHomeId: oneDriveAccount?.homeAccountId || ''
+                };
                 setOneDriveFolder(selected);
                 setOneDriveAutoSave(true);
                 setOneDriveStatus('idle');
                 showToast(`OneDrive 資料夾：${selected.path || selected.name}`);
             };
+            const selectOneDriveParentFolder = (folder) => {
+                const selected = {
+                    ...folder,
+                    stack: oneDriveFolderStack.map(item => ({ id: item.id, name: item.name, path: item.path })),
+                    accountHomeId: oneDriveAccount?.homeAccountId || ''
+                };
+                setOneDriveParentFolder(selected);
+                setOneDriveAutoSave(true);
+                setOneDriveStatus('idle');
+                showToast(`OneDrive 上級目錄：${selected.path || selected.name}`);
+            };
+            const resolveOneDriveProjectFolder = async () => {
+                const parentFolder = oneDriveParentFolder;
+                const projectFolderName = getOneDriveProjectFolderName();
+                if (!parentFolder) throw new Error('請先選擇 OneDrive 上級目錄');
+                if (!projectFolderName) throw new Error('請先填寫報價單號');
+                if (oneDriveFolder?.name === projectFolderName && oneDriveFolder?.parentId === parentFolder.id) {
+                    return oneDriveFolder;
+                }
+                const encodedFolderName = encodeURIComponent(projectFolderName);
+                const lookupPath = parentFolder.id === 'root'
+                    ? `/me/drive/root:/${encodedFolderName}?$select=id,name,folder,parentReference,webUrl`
+                    : `/me/drive/items/${encodeURIComponent(parentFolder.id)}:/${encodedFolderName}?$select=id,name,folder,parentReference,webUrl`;
+                const getExistingFolder = async () => {
+                    try {
+                        const response = await oneDriveGraphRequest(lookupPath);
+                        const item = await response.json();
+                        return item?.folder ? item : null;
+                    } catch (error) {
+                        if (error.status === 404) return null;
+                        throw error;
+                    }
+                };
+                let item = await getExistingFolder();
+                if (!item) {
+                    const createPath = parentFolder.id === 'root'
+                        ? '/me/drive/root/children'
+                        : `/me/drive/items/${encodeURIComponent(parentFolder.id)}/children`;
+                    try {
+                        const response = await oneDriveGraphRequest(createPath, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({
+                                name: projectFolderName,
+                                folder: {},
+                                '@microsoft.graph.conflictBehavior': 'fail'
+                            })
+                        });
+                        item = await response.json();
+                    } catch (error) {
+                        if (error.status !== 409) throw error;
+                        item = await getExistingFolder();
+                    }
+                }
+                if (!item?.id || !item?.folder) throw new Error('無法建立或讀取 OneDrive 專案資料夾');
+                const resolvedFolder = {
+                    id: item.id,
+                    name: item.name || projectFolderName,
+                    path: parentFolder.path === '/' ? `/${projectFolderName}` : `${parentFolder.path}/${projectFolderName}`,
+                    parentId: parentFolder.id,
+                    accountHomeId: oneDriveAccount?.homeAccountId || ''
+                };
+                setOneDriveFolder(resolvedFolder);
+                return resolvedFolder;
+            };
             const saveDataToOneDrive = async ({ silent = false } = {}) => {
-                if (!oneDriveAccount || !oneDriveFolder) {
+                const hasDestination = oneDriveAutoCreateProjectFolder ? oneDriveParentFolder : oneDriveFolder;
+                if (!oneDriveAccount || !hasDestination) {
                     if (!silent) setShowOneDriveModal(true);
                     return false;
                 }
                 setOneDriveStatus('saving');
                 try {
+                    const targetFolder = oneDriveAutoCreateProjectFolder
+                        ? await resolveOneDriveProjectFolder()
+                        : oneDriveFolder;
                     const fileName = getJsonFileName();
                     const encodedFileName = encodeURIComponent(fileName);
-                    const uploadPath = oneDriveFolder.id === 'root'
+                    const uploadPath = targetFolder.id === 'root'
                         ? `/me/drive/root:/${encodedFileName}:/content`
-                        : `/me/drive/items/${encodeURIComponent(oneDriveFolder.id)}:/${encodedFileName}:/content`;
+                        : `/me/drive/items/${encodeURIComponent(targetFolder.id)}:/${encodedFileName}:/content`;
                     const response = await oneDriveGraphRequest(uploadPath, {
                         method: 'PUT',
                         headers: { 'content-type': 'text/plain; charset=utf-8' },
@@ -2157,7 +2286,6 @@
                 const account = instance?.getActiveAccount() || oneDriveAccount;
                 setOneDriveAccount(null);
                 setOneDriveAutoSave(false);
-                setOneDriveFolder(null);
                 setOneDriveStatus('idle');
                 if (instance && account) {
                     try {
@@ -2483,14 +2611,15 @@
             };
             useEffect(() => {
                 if (oneDriveAutoSaveTimerRef.current) clearTimeout(oneDriveAutoSaveTimerRef.current);
-                if (!oneDriveAutoSave || !oneDriveAccount || !oneDriveFolder) return;
+                const hasDestination = oneDriveAutoCreateProjectFolder ? oneDriveParentFolder : oneDriveFolder;
+                if (!oneDriveAutoSave || !oneDriveAccount || !hasDestination) return;
                 oneDriveAutoSaveTimerRef.current = setTimeout(() => {
                     saveDataToOneDrive({ silent: true });
                 }, 3000);
                 return () => {
                     if (oneDriveAutoSaveTimerRef.current) clearTimeout(oneDriveAutoSaveTimerRef.current);
                 };
-            }, [data, oneDriveAutoSave, oneDriveAccount?.homeAccountId, oneDriveFolder?.id]);
+            }, [data, oneDriveAutoSave, oneDriveAutoCreateProjectFolder, oneDriveAccount?.homeAccountId, oneDriveFolder?.id, oneDriveParentFolder?.id]);
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
             return (
@@ -2502,6 +2631,9 @@
                         clientId={microsoftClientId}
                         account={oneDriveAccount}
                         folder={oneDriveFolder}
+                        parentFolder={oneDriveParentFolder}
+                        autoCreateProjectFolder={oneDriveAutoCreateProjectFolder}
+                        projectFolderName={getOneDriveProjectFolderName()}
                         autoSave={oneDriveAutoSave}
                         status={oneDriveStatus}
                         lastSavedAt={oneDriveLastSavedAt}
@@ -2515,6 +2647,8 @@
                         onOpenFolder={openOneDriveFolder}
                         onGoToBreadcrumb={goToOneDriveBreadcrumb}
                         onSelectFolder={selectOneDriveFolder}
+                        onSelectParentFolder={selectOneDriveParentFolder}
+                        onToggleAutoCreateProjectFolder={setOneDriveAutoCreateProjectFolder}
                         onToggleAutoSave={setOneDriveAutoSave}
                         onSaveNow={() => saveDataToOneDrive()}
                     />}
@@ -2545,7 +2679,7 @@
                             openCloudAuth={() => setShowCloudKeyModal(true)}
                             openOneDrive={() => setShowOneDriveModal(true)}
                             oneDriveAccount={oneDriveAccount}
-                            oneDriveFolder={oneDriveFolder}
+                            oneDriveFolder={oneDriveAutoCreateProjectFolder ? oneDriveParentFolder : oneDriveFolder}
                             oneDriveAutoSave={oneDriveAutoSave}
                             oneDriveStatus={oneDriveStatus}
                             openDataManager={() => setShowDataManager(true)}
@@ -2566,7 +2700,7 @@
                             openCloudAuth={() => setShowCloudKeyModal(true)}
                             openOneDrive={() => setShowOneDriveModal(true)}
                             oneDriveAccount={oneDriveAccount}
-                            oneDriveFolder={oneDriveFolder}
+                            oneDriveFolder={oneDriveAutoCreateProjectFolder ? oneDriveParentFolder : oneDriveFolder}
                             oneDriveAutoSave={oneDriveAutoSave}
                             oneDriveStatus={oneDriveStatus}
                             openDataManager={() => setShowDataManager(true)}
