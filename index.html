@@ -84,8 +84,12 @@
         /* [V53 Change] 列印核心邏輯修正 */
         @media print {
             .print-header-info .validity-input {
-                color: #dc2626 !important;
-                -webkit-text-fill-color: #dc2626 !important;
+                color: #b91c1c !important;
+                -webkit-text-fill-color: #b91c1c !important;
+            }
+            .print-header-info .validity-label {
+                color: #374151 !important;
+                font-size: 10pt !important;
             }
             /* A4 安全邊界：保留印表機裁切空間，同時提高單頁可用高度。 */
             @page { size: A4; margin: 8mm; }
@@ -345,7 +349,7 @@
             }
             .quick-print-meta > div { min-width: 0; padding: .8mm 2mm; border-radius: 2mm; background: #f2f6f9; font-size: 7.5pt; line-height: 1.2; }
             .quick-print-meta strong { display: block; margin: 0 0 .35mm; color: #667085; font-size: 7pt; line-height: 1.1; letter-spacing: .06em; }
-            .quick-print-validity { overflow-wrap: anywhere; color: #dc2626; }
+            .quick-print-validity { overflow-wrap: anywhere; color: #b91c1c; }
             .quick-print-flow { display: block; }
             .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
             .quick-print-section + .quick-print-section { margin-top: 1.8mm; }
@@ -742,7 +746,7 @@
         const getInitialData = () => ({
             schemaVersion: 4,
             quotationType: 'quick',
-            header: { title: '奇諾影像報價單(Quotation)', quotationId: '', quotationDate: getLocalISODate(), validity: '本報價單自發出日起 14 天內有效。' },
+            header: { title: '奇諾影像報價單(Quotation)', quotationId: '', quotationDate: getLocalISODate(), validityLabel: '有效期限：', validity: '本報價單自發出日起 14 天內有效。' },
             project: [...DEFAULT_PROJECT],
             categories: [...DEFAULT_CATEGORIES],
             items: JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
@@ -2584,7 +2588,7 @@
                     <div className="quick-print-meta">
                         <div><strong>報價單號</strong>{data.header.quotationId || '—'}</div>
                         <div><strong>報價日期</strong>{data.header.quotationDate || '—'}</div>
-                        <div className="quick-print-validity"><strong>有效期限</strong>{data.header.validity || '—'}</div>
+                        <div className="quick-print-validity"><strong>{data.header.validityLabel || '有效期限'}</strong>{data.header.validity || '—'}</div>
                     </div>
 
                     <div className="quick-print-flow">
@@ -2716,19 +2720,19 @@
                                     <div className="w-[13.5rem] shrink-0"><QuotationTypeSelector data={data} setData={setData} /></div>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
+                                    <button onClick={handleOpen} className="qt-toolbar-control qt-toolbar-button bg-gray-100 text-gray-700 hover:bg-gray-200"><i className="fas fa-folder-open"></i>開啟</button>
+                                    <button onClick={handleSave} className="qt-toolbar-control qt-toolbar-button bg-kino text-white shadow-sm hover:bg-kino-dark"><i className="fas fa-save"></i>儲存</button>
+                                    <button onClick={handleSaveAs} className="qt-toolbar-control qt-toolbar-button bg-kino-light text-white shadow-sm hover:bg-kino-medium"><i className="fas fa-download"></i>另存</button>
                                     {cloudSyncStatus === 'success' && <span className="qt-toolbar-status hidden sm:inline-flex"><i className="fas fa-check"></i>資料庫已同步</span>}
                                     {oneDriveFolder && <span className="qt-toolbar-status hidden max-w-[14rem] sm:inline-flex" title={oneDriveFolder.path || oneDriveFolder.name}><i className="fa-brands fa-microsoft"></i><span className="truncate">{oneDriveAutoSave ? 'OneDrive 自動儲存' : 'OneDrive 已連接'}</span></span>}
-                                    <button type="button" onClick={() => setToolbarExpanded(value => !value)} aria-expanded={toolbarExpanded} className="qt-toolbar-control qt-toolbar-button border border-gray-200 bg-white text-gray-600 hover:bg-gray-50" title={toolbarExpanded ? '收合導覽列' : '展開導覽列'}>
-                                        <span>{toolbarExpanded ? '收合' : '工具'}</span><i className={`fas fa-chevron-${toolbarExpanded ? 'up' : 'down'}`}></i>
+                                    <button type="button" onClick={() => setToolbarExpanded(value => !value)} aria-expanded={toolbarExpanded} aria-label={toolbarExpanded ? '收合導覽列' : '展開導覽列'} className="qt-toolbar-control qt-toolbar-button w-9 border border-gray-200 bg-white px-0 text-gray-600 hover:bg-gray-50" title={toolbarExpanded ? '收合導覽列' : '展開導覽列'}>
+                                        <i className={`fas fa-chevron-${toolbarExpanded ? 'up' : 'down'}`}></i>
                                     </button>
                                 </div>
                             </div>
                             <div className={`qt-toolbar-panel ${toolbarExpanded ? '' : 'is-collapsed'}`} aria-hidden={!toolbarExpanded}>
                                 <div className="qt-toolbar-panel-inner">
                                     <div className="flex min-h-[3.25rem] items-center justify-end gap-2 py-2">
-                                        <button onClick={handleOpen} className="qt-toolbar-control qt-toolbar-button bg-gray-100 text-gray-700 hover:bg-gray-200"><i className="fas fa-folder-open"></i>開啟</button>
-                                        <button onClick={handleSave} className="qt-toolbar-control qt-toolbar-button bg-kino text-white shadow-sm hover:bg-kino-dark"><i className="fas fa-save"></i>儲存</button>
-                                        <button onClick={handleSaveAs} className="qt-toolbar-control qt-toolbar-button bg-kino-light text-white shadow-sm hover:bg-kino-medium"><i className="fas fa-download"></i>另存</button>
                                         <button onClick={undo} disabled={!canUndo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canUndo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="復原" aria-label="復原"><i className="fas fa-undo"></i></button>
                                         <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="重做" aria-label="重做"><i className="fas fa-redo"></i></button>
                                         <button onClick={handleReset} className="qt-toolbar-control qt-toolbar-button w-9 border border-red-100 px-0 text-red-400 hover:bg-red-50 hover:text-red-600" title="重置" aria-label="重置"><i className="fas fa-times"></i></button>
@@ -2789,7 +2793,7 @@
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 section-block print-header-info">
                                     <div className="flex flex-col"><label className="text-xs font-bold text-gray-700">報價單號：</label><input type="text" value={data.header.quotationId} onChange={e => updateField('header', 'quotationId', e.target.value)} className="font-bold text-kino border-b border-gray-300 focus:outline-none" /></div>
                                     <div className="flex flex-col"><label className="text-xs font-bold text-gray-700">報價日期：</label><input type="date" value={data.header.quotationDate} onChange={e => updateField('header', 'quotationDate', e.target.value)} className="border-b border-gray-300 focus:outline-none" /></div>
-                                    <div className="flex flex-col"><label className="text-xs font-bold text-gray-700">有效期限：</label><input type="text" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="validity-input text-red-600 border-b border-gray-300 focus:outline-none" /></div>
+                                    <div className="flex flex-col"><input type="text" aria-label="有效期限欄位名稱" value={data.header.validityLabel} onChange={e => updateField('header', 'validityLabel', e.target.value)} className="validity-label w-full border-b border-dashed border-gray-300 bg-transparent text-xs font-bold text-gray-700 focus:border-kino focus:outline-none" /><input type="text" aria-label="有效期限內容" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="validity-input text-red-700 border-b border-gray-300 focus:outline-none" /></div>
                                 </div>
                                 <div className="section-block quick-project-section">
                                     <div className="flex justify-between items-center mt-6 mb-2 border-l-4 border-kino pl-3"><h2 className="text-lg font-bold">一、 專案內容概況 (Project Overview)</h2><button className="no-print bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded-full p-1 px-2" onClick={() => { const newProj = [...data.project, {label: "項目", value: ""}]; setData({...data, project: newProj}); }}><i className="fas fa-plus"></i></button></div>
@@ -3169,7 +3173,7 @@
                         <div id="m-header" className="bg-white p-4 rounded-xl shadow-sm space-y-4 mobile-section">
                             <h2 className="text-kino font-bold border-b pb-2"><i className="fas fa-info-circle mr-2"></i>專案概況</h2>
                             <div className="flex flex-col items-center justify-center py-2 border-b border-gray-100"><label className="text-xs text-gray-500 mb-2">品牌標誌</label><div className="w-full flex justify-center cursor-pointer" onClick={() => document.getElementById('m-logo-upload').click()}>{data.logo ? (<img src={data.logo} className="max-h-[80px] object-contain" />) : (<div className="h-16 w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400"><i className="fas fa-image mr-2"></i> 點擊上傳</div>)}</div><input type="file" id="m-logo-upload" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); setData({...data, logo: b64}); } }} /></div>
-                            <div className="grid grid-cols-1 gap-3"><div><label className="text-xs text-gray-500 block">單號</label><input type="text" value={data.header.quotationId} onChange={e => updateField('header', 'quotationId', e.target.value)} className="w-full font-bold text-lg border-b border-gray-300 py-1" /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 block">日期</label><input type="date" value={data.header.quotationDate} onChange={e => updateField('header', 'quotationDate', e.target.value)} className="w-full border-b py-1" /></div><div><label className="text-xs text-gray-500 block">有效期限</label><input type="text" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="w-full border-b py-1 text-red-500" /></div></div></div>
+                            <div className="grid grid-cols-1 gap-3"><div><label className="text-xs text-gray-500 block">單號</label><input type="text" value={data.header.quotationId} onChange={e => updateField('header', 'quotationId', e.target.value)} className="w-full font-bold text-lg border-b border-gray-300 py-1" /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 block">日期</label><input type="date" value={data.header.quotationDate} onChange={e => updateField('header', 'quotationDate', e.target.value)} className="w-full border-b py-1" /></div><div><input type="text" aria-label="有效期限欄位名稱" value={data.header.validityLabel} onChange={e => updateField('header', 'validityLabel', e.target.value)} className="w-full border-b border-dashed border-gray-300 bg-transparent py-1 text-xs text-gray-500 focus:border-kino focus:outline-none" /><input type="text" aria-label="有效期限內容" value={data.header.validity} onChange={e => updateField('header', 'validity', e.target.value)} className="w-full border-b py-1 text-red-700" /></div></div></div>
                             <div className="space-y-2 mt-4"><div className="flex justify-between items-center"><span className="text-sm font-bold text-gray-700">專案資訊</span><button className="bg-gray-100 px-2 py-1 rounded text-xs text-kino hover:bg-gray-200" onClick={() => setData({...data, project: [...data.project, {label: "項目", value: ""}]})}><i className="fas fa-plus"></i></button></div>{data.project.map((p, i) => (<div key={i} className="flex gap-2 items-center"><input className="w-1/3 bg-gray-50 rounded px-2 py-1 text-xs" value={p.label} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], label: e.target.value}; setData({...data, project: newP}); }} /><input className="w-full border-b border-gray-200 px-2 py-1 text-sm" value={p.value} onChange={e => { const newP = [...data.project]; newP[i] = {...newP[i], value: e.target.value}; setData({...data, project: newP}); }} /><button className="delete-action" title="刪除項目" onClick={() => { const newP = data.project.filter((_, idx) => idx !== i); setData({...data, project: newP}); }}><i className="fas fa-times"></i></button></div>))}</div>
                         </div>
                         <div id="m-summary" className="bg-white p-4 rounded-xl shadow-sm space-y-3 mobile-section">
