@@ -389,6 +389,8 @@ const routeRequest = async (request, env) => {
     return json({
       googleClientId: env.GOOGLE_CLIENT_ID || "",
       googleLoginEnabled: Boolean(env.GOOGLE_CLIENT_ID),
+      microsoftClientId: env.MICROSOFT_CLIENT_ID || "",
+      oneDriveLoginEnabled: Boolean(env.MICROSOFT_CLIENT_ID),
     });
   }
   if (request.method === "POST" && url.pathname === "/api/auth/google") {

@@ -26,6 +26,8 @@
 
 手機按「另存 JSON」時，支援 Web Share 的瀏覽器會開啟系統分享面板，可直接選擇「檔案」、Google Drive 或 OneDrive App 儲存；若裝置不支援，則改為一般 JSON 下載。檔名會優先使用報價單號。
 
+導覽列的按鈕採統一字級與高度。電腦版會把檔案／模式及專案／雲端分成兩列，手機版預設收合；兩種版面皆可按「收合／工具」切換，以保留主要編輯空間。
+
 ## 資料庫管理
 
 電腦版與手機版上方都有「資料庫管理」入口：
@@ -60,9 +62,11 @@ Cloudflare D1 是目前的工作資料庫與跨裝置同步來源。建議將登
 - D1：保存網站中正在編輯的完整專案與條款資料庫，作為跨裝置工作版本。
 - OneDrive：維持既有每個客戶／專案資料夾結構，保存定稿 JSON、PDF、試算表與其他製作檔案；電腦端繼續由 OneDrive 同步程式同步。
 - Google Drive：如有需要，只做手動備份或分享，不與 OneDrive 同時自動維護同一份 JSON，避免版本衝突。
-- OAuth 回呼、用戶端密鑰與更新權杖必須由專用 Worker 處理，不可放在公開 GitHub Pages 前端。
+- Microsoft 登入：採 Microsoft Identity Platform 的 SPA 授權碼流程與 PKCE；前端只包含可公開的 Application (client) ID，不使用也不保存 Client Secret。
 
-目前已完成 Google 帳號登入與 D1 使用者工作區綁定。下一階段若要讓網站直接寫入指定的 OneDrive 專案資料夾，仍需建立 Microsoft Entra OAuth 應用程式；在此之前，手機可先透過系統分享面板手動選擇 OneDrive 或 Google Drive 保存 JSON。
+目前已完成 Google 帳號登入與 D1 使用者工作區綁定，也已完成 OneDrive 直接登入、資料夾瀏覽／選取與自動儲存。OneDrive 只要求委派的 `Files.ReadWrite` 權限；選定資料夾後，報價內容變更會延遲約 3 秒，以「報價單號.json」覆寫儲存。也可在 OneDrive 設定視窗關閉自動儲存或手動立即儲存。
+
+OneDrive 登入使用官方 `@azure/msal-browser` 5.17.3 瀏覽器套件；登入快取只存在目前瀏覽器工作階段的 `sessionStorage`。本機只記錄選定的資料夾識別資訊與自動儲存偏好，不保存 Microsoft 密碼或存取權杖。Microsoft Entra 應用程式需將正式網站及本機測試網址登錄為 SPA 重新導向 URI，Application (client) ID 由 Worker 的公開設定 API 提供。
 
 ## 資料安全
 

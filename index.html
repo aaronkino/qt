@@ -39,6 +39,7 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://accounts.google.com/gsi/client?hl=zh_TW" async defer></script>
+    <script src="./assets/msal-browser-5.17.3.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+CJK+TC:wght@400;500;700&display=swap');
@@ -501,6 +502,66 @@
             max-width: 90%;
             object-fit: contain;
         }
+
+        /* Unified, collapsible workspace navigation */
+        .qt-toolbar-shell {
+            background: rgba(255, 255, 255, .96);
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 4px 18px rgba(16, 84, 130, .08);
+            backdrop-filter: blur(14px);
+        }
+        .qt-toolbar-brand,
+        .qt-toolbar-control {
+            font-size: .75rem;
+            line-height: 1rem;
+            font-weight: 700;
+        }
+        .qt-toolbar-brand { letter-spacing: .02em; }
+        .qt-toolbar-button,
+        .qt-toolbar-select {
+            min-height: 2.25rem;
+            border-radius: .65rem;
+        }
+        .qt-toolbar-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            padding: .5rem .75rem;
+            white-space: nowrap;
+            transition: color .18s ease, background-color .18s ease, border-color .18s ease, transform .18s ease;
+        }
+        .qt-toolbar-button:hover { transform: translateY(-1px); }
+        .qt-toolbar-button:disabled { transform: none; }
+        .qt-toolbar-select { padding: .4rem .65rem; }
+        .qt-toolbar-panel {
+            display: grid;
+            grid-template-rows: 1fr;
+            opacity: 1;
+            transition: grid-template-rows .24s ease, opacity .2s ease;
+        }
+        .qt-toolbar-panel.is-collapsed {
+            grid-template-rows: 0fr;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .qt-toolbar-panel-inner { min-height: 0; overflow: hidden; }
+        .qt-toolbar-status {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            border-radius: 9999px;
+            padding: .3rem .65rem;
+            background: #f0f6fa;
+            color: #105482;
+            font-size: .68rem;
+            line-height: .9rem;
+            font-weight: 700;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .qt-toolbar-panel,
+            .qt-toolbar-button { transition: none; }
+        }
     </style>
 </head>
 <body>
@@ -913,7 +974,7 @@
         const ProjectLibraryControls = ({ projects, onLoad, onSaveCurrent, compact = false }) => (
             <div className={`no-print flex items-center gap-1.5 ${compact ? 'w-full' : ''}`}>
                 <select
-                    className={`border border-gray-300 rounded-md bg-white text-gray-600 ${compact ? 'flex-1 text-xs px-2 py-1.5' : 'text-xs px-2 py-1'}`}
+                    className={`qt-toolbar-control qt-toolbar-select border border-gray-300 bg-white text-gray-600 ${compact ? 'min-w-0 flex-1' : 'max-w-[12rem]'}`}
                     defaultValue=""
                     aria-label="載入已儲存專案"
                     onChange={(event) => {
@@ -925,8 +986,8 @@
                     <option value="">已儲存專案...</option>
                     {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
                 </select>
-                <button type="button" onClick={onSaveCurrent} title="儲存目前報價的全部內容" className={`shrink-0 rounded-md border border-kino/30 text-kino hover:bg-kino hover:text-white transition ${compact ? 'px-2 py-1.5 text-xs' : 'px-2 py-1 text-xs'}`}>
-                    <i className="fas fa-folder-plus mr-1"></i>存完整專案
+                <button type="button" onClick={onSaveCurrent} title="儲存目前報價的全部內容" className="qt-toolbar-control qt-toolbar-button shrink-0 border border-kino/30 text-kino hover:bg-kino hover:text-white">
+                    <i className="fas fa-folder-plus"></i>存完整專案
                 </button>
             </div>
         );
@@ -939,17 +1000,133 @@
                 error: { icon: 'fa-exclamation-triangle', label: '同步失敗', className: 'bg-red-600 hover:bg-red-700' }
             }[status] || { icon: 'fa-cloud', label: 'Google 登入／同步', className: 'bg-kino hover:bg-kino-darker' };
             return (
-                <div className={`no-print flex items-center gap-1.5 ${compact ? 'mt-2 w-full' : ''}`}>
+                <div className={`no-print flex items-center gap-1.5 ${compact ? 'w-full' : ''}`}>
                     <button
                         type="button"
                         onClick={onSync}
                         disabled={status === 'syncing'}
-                        className={`rounded-md px-2.5 py-1.5 text-xs font-bold text-white transition whitespace-nowrap ${state.className} ${compact ? 'min-w-0 flex-1 py-2' : ''}`}
+                        className={`qt-toolbar-control qt-toolbar-button text-white ${state.className} ${compact ? 'min-w-0 flex-1' : ''}`}
                         title={authUser ? `已登入 ${authUser.email}` : '使用 Google 帳號登入，或以既有同步金鑰連接 KINO 專用雲端資料庫'}
                     >
-                        <i className={`fas ${state.icon} mr-1`}></i>{state.label}
+                        <i className={`fas ${state.icon}`}></i>{state.label}
                     </button>
-                    {authUser && <button type="button" onClick={onManage} className={`shrink-0 rounded-md border border-kino/25 bg-white text-kino hover:bg-kino/5 ${compact ? 'px-3 py-2' : 'px-2.5 py-1.5'}`} title="帳號資訊與登出" aria-label="管理 Google 帳號"><i className="fas fa-user-circle"></i></button>}
+                    {authUser && <button type="button" onClick={onManage} className="qt-toolbar-control qt-toolbar-button shrink-0 border border-kino/25 bg-white px-3 text-kino hover:bg-kino/5" title="帳號資訊與登出" aria-label="管理 Google 帳號"><i className="fas fa-user-circle"></i></button>}
+                </div>
+            );
+        };
+
+        const OneDriveControls = ({ onOpen, status = 'idle', account = null, folder = null, autoSave = false, compact = false }) => {
+            const statusState = {
+                signingIn: { icon: 'fa-spinner fa-spin', label: 'Microsoft 登入中', className: 'bg-gray-500 text-white' },
+                loading: { icon: 'fa-spinner fa-spin', label: '讀取 OneDrive', className: 'bg-gray-500 text-white' },
+                saving: { icon: 'fa-spinner fa-spin', label: 'OneDrive 儲存中', className: 'bg-blue-600 text-white' },
+                saved: { icon: 'fa-check', label: 'OneDrive 已儲存', className: 'bg-emerald-600 text-white' },
+                error: { icon: 'fa-exclamation-triangle', label: 'OneDrive 錯誤', className: 'bg-red-600 text-white' }
+            }[status];
+            const state = statusState || (account
+                ? folder
+                    ? { icon: autoSave ? 'fa-cloud-arrow-up' : 'fa-cloud', label: autoSave ? 'OneDrive 自動儲存' : 'OneDrive 已連接', className: 'border border-blue-200 bg-blue-50 text-blue-700' }
+                    : { icon: 'fa-folder-open', label: '選擇 OneDrive 資料夾', className: 'border border-blue-200 bg-white text-blue-700' }
+                : { icon: 'fa-brands fa-microsoft', label: 'OneDrive 登入', className: 'border border-gray-300 bg-white text-gray-700' });
+            return (
+                <button
+                    type="button"
+                    onClick={onOpen}
+                    className={`qt-toolbar-control qt-toolbar-button ${state.className} ${compact ? 'w-full' : ''}`}
+                    title={folder ? `OneDrive：${folder.path || folder.name}` : '登入 Microsoft 並選擇 OneDrive 專案資料夾'}
+                >
+                    <i className={`${state.icon.startsWith('fa-brands') ? '' : 'fas '}${state.icon}`}></i>{state.label}
+                </button>
+            );
+        };
+
+        const OneDriveModal = ({
+            onClose, clientId, account, folder, autoSave, status, lastSavedAt,
+            folders, folderStack, folderLoading, folderError,
+            onLogin, onLogout, onBrowse, onOpenFolder, onGoToBreadcrumb,
+            onSelectFolder, onToggleAutoSave, onSaveNow
+        }) => {
+            const [browseMode, setBrowseMode] = useState(false);
+            const openBrowser = async () => {
+                setBrowseMode(true);
+                await onBrowse();
+            };
+            const currentFolder = folderStack[folderStack.length - 1] || { id: 'root', name: 'OneDrive', path: '/' };
+            return (
+                <div className="no-print fixed inset-0 z-[130] flex items-end justify-center bg-gray-950/60 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="OneDrive 設定">
+                    <div className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+                            <div>
+                                <h3 className="font-black text-kino"><i className="fa-brands fa-microsoft mr-2"></i>OneDrive 專案儲存</h3>
+                                <p className="mt-1 text-xs leading-relaxed text-gray-500">登入後選擇專案資料夾；報價內容會以「報價單號.json」直接儲存到你的 OneDrive。</p>
+                            </div>
+                            <button type="button" onClick={onClose} className="delete-action shrink-0" aria-label="關閉 OneDrive 設定"><i className="fas fa-times"></i></button>
+                        </div>
+                        <div className="overflow-y-auto p-5">
+                            {!clientId ? (
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-800">
+                                    <i className="fas fa-circle-info mr-1"></i>Microsoft Entra 應用程式尚未完成設定；程式已就緒，填入專用 Client ID 後即可登入。
+                                </div>
+                            ) : !account ? (
+                                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                    <p className="text-sm font-bold text-gray-800">使用 Microsoft 帳號連接 OneDrive</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-gray-500">只要求讀寫你本人 OneDrive 檔案所需的 Files.ReadWrite 權限，不會取得密碼。</p>
+                                    <button type="button" disabled={status === 'signingIn'} onClick={onLogin} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                                        <i className="fa-brands fa-microsoft"></i>{status === 'signingIn' ? '正在前往 Microsoft…' : '登入 Microsoft／OneDrive'}
+                                    </button>
+                                </div>
+                            ) : browseMode ? (
+                                <div>
+                                    <div className="mb-3 flex flex-wrap items-center gap-1 text-xs">
+                                        {folderStack.map((item, index) => (
+                                            <React.Fragment key={`${item.id}-${index}`}>
+                                                {index > 0 && <i className="fas fa-chevron-right text-[9px] text-gray-300"></i>}
+                                                <button type="button" onClick={() => onGoToBreadcrumb(index)} className={`rounded-lg px-2 py-1 font-bold ${index === folderStack.length - 1 ? 'bg-kino/10 text-kino' : 'text-gray-500 hover:bg-gray-100'}`}>{item.name}</button>
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                    <div className="min-h-[12rem] rounded-2xl border border-gray-200 bg-gray-50 p-2">
+                                        {folderLoading ? <div className="flex h-40 items-center justify-center text-sm text-gray-400"><i className="fas fa-spinner fa-spin mr-2"></i>讀取資料夾…</div>
+                                            : folderError ? <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{folderError}</div>
+                                            : folders.length ? <div className="space-y-1">{folders.map(item => (
+                                                <button key={item.id} type="button" onClick={() => onOpenFolder(item)} className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-3 text-left text-sm font-bold text-gray-700 shadow-sm transition hover:bg-blue-50 hover:text-kino">
+                                                    <i className="fas fa-folder text-amber-400"></i><span className="min-w-0 flex-1 truncate">{item.name}</span><i className="fas fa-chevron-right text-xs text-gray-300"></i>
+                                                </button>
+                                            ))}</div>
+                                            : <div className="flex h-40 items-center justify-center text-sm text-gray-400">此資料夾內沒有子資料夾</div>}
+                                    </div>
+                                    <div className="mt-4 flex gap-2">
+                                        <button type="button" onClick={() => setBrowseMode(false)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-600">返回</button>
+                                        <button type="button" disabled={folderLoading} onClick={() => { onSelectFolder(currentFolder); setBrowseMode(false); }} className="min-w-0 flex-1 rounded-xl bg-kino px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"><i className="fas fa-folder-check mr-1.5"></i>使用「{currentFolder.name}」</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2f2f2f] text-white"><i className="fa-brands fa-microsoft"></i></span>
+                                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-800">{account.name || 'Microsoft 帳號'}</p><p className="truncate text-xs text-gray-500">{account.username}</p></div>
+                                            <button type="button" onClick={onLogout} className="text-xs font-bold text-gray-400 hover:text-red-500">登出</button>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-2xl border border-gray-200 p-4">
+                                        <p className="text-xs font-bold text-gray-400">目前專案資料夾</p>
+                                        <div className="mt-2 flex items-center gap-3">
+                                            <i className={`fas ${folder ? 'fa-folder-check text-emerald-500' : 'fa-folder text-amber-400'}`}></i>
+                                            <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">{folder ? (folder.path || folder.name) : '尚未選擇'}</p>
+                                            <button type="button" onClick={openBrowser} className="rounded-lg border border-kino/25 px-3 py-2 text-xs font-bold text-kino hover:bg-kino/5">{folder ? '更換' : '選擇'}</button>
+                                        </div>
+                                    </div>
+                                    <label className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${folder ? 'cursor-pointer border-blue-100 bg-blue-50/60' : 'cursor-not-allowed border-gray-100 bg-gray-50 opacity-55'}`}>
+                                        <span><span className="block text-sm font-bold text-gray-800">自動儲存 JSON</span><span className="mt-1 block text-xs leading-relaxed text-gray-500">停止編輯約 3 秒後，自動覆寫目前報價單號的 JSON。</span></span>
+                                        <input type="checkbox" disabled={!folder} checked={Boolean(folder && autoSave)} onChange={event => onToggleAutoSave(event.target.checked)} className="h-5 w-5 shrink-0 accent-kino" />
+                                    </label>
+                                    <button type="button" disabled={!folder || status === 'saving'} onClick={onSaveNow} className="w-full rounded-xl bg-kino px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-35"><i className={`fas ${status === 'saving' ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'} mr-1.5`}></i>{status === 'saving' ? '儲存中…' : '立即儲存到 OneDrive'}</button>
+                                    {lastSavedAt && <p className="text-center text-xs text-gray-400">最近儲存：{new Date(lastSavedAt).toLocaleString('zh-TW')}</p>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             );
         };
@@ -1291,6 +1468,9 @@
         const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
         const CLOUD_AUTH_TOKEN_STORAGE_KEY = 'kino_quotation_cloud_auth_token';
         const CLOUD_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_auth_user';
+        const ONEDRIVE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_folder_v1';
+        const ONEDRIVE_AUTOSAVE_STORAGE_KEY = 'kino_quotation_onedrive_autosave_v1';
+        const ONEDRIVE_SCOPES = ['Files.ReadWrite'];
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
             { id: 'kino-standard', name: 'KINO 標準影音條款', notes: DEFAULT_NOTES_TEXT }
@@ -1396,6 +1576,15 @@
                 return [];
             }
         };
+        const loadOneDriveFolder = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(ONEDRIVE_FOLDER_STORAGE_KEY) || 'null');
+                return stored?.id && stored?.name ? stored : null;
+            } catch (error) {
+                console.warn('OneDrive folder load error', error);
+                return null;
+            }
+        };
 
         const formatCurrency = (val) => new Intl.NumberFormat('zh-TW').format(val);
         const parseCurrency = (val) => parseFloat(String(val).replace(/,/g, '')) || 0;
@@ -1441,15 +1630,28 @@
             const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
             const [cloudAuthStatus, setCloudAuthStatus] = useState('idle');
             const [googleClientId, setGoogleClientId] = useState('');
+            const [microsoftClientId, setMicrosoftClientId] = useState('');
             const [cloudAuthUser, setCloudAuthUser] = useState(() => {
                 try { return JSON.parse(sessionStorage.getItem(CLOUD_AUTH_USER_STORAGE_KEY) || 'null'); }
                 catch { return null; }
             });
             const [showCloudKeyModal, setShowCloudKeyModal] = useState(false);
+            const [showOneDriveModal, setShowOneDriveModal] = useState(false);
+            const [oneDriveAccount, setOneDriveAccount] = useState(null);
+            const [oneDriveFolder, setOneDriveFolder] = useState(loadOneDriveFolder);
+            const [oneDriveAutoSave, setOneDriveAutoSave] = useState(() => localStorage.getItem(ONEDRIVE_AUTOSAVE_STORAGE_KEY) === 'true');
+            const [oneDriveStatus, setOneDriveStatus] = useState('idle');
+            const [oneDriveLastSavedAt, setOneDriveLastSavedAt] = useState('');
+            const [oneDriveFolders, setOneDriveFolders] = useState([]);
+            const [oneDriveFolderStack, setOneDriveFolderStack] = useState([{ id: 'root', name: 'OneDrive', path: '/' }]);
+            const [oneDriveFolderLoading, setOneDriveFolderLoading] = useState(false);
+            const [oneDriveFolderError, setOneDriveFolderError] = useState('');
             const [showDataManager, setShowDataManager] = useState(false);
             const [showClausePicker, setShowClausePicker] = useState(false);
             const hadLocalClauseLibraryRef = useRef(localStorage.getItem(CLAUSE_LIBRARY_STORAGE_KEY) !== null);
             const hadLocalClauseCategoriesRef = useRef(localStorage.getItem(CLAUSE_CATEGORY_STORAGE_KEY) !== null);
+            const msalInstanceRef = useRef(null);
+            const oneDriveAutoSaveTimerRef = useRef(null);
             const allContractTemplates = [...BUILTIN_CONTRACT_TEMPLATES, ...contractTemplates];
             
             // Toast State
@@ -1526,6 +1728,11 @@
             useEffect(() => { localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(deletedTemplateIds)); }, [deletedTemplateIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_STORAGE_KEY, JSON.stringify(deletedClauseIds)); }, [deletedClauseIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_CATEGORY_STORAGE_KEY, JSON.stringify(deletedClauseCategoryIds)); }, [deletedClauseCategoryIds]);
+            useEffect(() => {
+                if (oneDriveFolder) localStorage.setItem(ONEDRIVE_FOLDER_STORAGE_KEY, JSON.stringify(oneDriveFolder));
+                else localStorage.removeItem(ONEDRIVE_FOLDER_STORAGE_KEY);
+            }, [oneDriveFolder]);
+            useEffect(() => { localStorage.setItem(ONEDRIVE_AUTOSAVE_STORAGE_KEY, String(oneDriveAutoSave)); }, [oneDriveAutoSave]);
             useEffect(() => {
                 const mediaQuery = window.matchMedia('(max-width: 767px)');
                 const syncResponsiveMode = () => setMode(mediaQuery.matches ? 'mobile' : 'desktop');
@@ -1706,9 +1913,52 @@
             useEffect(() => {
                 fetch(`${CLOUD_SYNC_API_URL}/api/config`)
                     .then(response => response.ok ? response.json() : Promise.reject(new Error('Config unavailable')))
-                    .then(config => setGoogleClientId(config.googleClientId || ''))
+                    .then(config => {
+                        setGoogleClientId(config.googleClientId || '');
+                        setMicrosoftClientId(config.microsoftClientId || '');
+                    })
                     .catch(error => console.warn('Cloud config load error', error));
             }, []);
+            useEffect(() => {
+                if (!microsoftClientId || !window.msal?.PublicClientApplication) return;
+                let active = true;
+                const initializeMicrosoftLogin = async () => {
+                    try {
+                        const redirectUri = `${window.location.origin}${window.location.pathname}`;
+                        const instance = new window.msal.PublicClientApplication({
+                            auth: {
+                                clientId: microsoftClientId,
+                                authority: 'https://login.microsoftonline.com/common/',
+                                redirectUri,
+                                postLogoutRedirectUri: redirectUri,
+                                navigateToLoginRequestUrl: false
+                            },
+                            cache: { cacheLocation: 'sessionStorage' }
+                        });
+                        await instance.initialize();
+                        const redirectResult = await instance.handleRedirectPromise();
+                        const account = redirectResult?.account || instance.getAllAccounts()[0] || null;
+                        if (account) instance.setActiveAccount(account);
+                        msalInstanceRef.current = instance;
+                        if (!active) return;
+                        setOneDriveAccount(account);
+                        setOneDriveStatus('idle');
+                        const savedFolder = loadOneDriveFolder();
+                        if (savedFolder?.accountHomeId && account && savedFolder.accountHomeId !== account.homeAccountId) {
+                            setOneDriveFolder(null);
+                            setOneDriveAutoSave(false);
+                        }
+                    } catch (error) {
+                        console.error('Microsoft login initialization error', error);
+                        if (active) {
+                            setOneDriveStatus('error');
+                            setOneDriveFolderError('Microsoft 登入初始化失敗，請重新整理後再試。');
+                        }
+                    }
+                };
+                initializeMicrosoftLogin();
+                return () => { active = false; };
+            }, [microsoftClientId]);
             useEffect(() => {
                 if (!sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY)) return;
                 cloudRequest('/api/auth/me', {}, false)
@@ -1757,6 +2007,161 @@
                 setCloudAuthStatus('idle');
                 setCloudSyncStatus('idle');
                 showToast('已登出 Google 帳號');
+            };
+            const loginOneDrive = async () => {
+                if (!microsoftClientId || !msalInstanceRef.current) {
+                    showToast('Microsoft 登入設定尚未完成');
+                    return;
+                }
+                setOneDriveStatus('signingIn');
+                try {
+                    await msalInstanceRef.current.loginRedirect({
+                        scopes: ONEDRIVE_SCOPES,
+                        prompt: 'select_account'
+                    });
+                } catch (error) {
+                    console.error('OneDrive login error', error);
+                    setOneDriveStatus('error');
+                    showToast('Microsoft 登入失敗');
+                }
+            };
+            const getOneDriveAccessToken = async (interactive = false) => {
+                const instance = msalInstanceRef.current;
+                if (!instance) throw new Error('Microsoft 登入尚未初始化');
+                const account = instance.getActiveAccount() || oneDriveAccount || instance.getAllAccounts()[0];
+                if (!account) {
+                    if (interactive) await loginOneDrive();
+                    throw new Error('請先登入 Microsoft 帳號');
+                }
+                instance.setActiveAccount(account);
+                try {
+                    const result = await instance.acquireTokenSilent({ scopes: ONEDRIVE_SCOPES, account });
+                    return result.accessToken;
+                } catch (error) {
+                    const interactionRequired = error instanceof window.msal.InteractionRequiredAuthError ||
+                        ['interaction_required', 'login_required', 'consent_required'].includes(error?.errorCode);
+                    if (interactive && interactionRequired) {
+                        setOneDriveStatus('signingIn');
+                        await instance.acquireTokenRedirect({ scopes: ONEDRIVE_SCOPES, account });
+                    }
+                    throw error;
+                }
+            };
+            const oneDriveGraphRequest = async (path, options = {}, interactive = true) => {
+                const token = await getOneDriveAccessToken(interactive);
+                const url = path.startsWith('https://') ? path : `https://graph.microsoft.com/v1.0${path}`;
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        authorization: `Bearer ${token}`,
+                        ...(options.headers || {})
+                    }
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body?.error?.message || `OneDrive 請求失敗 (${response.status})`);
+                }
+                return response;
+            };
+            const loadOneDriveFolders = async (targetFolder, nextStack) => {
+                setOneDriveFolderLoading(true);
+                setOneDriveFolderError('');
+                setOneDriveStatus('loading');
+                try {
+                    const query = '?$select=id,name,folder,parentReference,webUrl&$orderby=name&$top=200';
+                    let nextUrl = targetFolder.id === 'root'
+                        ? `/me/drive/root/children${query}`
+                        : `/me/drive/items/${encodeURIComponent(targetFolder.id)}/children${query}`;
+                    const results = [];
+                    let pages = 0;
+                    while (nextUrl && pages < 10) {
+                        const response = await oneDriveGraphRequest(nextUrl);
+                        const body = await response.json();
+                        results.push(...(Array.isArray(body.value) ? body.value.filter(item => item?.folder) : []));
+                        nextUrl = body['@odata.nextLink'] || '';
+                        pages += 1;
+                    }
+                    setOneDriveFolders(results.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW')));
+                    if (nextStack) setOneDriveFolderStack(nextStack);
+                    setOneDriveStatus('idle');
+                } catch (error) {
+                    console.error('OneDrive folder load error', error);
+                    setOneDriveFolderError(error.message || '無法讀取 OneDrive 資料夾');
+                    setOneDriveStatus('error');
+                } finally {
+                    setOneDriveFolderLoading(false);
+                }
+            };
+            const browseOneDriveRoot = async () => {
+                const root = { id: 'root', name: 'OneDrive', path: '/' };
+                await loadOneDriveFolders(root, [root]);
+            };
+            const openOneDriveFolder = async (item) => {
+                const parent = oneDriveFolderStack[oneDriveFolderStack.length - 1] || { path: '/' };
+                const folderItem = {
+                    id: item.id,
+                    name: item.name,
+                    path: parent.path === '/' ? `/${item.name}` : `${parent.path}/${item.name}`
+                };
+                await loadOneDriveFolders(folderItem, [...oneDriveFolderStack, folderItem]);
+            };
+            const goToOneDriveBreadcrumb = async (index) => {
+                const nextStack = oneDriveFolderStack.slice(0, index + 1);
+                const target = nextStack[nextStack.length - 1];
+                if (target) await loadOneDriveFolders(target, nextStack);
+            };
+            const selectOneDriveFolder = (folder) => {
+                const selected = { ...folder, accountHomeId: oneDriveAccount?.homeAccountId || '' };
+                setOneDriveFolder(selected);
+                setOneDriveAutoSave(true);
+                setOneDriveStatus('idle');
+                showToast(`OneDrive 資料夾：${selected.path || selected.name}`);
+            };
+            const saveDataToOneDrive = async ({ silent = false } = {}) => {
+                if (!oneDriveAccount || !oneDriveFolder) {
+                    if (!silent) setShowOneDriveModal(true);
+                    return false;
+                }
+                setOneDriveStatus('saving');
+                try {
+                    const fileName = getJsonFileName();
+                    const encodedFileName = encodeURIComponent(fileName);
+                    const uploadPath = oneDriveFolder.id === 'root'
+                        ? `/me/drive/root:/${encodedFileName}:/content`
+                        : `/me/drive/items/${encodeURIComponent(oneDriveFolder.id)}:/${encodedFileName}:/content`;
+                    const response = await oneDriveGraphRequest(uploadPath, {
+                        method: 'PUT',
+                        headers: { 'content-type': 'text/plain; charset=utf-8' },
+                        body: JSON.stringify(data, null, 2)
+                    }, !silent);
+                    const savedItem = await response.json();
+                    const savedAt = new Date().toISOString();
+                    setOneDriveLastSavedAt(savedAt);
+                    setOneDriveStatus('saved');
+                    if (!silent) showToast(`已存至 OneDrive：${savedItem.name || fileName}`);
+                    setTimeout(() => setOneDriveStatus('idle'), 1800);
+                    return true;
+                } catch (error) {
+                    console.error('OneDrive save error', error);
+                    setOneDriveStatus('error');
+                    if (!silent) showToast(error.message || 'OneDrive 儲存失敗');
+                    return false;
+                }
+            };
+            const logoutOneDrive = async () => {
+                const instance = msalInstanceRef.current;
+                const account = instance?.getActiveAccount() || oneDriveAccount;
+                setOneDriveAccount(null);
+                setOneDriveAutoSave(false);
+                setOneDriveFolder(null);
+                setOneDriveStatus('idle');
+                if (instance && account) {
+                    try {
+                        await instance.logoutRedirect({ account });
+                    } catch (error) {
+                        console.warn('OneDrive logout error', error);
+                    }
+                }
             };
             const saveRecordToCloud = async (path, record) => {
                 if (!getCloudSyncKey()) return;
@@ -2078,12 +2483,43 @@
                 }
                 showToast(`已刪除條款範本「${current.name}」`);
             };
+            useEffect(() => {
+                if (oneDriveAutoSaveTimerRef.current) clearTimeout(oneDriveAutoSaveTimerRef.current);
+                if (!oneDriveAutoSave || !oneDriveAccount || !oneDriveFolder) return;
+                oneDriveAutoSaveTimerRef.current = setTimeout(() => {
+                    saveDataToOneDrive({ silent: true });
+                }, 3000);
+                return () => {
+                    if (oneDriveAutoSaveTimerRef.current) clearTimeout(oneDriveAutoSaveTimerRef.current);
+                };
+            }, [data, oneDriveAutoSave, oneDriveAccount?.homeAccountId, oneDriveFolder?.id]);
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
                     {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} onLogout={logoutCloudAccount} authStatus={cloudAuthStatus} />}
+                    {showOneDriveModal && <OneDriveModal
+                        onClose={() => setShowOneDriveModal(false)}
+                        clientId={microsoftClientId}
+                        account={oneDriveAccount}
+                        folder={oneDriveFolder}
+                        autoSave={oneDriveAutoSave}
+                        status={oneDriveStatus}
+                        lastSavedAt={oneDriveLastSavedAt}
+                        folders={oneDriveFolders}
+                        folderStack={oneDriveFolderStack}
+                        folderLoading={oneDriveFolderLoading}
+                        folderError={oneDriveFolderError}
+                        onLogin={loginOneDrive}
+                        onLogout={logoutOneDrive}
+                        onBrowse={browseOneDriveRoot}
+                        onOpenFolder={openOneDriveFolder}
+                        onGoToBreadcrumb={goToOneDriveBreadcrumb}
+                        onSelectFolder={selectOneDriveFolder}
+                        onToggleAutoSave={setOneDriveAutoSave}
+                        onSaveNow={() => saveDataToOneDrive()}
+                    />}
                     {showClausePicker && <ClausePickerModal clauses={clauseLibrary} categories={clauseCategories} onImport={importSelectedClauses} onClose={() => setShowClausePicker(false)} onCreateCategory={createClauseCategory} onSaveCategory={saveClauseCategory} onDeleteCategory={deleteClauseCategory} onCreateClause={createClauseRecord} onSaveClause={saveClauseRecord} onDeleteClause={deleteClauseRecord} />}
                     {showDataManager && <DataManagerModal
                         projects={projectLibrary}
@@ -2109,6 +2545,11 @@
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
                             cloudAuthUser={cloudAuthUser}
                             openCloudAuth={() => setShowCloudKeyModal(true)}
+                            openOneDrive={() => setShowOneDriveModal(true)}
+                            oneDriveAccount={oneDriveAccount}
+                            oneDriveFolder={oneDriveFolder}
+                            oneDriveAutoSave={oneDriveAutoSave}
+                            oneDriveStatus={oneDriveStatus}
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
@@ -2126,6 +2567,11 @@
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
                             cloudAuthUser={cloudAuthUser}
                             openCloudAuth={() => setShowCloudKeyModal(true)}
+                            openOneDrive={() => setShowOneDriveModal(true)}
+                            oneDriveAccount={oneDriveAccount}
+                            oneDriveFolder={oneDriveFolder}
+                            oneDriveAutoSave={oneDriveAutoSave}
+                            oneDriveStatus={oneDriveStatus}
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
@@ -2255,11 +2701,13 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
             const [recentlyMovedNoteId, setRecentlyMovedNoteId] = useState(null);
+            const [toolbarExpanded, setToolbarExpanded] = useState(() => localStorage.getItem('kino_quotation_desktop_toolbar_expanded') !== 'false');
+            useEffect(() => { localStorage.setItem('kino_quotation_desktop_toolbar_expanded', String(toolbarExpanded)); }, [toolbarExpanded]);
             const reorderNotes = (sourceId, targetId) => {
                 if (!sourceId || sourceId === targetId) return;
                 const sourceIndex = data.notes.findIndex(note => note.id === sourceId);
@@ -2279,28 +2727,40 @@
 
             return (
                 <div className="bg-gray-100 min-h-screen pb-12">
-                    {/* [V54 Change] Sticky Top Navigation Bar */}
-                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm border-b border-gray-200 px-6 py-3 no-print transition-all">
-                        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-kino mr-2 hidden lg:inline">奇諾影像報價工作台</span>
-                                {/* File Operations */}
-                                <button onClick={handleOpen} className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1.5 px-3 text-sm rounded-lg transition flex items-center"><i className="fas fa-folder-open mr-1.5"></i>開啟</button>
-                                <button onClick={handleSave} className="bg-kino hover:bg-kino-dark text-white font-bold py-1.5 px-3 text-sm rounded-lg transition flex items-center shadow-sm"><i className="fas fa-save mr-1.5"></i>儲存</button>
-                                <button onClick={handleSaveAs} className="bg-kino-light hover:bg-kino-medium text-white font-bold py-1.5 px-3 text-sm rounded-lg transition flex items-center shadow-sm"><i className="fas fa-download mr-1.5"></i>另存</button>
-                                <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                                {/* History */}
-                                <button onClick={undo} disabled={!canUndo} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${canUndo ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'text-gray-300 cursor-not-allowed'}`} title="復原"><i className="fas fa-undo text-sm"></i></button>
-                                <button onClick={redo} disabled={!canRedo} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${canRedo ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'text-gray-300 cursor-not-allowed'}`} title="重做"><i className="fas fa-redo text-sm"></i></button>
-                                <button onClick={handleReset} className="delete-action ml-1" title="重置"><i className="fas fa-times"></i></button>
+                    <div className="qt-toolbar-shell sticky top-0 z-50 no-print">
+                        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                            <div className="flex min-h-[2.75rem] items-center justify-between gap-3">
+                                <span className="qt-toolbar-brand text-kino"><i className="fas fa-file-invoice-dollar mr-1.5"></i>奇諾影像報價工作台</span>
+                                <div className="flex min-w-0 items-center gap-2">
+                                    {cloudSyncStatus === 'success' && <span className="qt-toolbar-status hidden sm:inline-flex"><i className="fas fa-check"></i>資料庫已同步</span>}
+                                    {oneDriveFolder && <span className="qt-toolbar-status hidden max-w-[14rem] sm:inline-flex" title={oneDriveFolder.path || oneDriveFolder.name}><i className="fa-brands fa-microsoft"></i><span className="truncate">{oneDriveAutoSave ? 'OneDrive 自動儲存' : 'OneDrive 已連接'}</span></span>}
+                                    <button type="button" onClick={() => setToolbarExpanded(value => !value)} aria-expanded={toolbarExpanded} className="qt-toolbar-control qt-toolbar-button border border-gray-200 bg-white text-gray-600 hover:bg-gray-50" title={toolbarExpanded ? '收合導覽列' : '展開導覽列'}>
+                                        <span>{toolbarExpanded ? '收合' : '工具'}</span><i className={`fas fa-chevron-${toolbarExpanded ? 'up' : 'down'}`}></i>
+                                    </button>
+                                </div>
                             </div>
-
-                            <div className="flex items-center gap-4">
-                                <QuotationTypeSelector data={data} setData={setData} />
-                                <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
-                                <button type="button" onClick={openDataManager} className="shrink-0 rounded-md border border-kino/30 px-2.5 py-1.5 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
-                                <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} authUser={cloudAuthUser} />
-                                <button type="button" onClick={handlePrint} className="shrink-0 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-black transition shadow-sm"><i className="fas fa-file-pdf mr-1.5"></i>列印</button>
+                            <div className={`qt-toolbar-panel ${toolbarExpanded ? '' : 'is-collapsed'}`} aria-hidden={!toolbarExpanded}>
+                                <div className="qt-toolbar-panel-inner">
+                                    <div className="grid gap-2 border-t border-gray-100 py-2.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <button onClick={handleOpen} className="qt-toolbar-control qt-toolbar-button bg-gray-100 text-gray-700 hover:bg-gray-200"><i className="fas fa-folder-open"></i>開啟</button>
+                                            <button onClick={handleSave} className="qt-toolbar-control qt-toolbar-button bg-kino text-white shadow-sm hover:bg-kino-dark"><i className="fas fa-save"></i>儲存</button>
+                                            <button onClick={handleSaveAs} className="qt-toolbar-control qt-toolbar-button bg-kino-light text-white shadow-sm hover:bg-kino-medium"><i className="fas fa-download"></i>另存</button>
+                                            <div className="mx-0.5 h-7 w-px bg-gray-200"></div>
+                                            <button onClick={undo} disabled={!canUndo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canUndo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="復原" aria-label="復原"><i className="fas fa-undo"></i></button>
+                                            <button onClick={redo} disabled={!canRedo} className={`qt-toolbar-control qt-toolbar-button w-9 px-0 ${canRedo ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'cursor-not-allowed text-gray-300'}`} title="重做" aria-label="重做"><i className="fas fa-redo"></i></button>
+                                            <button onClick={handleReset} className="qt-toolbar-control qt-toolbar-button w-9 border border-red-100 px-0 text-red-400 hover:bg-red-50 hover:text-red-600" title="重置" aria-label="重置"><i className="fas fa-times"></i></button>
+                                            <div className="w-[13.5rem] shrink-0"><QuotationTypeSelector data={data} setData={setData} /></div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} />
+                                            <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
+                                            <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} authUser={cloudAuthUser} />
+                                            <OneDriveControls onOpen={openOneDrive} status={oneDriveStatus} account={oneDriveAccount} folder={oneDriveFolder} autoSave={oneDriveAutoSave} />
+                                            <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white shadow-sm hover:bg-black"><i className="fas fa-print"></i>列印</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2545,10 +3005,12 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
-            const [draggingIdx, setDraggingIdx] = useState(null); 
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleReset, openClausePicker, projectLibrary, loadSavedProject, saveCurrentProject, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode }) => {
+            const [draggingIdx, setDraggingIdx] = useState(null);
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
+            const [toolbarExpanded, setToolbarExpanded] = useState(() => localStorage.getItem('kino_quotation_mobile_toolbar_expanded') === 'true');
+            useEffect(() => { localStorage.setItem('kino_quotation_mobile_toolbar_expanded', String(toolbarExpanded)); }, [toolbarExpanded]);
 
             const scrollTo = (id) => { 
                 const el = document.getElementById(id); 
@@ -2699,21 +3161,29 @@
                         </div>
                     </div>
 
-                    <div className="sticky top-0 z-40 bg-white shadow-md">
-                        <div className="flex justify-between items-center px-3 py-2">
-                            <h1 className="text-base font-bold text-kino">奇諾影像報價工作台</h1>
-                            <div className="flex items-center gap-2">
-                                <button onClick={handleSave} aria-label="儲存或分享 JSON" title="儲存或分享 JSON" className="text-kino p-2 rounded hover:bg-gray-100"><i className="fas fa-save fa-lg"></i></button>
-                                <button onClick={handleOpen} aria-label="開啟 JSON" title="開啟 JSON" className="text-kino p-2 rounded hover:bg-gray-100 cursor-pointer"><i className="fas fa-folder-open fa-lg"></i></button>
-                                <button onClick={handleReset} aria-label="重設報價" title="重設報價" className="text-red-500 p-2 rounded hover:bg-gray-100"><i className="fas fa-undo fa-lg"></i></button>
-                                <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                    <div className="qt-toolbar-shell sticky top-0 z-40">
+                        <div className="flex min-h-[3rem] items-center justify-between gap-2 px-3">
+                            <h1 className="qt-toolbar-brand min-w-0 flex-1 truncate text-kino">奇諾影像報價工作台</h1>
+                            <div className="flex shrink-0 items-center gap-1">
+                                <button onClick={handleOpen} aria-label="開啟 JSON" title="開啟 JSON" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-kino hover:bg-gray-100"><i className="fas fa-folder-open"></i></button>
+                                <button onClick={handleSave} aria-label="儲存或分享 JSON" title="儲存或分享 JSON" className="qt-toolbar-control qt-toolbar-button w-9 bg-kino px-0 text-white"><i className="fas fa-save"></i></button>
+                                <button onClick={handleReset} aria-label="重設報價" title="重設報價" className="qt-toolbar-control qt-toolbar-button w-9 px-0 text-red-500 hover:bg-red-50"><i className="fas fa-undo"></i></button>
+                                <button type="button" onClick={() => setToolbarExpanded(value => !value)} aria-expanded={toolbarExpanded} aria-label={toolbarExpanded ? '收合導覽列' : '展開導覽列'} title={toolbarExpanded ? '收合導覽列' : '展開導覽列'} className="qt-toolbar-control qt-toolbar-button w-9 border border-gray-200 px-0 text-gray-500"><i className={`fas fa-chevron-${toolbarExpanded ? 'up' : 'down'}`}></i></button>
                             </div>
                         </div>
-                        <div className="px-3 pb-3">
-                            <QuotationTypeSelector data={data} setData={setData} />
-                            <div className="mt-2"><ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} /></div>
-                            <button type="button" onClick={openDataManager} className="mt-2 w-full rounded-md border border-kino/30 px-2.5 py-2 text-xs font-bold text-kino transition hover:bg-kino hover:text-white"><i className="fas fa-database mr-1"></i>資料庫管理</button>
-                            <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} compact={true} authUser={cloudAuthUser} />
+                        <div className={`qt-toolbar-panel ${toolbarExpanded ? '' : 'is-collapsed'}`} aria-hidden={!toolbarExpanded}>
+                            <div className="qt-toolbar-panel-inner">
+                                <div className="space-y-2 border-t border-gray-100 px-3 py-3">
+                                    <QuotationTypeSelector data={data} setData={setData} />
+                                    <ProjectLibraryControls projects={projectLibrary} onLoad={loadSavedProject} onSaveCurrent={saveCurrentProject} compact={true} />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
+                                        <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white hover:bg-black"><i className="fas fa-print"></i>列印</button>
+                                    </div>
+                                    <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} compact={true} authUser={cloudAuthUser} />
+                                    <OneDriveControls onOpen={openOneDrive} status={oneDriveStatus} account={oneDriveAccount} folder={oneDriveFolder} autoSave={oneDriveAutoSave} compact={true} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
