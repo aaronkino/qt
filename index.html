@@ -449,7 +449,8 @@
             .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; }
             .quick-acceptance-signature-placeholder { opacity: .1; }
             .quick-acceptance-signature img { max-width: 95%; max-height: 27mm; object-fit: contain; }
-            .quick-print-warning { margin: 1.5mm 0 0; color: #a61b1b; font-size: 8.2pt; line-height: 1.25; }
+            .quick-print-warning { margin: 1.5mm 0 0; color: #b91c1c; -webkit-text-fill-color: #b91c1c; font-size: 8.2pt; line-height: 1.25; }
+            .print-overdue-warning { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; opacity: 1 !important; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
 
             /* 詳細報價：細項從新頁開始，允許依內容自動延伸 A4 頁面。 */
@@ -3056,7 +3057,7 @@
                                             <div className="flex whitespace-nowrap items-center">帳號：<input className="bg-transparent flex-1 min-w-0" value={data.bank.accountNumber} onChange={e => updateField('bank', 'accountNumber', e.target.value)} /></div>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
+                                    <p className="print-overdue-warning mt-2 text-red-700 text-xs font-medium">** 逾期付款：若甲方逾期、未足額支付任何一期款項，乙方有權暫停後續的製作或交付工作，直至款項結清。</p>
                                 </div>
                                 <div className="section-block signature-block quick-signature-section">
                                     <h2 className="text-lg font-bold mt-6 mb-2 border-l-4 border-kino pl-3">五、 報價確認與簽署 (Signatures)</h2>
