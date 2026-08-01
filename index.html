@@ -729,16 +729,6 @@
             if (!Array.isArray(categories)) return [];
             return categories.map(category => ({ ...category, summaryQty: category.summaryQty ?? '', summaryUnit: category.summaryUnit ?? '' }));
         };
-        const upgradeDefaultItems = (sourceItems = {}) => {
-            const upgraded = JSON.parse(JSON.stringify(sourceItems || {}));
-            Object.entries(DEFAULT_ITEMS).forEach(([categoryId, defaults]) => {
-                const current = Array.isArray(upgraded[categoryId]) ? upgraded[categoryId] : [];
-                const existingDescriptions = new Set(current.map(item => item?.desc));
-                upgraded[categoryId] = [...current, ...defaults.filter(item => !existingDescriptions.has(item.desc)).map(item => ({ ...item }))];
-            });
-            return upgraded;
-        };
-
         const DEFAULT_BANK = { accountName: '奇諾影像有限公司', bankName: '807 永豐銀行 板新分行', accountNumber: '007-018-0005565-8' };
 
         const QUOTATION_TYPES = {
@@ -795,7 +785,10 @@
                     scaledMode: quotationType === 'quick'
                 },
                 categories: ensureCategorySummaryFields(source.categories || defaults.categories),
-                items: Number(source.schemaVersion || 0) < 4 ? upgradeDefaultItems(source.items || {}) : (source.items || defaults.items),
+                // 只要 JSON 內有 items 快照，就完整保留使用者刪除的服務項目；不可因舊 schemaVersion 再補回預設列。
+                items: source.items && typeof source.items === 'object' && !Array.isArray(source.items)
+                    ? Object.fromEntries(Object.entries(source.items).map(([categoryId, items]) => [categoryId, Array.isArray(items) ? items : []]))
+                    : JSON.parse(JSON.stringify(defaults.items)),
                 notes: notes.length > 0 ? notes : defaults.notes
             };
         };
