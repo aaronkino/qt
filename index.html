@@ -739,7 +739,7 @@
             opacity: 0;
             pointer-events: none;
         }
-        .qt-toolbar-panel-inner { min-height: 0; overflow: hidden; }
+        .qt-toolbar-panel-inner { min-height: 0; overflow: visible; }
         .qt-toolbar-status {
             display: inline-flex;
             align-items: center;
@@ -1007,7 +1007,7 @@
             );
         };
 
-        const QuotationModeOverview = ({ data, onPrint, compact = false, showSigDate, onToggleSigDate }) => {
+        const QuotationModeOverview = ({ data, onPrint, printScale, onPrintScaleChange, compact = false, showSigDate, onToggleSigDate }) => {
             const currentType = data.quotationType || 'quick';
             const current = QUOTATION_TYPES[currentType];
 
@@ -1030,9 +1030,7 @@
                             </div>
                         </div>
                         {!compact && onToggleSigDate && <label className="no-print shrink-0 flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer"><input type="checkbox" checked={showSigDate} onChange={onToggleSigDate} className="accent-kino" /><span>簽署日期</span></label>}
-                        {compact && <button type="button" onClick={onPrint} className="shrink-0 rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black transition shadow-sm">
-                            <i className="fas fa-file-pdf mr-1.5"></i>{compact ? '輸出' : '列印'}
-                        </button>}
+                        {compact && <PrintSplitButton value={printScale} onChange={onPrintScaleChange} onPrint={onPrint} compact={true} />}
                     </div>
                 </div>
             );
@@ -1666,42 +1664,117 @@
         const ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_auto_create_folder_v1';
         const ONEDRIVE_AUTOSAVE_STORAGE_KEY = 'kino_quotation_onedrive_autosave_v1';
         const PRINT_SCALE_STORAGE_KEY = 'kino_quotation_print_scale_v1';
-        const PRINT_SCALE_OPTIONS = [
-            { value: 'auto', label: '自動', description: '先以 100% 嘗試；略微超出時自動改用 95%。' },
-            { value: '100', label: '100%', description: '維持原尺寸；超出安全高度時才分頁。' },
-            { value: '95', label: '95%', description: '適合簽署區只差一點點就超出第一頁的報價。' },
-            { value: '90', label: '90%', description: '內容較多時，優先維持完整單頁。' },
-            { value: '85', label: '85%', description: '內容很多但仍希望盡量整合為單頁時使用。' }
-        ];
-        const isPrintScaleValue = value => PRINT_SCALE_OPTIONS.some(option => option.value === value);
-        const PrintScaleModal = ({ value, onChange, onClose, onConfirm }) => (
-            <div className="no-print fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-labelledby="print-scale-title">
-                <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-                    <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
-                        <div>
-                            <p className="text-xs font-bold tracking-[0.16em] text-kino">PRINT / 列印設定</p>
-                            <h2 id="print-scale-title" className="mt-1 text-lg font-black text-gray-900">先選比例，再重新分頁</h2>
+        const PRINT_SCALE_MIN = 70;
+        const PRINT_SCALE_MAX = 100;
+        const PRINT_SCALE_DEFAULT = 95;
+        const clampPrintScale = value => {
+            const rawValue = String(value ?? '').replace('%', '').trim();
+            if (!rawValue) return PRINT_SCALE_DEFAULT;
+            const numeric = Number(rawValue);
+            if (!Number.isFinite(numeric)) return PRINT_SCALE_DEFAULT;
+            return Math.min(PRINT_SCALE_MAX, Math.max(PRINT_SCALE_MIN, Math.round(numeric)));
+        };
+        const normalizePrintScaleValue = value => String(clampPrintScale(value));
+        const PrintSplitButton = ({ value, onChange, onPrint, compact = false, fullWidth = false, light = false }) => {
+            const rootRef = useRef(null);
+            const closeTimerRef = useRef(null);
+            const normalizedValue = normalizePrintScaleValue(value);
+            const [isOpen, setIsOpen] = useState(false);
+            const [draftValue, setDraftValue] = useState(normalizedValue);
+            const [menuPosition, setMenuPosition] = useState(null);
+            const updateMenuPosition = useCallback(() => {
+                if (!rootRef.current) {
+                    setMenuPosition(null);
+                    return;
+                }
+                const rect = rootRef.current.getBoundingClientRect();
+                const viewportPadding = 12;
+                const isNarrowViewport = window.innerWidth < 768;
+                const menuWidth = Math.min(isNarrowViewport ? 260 : 288, window.innerWidth - (viewportPadding * 2));
+                const menuHeight = isNarrowViewport ? 300 : 282;
+                const topBelow = rect.bottom + 8;
+                const top = topBelow + menuHeight <= window.innerHeight - viewportPadding
+                    ? topBelow
+                    : Math.max(viewportPadding, rect.top - menuHeight - 8);
+                const left = Math.max(viewportPadding, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding));
+                setMenuPosition(isNarrowViewport
+                    ? { top, right: viewportPadding, width: menuWidth }
+                    : { top, left, width: menuWidth });
+            }, []);
+            const openMenu = () => {
+                if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+                setIsOpen(true);
+            };
+            const scheduleClose = () => {
+                if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+                closeTimerRef.current = setTimeout(() => setIsOpen(false), 180);
+            };
+            useEffect(() => {
+                setDraftValue(normalizedValue);
+            }, [normalizedValue]);
+            useEffect(() => {
+                if (!isOpen) return undefined;
+                const handleOutsidePointer = event => {
+                    if (!rootRef.current?.contains(event.target)) setIsOpen(false);
+                };
+                document.addEventListener('pointerdown', handleOutsidePointer);
+                return () => document.removeEventListener('pointerdown', handleOutsidePointer);
+            }, [isOpen]);
+            useEffect(() => {
+                if (!isOpen) {
+                    setMenuPosition(null);
+                    return undefined;
+                }
+                updateMenuPosition();
+                window.addEventListener('resize', updateMenuPosition);
+                window.addEventListener('scroll', updateMenuPosition, true);
+                return () => {
+                    window.removeEventListener('resize', updateMenuPosition);
+                    window.removeEventListener('scroll', updateMenuPosition, true);
+                };
+            }, [isOpen, updateMenuPosition]);
+            useEffect(() => () => {
+                if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+            }, []);
+            const commitScale = rawValue => {
+                const nextValue = normalizePrintScaleValue(rawValue);
+                setDraftValue(nextValue);
+                onChange(nextValue);
+                return nextValue;
+            };
+            const printFromMenu = () => {
+                const nextValue = commitScale(draftValue);
+                setIsOpen(false);
+                onPrint(nextValue);
+            };
+            return (
+                <div ref={rootRef} className={`print-split-button relative inline-flex ${isOpen ? 'print-split-menu-open' : ''} ${compact ? 'shrink-0' : ''} ${fullWidth ? 'w-full' : ''}`} onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
+                    <div className={`inline-flex overflow-hidden rounded-xl shadow-sm ${fullWidth ? 'w-full' : ''}`}>
+                        <button type="button" onClick={() => { const nextValue = commitScale(draftValue); onPrint(nextValue); }} className={`qt-toolbar-control qt-toolbar-button flex-1 rounded-none ${light ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`} title={`列印（${normalizedValue}%）`} aria-label={`列印（${normalizedValue}%）`}>
+                            <i className="fas fa-print"></i><span>列印</span>
+                        </button>
+                        <button type="button" onClick={event => { event.stopPropagation(); isOpen ? setIsOpen(false) : openMenu(); }} className={`qt-toolbar-control qt-toolbar-button rounded-none border-l px-2 ${light ? 'border-gray-200 bg-white text-gray-900 hover:bg-gray-100' : 'border-white/20 bg-gray-900 text-white hover:bg-black'}`} aria-expanded={isOpen} aria-haspopup="menu" aria-label="開啟列印比例選單" title="列印比例選單">
+                            <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} text-[10px]`}></i>
+                        </button>
+                    </div>
+                    {isOpen && <div className={`${menuPosition ? 'fixed' : 'absolute right-0 top-[calc(100%+0.5rem)]'} z-[130] w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-2xl`} style={menuPosition || undefined} role="menu" onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
+                        <div className="flex items-center justify-between gap-3">
+                            <div><p className="text-xs font-bold tracking-[0.12em] text-kino">PRINT SCALE</p><p className="mt-0.5 text-sm font-black text-gray-900">列印縮放比例</p></div>
+                            <span className="rounded-full bg-kino/10 px-2.5 py-1 text-sm font-black text-kino">{clampPrintScale(draftValue)}%</span>
                         </div>
-                        <button type="button" onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="關閉列印設定"><i className="fas fa-times"></i></button>
-                    </div>
-                    <div className="px-5 py-4">
-                        <p className="mb-3 text-sm leading-relaxed text-gray-600">原生瀏覽器列印視窗的縮放比例不會回傳給網頁，因此請在這裡先選定；系統會依比例重新判斷簽署區是否需要跨頁。</p>
-                        <div className="space-y-2" role="radiogroup" aria-label="列印比例">
-                            {PRINT_SCALE_OPTIONS.map(option => (
-                                <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${value === option.value ? 'border-kino bg-kino/5 ring-1 ring-kino/20' : 'border-gray-200 hover:border-kino/40 hover:bg-gray-50'}`}>
-                                    <input type="radio" name="quotation-print-scale" value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} className="mt-1 accent-kino" />
-                                    <span className="min-w-0"><span className="block font-bold text-gray-900">{option.label}</span><span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{option.description}</span></span>
-                                </label>
-                            ))}
+                        <div className="mt-4">
+                            <input type="range" min={PRINT_SCALE_MIN} max={PRINT_SCALE_MAX} step="1" value={clampPrintScale(draftValue)} onChange={event => commitScale(event.target.value)} className="h-2 w-full cursor-pointer accent-kino" aria-label="列印縮放比例滑桿" />
+                            <div className="mt-1 flex justify-between text-[11px] font-bold text-gray-400"><span>{PRINT_SCALE_MIN}%</span><span>{PRINT_SCALE_MAX}%</span></div>
                         </div>
-                    </div>
-                    <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-3">
-                        <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100">取消</button>
-                        <button type="button" onClick={() => onConfirm(value)} className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-black"><i className="fas fa-print mr-1.5"></i>依此比例列印</button>
-                    </div>
+                        <label className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-gray-600">手動輸入比例
+                            <span className="inline-flex items-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50"><input type="number" min={PRINT_SCALE_MIN} max={PRINT_SCALE_MAX} step="1" inputMode="numeric" value={draftValue} onChange={event => setDraftValue(event.target.value)} onBlur={() => commitScale(draftValue)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitScale(draftValue); } }} className="w-16 border-0 bg-transparent px-2 py-1.5 text-right text-sm font-black text-gray-900 focus:outline-none" aria-label="手動輸入列印比例" /><span className="pr-2 text-sm font-black text-gray-500">%</span></span>
+                        </label>
+                        <p className="mt-3 text-[11px] leading-relaxed text-gray-400">比例會先重新渲染列印頁，再交給瀏覽器列印；原生列印視窗請維持 100%。</p>
+                        <button type="button" onClick={printFromMenu} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-kino px-3 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-kino-dark"><i className="fas fa-print"></i>列印</button>
+                    </div>}
                 </div>
-            </div>
-        );
+            );
+        };
         const ONEDRIVE_SCOPES = ['Files.ReadWrite'];
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
@@ -1908,10 +1981,9 @@
             const [historyIndex, setHistoryIndex] = useState(0);
             const historyTimeoutRef = useRef(null);
             const printPaginationCleanupRef = useRef(null);
-            const [showPrintSettings, setShowPrintSettings] = useState(false);
             const [printScale, setPrintScale] = useState(() => {
                 const stored = localStorage.getItem(PRINT_SCALE_STORAGE_KEY);
-                return isPrintScaleValue(stored) ? stored : 'auto';
+                return normalizePrintScaleValue(stored);
             });
             const printScaleRef = useRef(printScale);
 
@@ -1943,9 +2015,8 @@
                 return height;
             };
             const getPrintScaleRatio = value => {
-                if (value === 'auto') return PRINT_SOFT_FIT_SCALE;
-                const ratio = Number(value) / 100;
-                return Number.isFinite(ratio) && ratio > 0 && ratio <= 1 ? ratio : 1;
+                const ratio = clampPrintScale(value) / 100;
+                return Number.isFinite(ratio) ? ratio : PRINT_SOFT_FIT_SCALE;
             };
             const applyPrintFitScale = (page, scale) => {
                 page.classList.add('print-page-soft-fit');
@@ -2323,11 +2394,10 @@
                 return { totalA, grandTotal, taxText };
             }, [data]);
             const handlePrintWithScale = selectedScale => {
-                const nextScale = isPrintScaleValue(selectedScale) ? selectedScale : 'auto';
+                const nextScale = normalizePrintScaleValue(selectedScale);
                 printScaleRef.current = nextScale;
                 setPrintScale(nextScale);
                 localStorage.setItem(PRINT_SCALE_STORAGE_KEY, nextScale);
-                setShowPrintSettings(false);
 
                 const originalTitle = document.title;
                 const quotationId = String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-');
@@ -2336,11 +2406,17 @@
                     window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
                     window.print();
                 };
-                // Let React remove the modal before beforeprint builds the
+                // Let the selected scale settle before beforeprint builds the
                 // hidden print tree and measures its final geometry.
                 requestAnimationFrame(() => requestAnimationFrame(print));
             };
-            const handlePrint = () => setShowPrintSettings(true);
+            const handlePrint = selectedScale => handlePrintWithScale(selectedScale || printScaleRef.current);
+            const handlePrintScaleChange = value => {
+                const nextScale = normalizePrintScaleValue(value);
+                setPrintScale(nextScale);
+                printScaleRef.current = nextScale;
+                localStorage.setItem(PRINT_SCALE_STORAGE_KEY, nextScale);
+            };
             const handleOpen = async () => {
                 if ('showOpenFilePicker' in window) {
                     try {
@@ -3158,7 +3234,6 @@
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
-                    {showPrintSettings && <PrintScaleModal value={printScale} onChange={value => { setPrintScale(value); printScaleRef.current = value; }} onClose={() => setShowPrintSettings(false)} onConfirm={handlePrintWithScale} />}
                     {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} onLogout={logoutCloudAccount} authStatus={cloudAuthStatus} />}
                     {showOneDriveModal && <OneDriveModal
                         onClose={() => setShowOneDriveModal(false)}
@@ -3219,6 +3294,8 @@
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
+                            printScale={printScale}
+                            onPrintScaleChange={handlePrintScaleChange}
                             mode={mode}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
@@ -3240,6 +3317,8 @@
                             openDataManager={() => setShowDataManager(true)}
                             applyPaymentTemplate={applyPaymentTemplate}
                             handlePrint={handlePrint}
+                            printScale={printScale}
+                            onPrintScaleChange={handlePrintScaleChange}
                             undo={handleUndo} redo={handleRedo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1}
                         />
                     </div>
@@ -3367,7 +3446,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -3420,7 +3499,7 @@
                                         <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
                                         <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} authUser={cloudAuthUser} />
                                         <OneDriveControls onOpen={openOneDrive} status={oneDriveStatus} account={oneDriveAccount} folder={oneDriveFolder} autoSave={oneDriveAutoSave} />
-                                        <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white shadow-sm hover:bg-black"><i className="fas fa-print"></i>列印</button>
+                                        <PrintSplitButton value={printScale} onChange={onPrintScaleChange} onPrint={handlePrint} />
                                     </div>
                                 </div>
                             </div>
@@ -3429,7 +3508,7 @@
 
                     <div className="px-4 sm:px-8 desktop-wrapper relative">
                         <div className="max-w-5xl mx-auto mt-5">
-                            <QuotationModeOverview data={data} onPrint={handlePrint} showSigDate={data.printSettings.showSigDate} onToggleSigDate={e => updateField('printSettings', 'showSigDate', e.target.checked)} />
+                            <QuotationModeOverview data={data} onPrint={handlePrint} printScale={printScale} onPrintScaleChange={onPrintScaleChange} showSigDate={data.printSettings.showSigDate} onToggleSigDate={e => updateField('printSettings', 'showSigDate', e.target.checked)} />
                         </div>
                         {/* Desktop Scroll Buttons */}
                         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print">
@@ -3667,7 +3746,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, mode, undo, redo, canUndo, canRedo }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
             const [draggingIdx, setDraggingIdx] = useState(null);
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -3842,7 +3921,7 @@
                                     <QuotationTypeSelector data={data} setData={setData} />
                                     <div className="grid grid-cols-2 gap-2">
                                         <button type="button" onClick={openDataManager} className="qt-toolbar-control qt-toolbar-button border border-kino/30 text-kino hover:bg-kino hover:text-white"><i className="fas fa-database"></i>資料庫管理</button>
-                                        <button type="button" onClick={handlePrint} className="qt-toolbar-control qt-toolbar-button bg-gray-900 text-white hover:bg-black"><i className="fas fa-print"></i>列印</button>
+                                        <PrintSplitButton value={printScale} onChange={onPrintScaleChange} onPrint={handlePrint} fullWidth={true} />
                                     </div>
                                     <CloudSyncControls onSync={syncCloudData} onManage={openCloudAuth} status={cloudSyncStatus} compact={true} authUser={cloudAuthUser} />
                                     <OneDriveControls onOpen={openOneDrive} status={oneDriveStatus} account={oneDriveAccount} folder={oneDriveFolder} autoSave={oneDriveAutoSave} compact={true} />
@@ -3852,7 +3931,7 @@
                     </div>
                     <div className="p-4 space-y-6">
                         <h1 className="text-xl font-bold text-kino">奇諾影像報價系統</h1>
-                        <QuotationModeOverview data={data} onPrint={handlePrint} compact={true} />
+                        <QuotationModeOverview data={data} onPrint={handlePrint} printScale={printScale} onPrintScaleChange={onPrintScaleChange} compact={true} />
                         <div id="m-header" className="bg-white p-4 rounded-xl shadow-sm space-y-4 mobile-section">
                             <h2 className="text-kino font-bold border-b pb-2"><i className="fas fa-info-circle mr-2"></i>專案概況</h2>
                             <div className="flex flex-col items-center justify-center py-2 border-b border-gray-100"><label className="text-xs text-gray-500 mb-2">品牌標誌</label><div className="w-full flex justify-center cursor-pointer" onClick={() => document.getElementById('m-logo-upload').click()}>{data.logo ? (<img src={data.logo} className="max-h-[80px] object-contain" />) : (<div className="h-16 w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400"><i className="fas fa-image mr-2"></i> 點擊上傳</div>)}</div><input type="file" id="m-logo-upload" className="hidden" accept="image/*" onChange={async e => { if(e.target.files[0]) { const b64 = await compressImage(e.target.files[0]); setData({...data, logo: b64}); } }} /></div>
@@ -3969,7 +4048,7 @@
                             <h2 className="font-bold border-b border-gray-600 pb-2 mb-3"><i className="fas fa-print mr-2"></i>列印與輸出設定</h2>
                             <QuotationTypeSelector data={data} setData={setData} compact={true} />
                             <label className="flex items-center space-x-2 text-sm select-none cursor-pointer my-4"><input type="checkbox" checked={data.printSettings.showSigDate} onChange={e => updateField('printSettings', 'showSigDate', e.target.checked)} className="text-kino" /><span>包含簽署日期</span></label>
-                            <button onClick={handlePrint} className="w-full bg-white text-gray-900 font-bold py-3 rounded-lg hover:bg-gray-200 transition">列印</button>
+                            <PrintSplitButton value={printScale} onChange={onPrintScaleChange} onPrint={handlePrint} fullWidth={true} light={true} />
                             <p className="text-xs text-gray-400 mt-2 text-center">快速報價固定單頁。</p>
                         </div>
                         <div className="h-20"></div>
