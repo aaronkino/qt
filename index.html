@@ -310,8 +310,9 @@
             .quotation-quick .quick-print-sheet {
                 display: flex !important;
                 flex-direction: column;
-                /* @page uses 8mm margins, so this fills only the printable A4 area. */
-                min-height: calc(297mm - 16mm);
+                box-sizing: border-box;
+                /* Keep a 6mm safety buffer for browser print rounding and the footer itself. */
+                min-height: calc(297mm - 22mm);
             }
             .quotation-quick .quick-print-flow { flex: 0 0 auto; }
             .quotation-quick .page-container { min-height: 0 !important; }
