@@ -630,6 +630,22 @@
                 page-break-before: auto !important;
                 padding-top: 0 !important;
             }
+
+            /*
+             * A quick quotation can be only a few millimetres too tall when
+             * the acceptance/signature block is present.  Keep that case on
+             * one physical sheet at the same 95% scale users previously used
+             * in the browser print dialog.  CSS zoom participates in Chromium
+             * pagination, unlike transform, so it cannot create a phantom
+             * second page while keeping the A4 footer at the bottom.
+             */
+            html.print-pagination-active .print-pagination-root .print-page.print-page-soft-fit {
+                zoom: 0.95 !important;
+                width: 105.263158% !important;
+                min-height: 289.474mm !important;
+                break-after: auto !important;
+                page-break-after: auto !important;
+            }
         }
 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -1857,6 +1873,7 @@
             const printPaginationCleanupRef = useRef(null);
 
             const PRINT_PAGE_HEIGHT = 'calc(297mm - 22mm)';
+            const PRINT_SOFT_FIT_SCALE = 0.95;
             const padPrintPage = value => String(value).padStart(2, '0');
             const getPrintFooterLabel = footer => {
                 const firstSpan = footer?.querySelector('span');
@@ -1975,10 +1992,26 @@
                 return currentPage;
             };
             const paginateQuickSummary = (root, sourceSheet, sourceFooter, targetHeight) => {
+                const sections = Array.from(sourceSheet.querySelectorAll('.quick-print-flow > .quick-print-section'));
+
+                // Preserve the old "95% brings the signature block back to
+                // page 1" behaviour for near-overflow quick quotations.  A
+                // candidate is accepted only when it genuinely needs scaling;
+                // normal one-page quotations retain their original size.
+                const singlePageCandidate = createQuickPrintPage(root, sourceSheet, sourceFooter, true);
+                sections.forEach(section => singlePageCandidate.flow.appendChild(section.cloneNode(true)));
+                const candidateHeight = measurePrintPage(singlePageCandidate.page);
+                const softFitHeight = targetHeight / PRINT_SOFT_FIT_SCALE;
+                if (candidateHeight <= targetHeight + 1) return [singlePageCandidate];
+                if (candidateHeight <= softFitHeight + 1) {
+                    singlePageCandidate.page.classList.add('print-page-soft-fit');
+                    return [singlePageCandidate];
+                }
+                singlePageCandidate.page.remove();
+
                 const pages = [];
                 let currentPage = createQuickPrintPage(root, sourceSheet, sourceFooter, true);
                 pages.push(currentPage);
-                const sections = Array.from(sourceSheet.querySelectorAll('.quick-print-flow > .quick-print-section'));
                 sections.forEach(section => {
                     if (appendPrintUnit(currentPage, section, targetHeight)) return;
                     currentPage = createQuickPrintPage(root, sourceSheet, sourceFooter, false);
