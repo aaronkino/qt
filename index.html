@@ -307,7 +307,13 @@
             /* 快速報價：專用 A4 結構，以雙欄分配內容，不縮放整張文件。 */
             .quotation-quick { zoom: 1 !important; }
             .quotation-quick .standard-document-content { display: none !important; }
-            .quotation-quick .quick-print-sheet { display: block !important; }
+            .quotation-quick .quick-print-sheet {
+                display: flex !important;
+                flex-direction: column;
+                /* @page uses 8mm margins, so this fills only the printable A4 area. */
+                min-height: calc(297mm - 16mm);
+            }
+            .quotation-quick .quick-print-flow { flex: 0 0 auto; }
             .quotation-quick .page-container { min-height: 0 !important; }
             .quotation-quick #desktop-root > .bg-gray-100 {
                 min-height: 0 !important;
@@ -452,6 +458,7 @@
             .quick-print-warning { margin: 1.5mm 0 0; color: #b91c1c; -webkit-text-fill-color: #b91c1c; font-size: 8.2pt; line-height: 1.25; }
             .print-overdue-warning { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; opacity: 1 !important; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
+            .quotation-quick .quick-print-footer { margin-top: auto; }
 
             /* 詳細報價：細項從新頁開始，允許依內容自動延伸 A4 頁面。 */
             .quotation-detailed { zoom: 1 !important; }
