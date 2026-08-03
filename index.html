@@ -1750,7 +1750,7 @@
             return (
                 <div ref={rootRef} className={`print-split-button relative inline-flex ${isOpen ? 'print-split-menu-open' : ''} ${compact ? 'shrink-0' : ''} ${fullWidth ? 'w-full' : ''}`} onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
                     <div className={`inline-flex overflow-hidden rounded-xl shadow-sm ${fullWidth ? 'w-full' : ''}`}>
-                        <button type="button" onClick={() => { const nextValue = commitScale(draftValue); onPrint(nextValue); }} className={`qt-toolbar-control qt-toolbar-button flex-1 rounded-none ${light ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`} title={`列印（${normalizedValue}%）`} aria-label={`列印（${normalizedValue}%）`}>
+                        <button type="button" onClick={() => onPrint(String(PRINT_SCALE_MAX))} className={`qt-toolbar-control qt-toolbar-button flex-1 rounded-none ${light ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`} title="列印（100%）" aria-label="列印（100%）">
                             <i className="fas fa-print"></i><span>列印</span>
                         </button>
                         <button type="button" onClick={event => { event.stopPropagation(); isOpen ? setIsOpen(false) : openMenu(); }} className={`qt-toolbar-control qt-toolbar-button rounded-none border-l px-2 ${light ? 'border-gray-200 bg-white text-gray-900 hover:bg-gray-100' : 'border-white/20 bg-gray-900 text-white hover:bg-black'}`} aria-expanded={isOpen} aria-haspopup="menu" aria-label="開啟列印比例選單" title="列印比例選單">
