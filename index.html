@@ -633,16 +633,16 @@
 
             /*
              * A quick quotation can be only a few millimetres too tall when
-             * the acceptance/signature block is present.  Keep that case on
-             * one physical sheet at the same 95% scale users previously used
-             * in the browser print dialog.  CSS zoom participates in Chromium
-             * pagination, unlike transform, so it cannot create a phantom
-             * second page while keeping the A4 footer at the bottom.
+             * the acceptance/signature block is present.  The selected scale
+             * is injected as custom properties before printing.  CSS zoom
+             * participates in Chromium pagination, unlike transform, so it
+             * cannot create a phantom second page while keeping the A4 footer
+             * at the bottom.
              */
             html.print-pagination-active .print-pagination-root .print-page.print-page-soft-fit {
-                zoom: 0.95 !important;
-                width: 105.263158% !important;
-                min-height: 289.474mm !important;
+                zoom: var(--print-fit-scale, 0.95) !important;
+                width: 100% !important;
+                min-height: var(--print-fit-height, 289.474mm) !important;
                 break-after: auto !important;
                 page-break-after: auto !important;
             }
@@ -1665,6 +1665,43 @@
         const ONEDRIVE_PARENT_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_parent_folder_v1';
         const ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_auto_create_folder_v1';
         const ONEDRIVE_AUTOSAVE_STORAGE_KEY = 'kino_quotation_onedrive_autosave_v1';
+        const PRINT_SCALE_STORAGE_KEY = 'kino_quotation_print_scale_v1';
+        const PRINT_SCALE_OPTIONS = [
+            { value: 'auto', label: '自動', description: '先以 100% 嘗試；略微超出時自動改用 95%。' },
+            { value: '100', label: '100%', description: '維持原尺寸；超出安全高度時才分頁。' },
+            { value: '95', label: '95%', description: '適合簽署區只差一點點就超出第一頁的報價。' },
+            { value: '90', label: '90%', description: '內容較多時，優先維持完整單頁。' },
+            { value: '85', label: '85%', description: '內容很多但仍希望盡量整合為單頁時使用。' }
+        ];
+        const isPrintScaleValue = value => PRINT_SCALE_OPTIONS.some(option => option.value === value);
+        const PrintScaleModal = ({ value, onChange, onClose, onConfirm }) => (
+            <div className="no-print fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-labelledby="print-scale-title">
+                <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                    <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
+                        <div>
+                            <p className="text-xs font-bold tracking-[0.16em] text-kino">PRINT / 列印設定</p>
+                            <h2 id="print-scale-title" className="mt-1 text-lg font-black text-gray-900">先選比例，再重新分頁</h2>
+                        </div>
+                        <button type="button" onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="關閉列印設定"><i className="fas fa-times"></i></button>
+                    </div>
+                    <div className="px-5 py-4">
+                        <p className="mb-3 text-sm leading-relaxed text-gray-600">原生瀏覽器列印視窗的縮放比例不會回傳給網頁，因此請在這裡先選定；系統會依比例重新判斷簽署區是否需要跨頁。</p>
+                        <div className="space-y-2" role="radiogroup" aria-label="列印比例">
+                            {PRINT_SCALE_OPTIONS.map(option => (
+                                <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${value === option.value ? 'border-kino bg-kino/5 ring-1 ring-kino/20' : 'border-gray-200 hover:border-kino/40 hover:bg-gray-50'}`}>
+                                    <input type="radio" name="quotation-print-scale" value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} className="mt-1 accent-kino" />
+                                    <span className="min-w-0"><span className="block font-bold text-gray-900">{option.label}</span><span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{option.description}</span></span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-3">
+                        <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100">取消</button>
+                        <button type="button" onClick={() => onConfirm(value)} className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-black"><i className="fas fa-print mr-1.5"></i>依此比例列印</button>
+                    </div>
+                </div>
+            </div>
+        );
         const ONEDRIVE_SCOPES = ['Files.ReadWrite'];
         const CLOUD_SYNC_API_URL = 'https://kino-quotation-data-api.film-kinostudio.workers.dev';
         const BUILTIN_CONTRACT_TEMPLATES = [
@@ -1871,6 +1908,12 @@
             const [historyIndex, setHistoryIndex] = useState(0);
             const historyTimeoutRef = useRef(null);
             const printPaginationCleanupRef = useRef(null);
+            const [showPrintSettings, setShowPrintSettings] = useState(false);
+            const [printScale, setPrintScale] = useState(() => {
+                const stored = localStorage.getItem(PRINT_SCALE_STORAGE_KEY);
+                return isPrintScaleValue(stored) ? stored : 'auto';
+            });
+            const printScaleRef = useRef(printScale);
 
             const PRINT_PAGE_HEIGHT = 'calc(297mm - 22mm)';
             const PRINT_SOFT_FIT_SCALE = 0.95;
@@ -1898,6 +1941,16 @@
                 const height = page.getBoundingClientRect().height;
                 page.classList.remove('print-pagination-measuring');
                 return height;
+            };
+            const getPrintScaleRatio = value => {
+                if (value === 'auto') return PRINT_SOFT_FIT_SCALE;
+                const ratio = Number(value) / 100;
+                return Number.isFinite(ratio) && ratio > 0 && ratio <= 1 ? ratio : 1;
+            };
+            const applyPrintFitScale = (page, scale) => {
+                page.classList.add('print-page-soft-fit');
+                page.style.setProperty('--print-fit-scale', String(scale));
+                page.style.setProperty('--print-fit-height', `${(275 / scale).toFixed(3)}mm`);
             };
             const createTermPart = (section, sourceList, text, itemIndex, continuation, includeHeading) => {
                 const part = section.cloneNode(false);
@@ -1991,20 +2044,21 @@
                 });
                 return currentPage;
             };
-            const paginateQuickSummary = (root, sourceSheet, sourceFooter, targetHeight) => {
+            const paginateQuickSummary = (root, sourceSheet, sourceFooter, targetHeight, requestedScale) => {
                 const sections = Array.from(sourceSheet.querySelectorAll('.quick-print-flow > .quick-print-section'));
 
-                // Preserve the old "95% brings the signature block back to
-                // page 1" behaviour for near-overflow quick quotations.  A
-                // candidate is accepted only when it genuinely needs scaling;
-                // normal one-page quotations retain their original size.
+                // Preserve the old "reduced scale brings the signature block
+                // back to page 1" behaviour for near-overflow quick
+                // quotations. A candidate is accepted only when it genuinely
+                // needs scaling; normal one-page quotations retain their size.
                 const singlePageCandidate = createQuickPrintPage(root, sourceSheet, sourceFooter, true);
                 sections.forEach(section => singlePageCandidate.flow.appendChild(section.cloneNode(true)));
                 const candidateHeight = measurePrintPage(singlePageCandidate.page);
-                const softFitHeight = targetHeight / PRINT_SOFT_FIT_SCALE;
+                const selectedScale = getPrintScaleRatio(requestedScale);
+                const softFitHeight = targetHeight / selectedScale;
                 if (candidateHeight <= targetHeight + 1) return [singlePageCandidate];
-                if (candidateHeight <= softFitHeight + 1) {
-                    singlePageCandidate.page.classList.add('print-page-soft-fit');
+                if (selectedScale < 1 && candidateHeight <= softFitHeight + 1) {
+                    applyPrintFitScale(singlePageCandidate.page, selectedScale);
                     return [singlePageCandidate];
                 }
                 singlePageCandidate.page.remove();
@@ -2127,7 +2181,7 @@
                 standardContent?.classList.add('print-pagination-source-hidden');
                 documentRoot.classList.add('print-pagination-source-document-hidden');
 
-                const pages = paginateQuickSummary(root, sourceSheet, sourceFooter, targetHeight);
+                const pages = paginateQuickSummary(root, sourceSheet, sourceFooter, targetHeight, printScaleRef.current);
                 if (isDetailed && detailedSection && detailedFooter) {
                     paginateDetailedServices(root, detailedSection, detailedFooter, targetHeight, pages);
                 }
@@ -2158,6 +2212,10 @@
                     window.removeEventListener('beforeprint', beforePrint);
                 };
             }, []);
+            useEffect(() => {
+                printScaleRef.current = printScale;
+                localStorage.setItem(PRINT_SCALE_STORAGE_KEY, printScale);
+            }, [printScale]);
 
             const setData = (newDataOrFn) => {
                 const newData = typeof newDataOrFn === 'function' ? newDataOrFn(data) : newDataOrFn;
@@ -2264,13 +2322,25 @@
                 }
                 return { totalA, grandTotal, taxText };
             }, [data]);
-            const handlePrint = () => {
+            const handlePrintWithScale = selectedScale => {
+                const nextScale = isPrintScaleValue(selectedScale) ? selectedScale : 'auto';
+                printScaleRef.current = nextScale;
+                setPrintScale(nextScale);
+                localStorage.setItem(PRINT_SCALE_STORAGE_KEY, nextScale);
+                setShowPrintSettings(false);
+
                 const originalTitle = document.title;
                 const quotationId = String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-');
-                document.title = quotationId || 'quotation';
-                window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
-                window.print();
+                const print = () => {
+                    document.title = quotationId || 'quotation';
+                    window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
+                    window.print();
+                };
+                // Let React remove the modal before beforeprint builds the
+                // hidden print tree and measures its final geometry.
+                requestAnimationFrame(() => requestAnimationFrame(print));
             };
+            const handlePrint = () => setShowPrintSettings(true);
             const handleOpen = async () => {
                 if ('showOpenFilePicker' in window) {
                     try {
@@ -3088,6 +3158,7 @@
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
+                    {showPrintSettings && <PrintScaleModal value={printScale} onChange={value => { setPrintScale(value); printScaleRef.current = value; }} onClose={() => setShowPrintSettings(false)} onConfirm={handlePrintWithScale} />}
                     {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} onLogout={logoutCloudAccount} authStatus={cloudAuthStatus} />}
                     {showOneDriveModal && <OneDriveModal
                         onClose={() => setShowOneDriveModal(false)}
