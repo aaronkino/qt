@@ -48,6 +48,122 @@
         
         /* 螢幕顯示時隱藏 print-only 元素 */
         .print-only { display: none; }
+        .print-pagination-root { display: none; }
+        @media screen {
+            /* The generated print tree stays mounted after printing so a
+               compositor cannot re-introduce the source tree mid-capture. */
+            .print-pagination-root.print-pagination-active { display: none !important; }
+            .quick-print-sheet.print-pagination-source-hidden { display: none !important; }
+
+            /* beforeprint runs before Chromium switches to print media. These
+               scoped rules give the paginator the same A4 geometry while it
+               measures cloned units; they never affect the editing UI. */
+            .print-pagination-root.print-pagination-active.print-pagination-measuring {
+                display: block !important;
+                position: absolute;
+                left: -100000px;
+                top: 0;
+                width: 194mm;
+                visibility: hidden;
+            }
+            .print-pagination-root.print-pagination-measuring .print-page {
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+                width: 194mm;
+                min-height: 275mm;
+            }
+            .print-pagination-root.print-pagination-measuring .quick-print-sheet {
+                color: #182230;
+                font-size: 9pt;
+                line-height: 1.3;
+            }
+            .print-pagination-root.print-pagination-measuring .quick-print-header {
+                display: grid;
+                grid-template-columns: 34mm 1fr;
+                align-items: center;
+                min-height: 12mm;
+                padding-bottom: 1.5mm;
+                border-bottom: 1px solid #d0d5dd;
+            }
+            .print-pagination-root.print-pagination-measuring .quick-print-logo { max-width: 30mm; max-height: 13mm; object-fit: contain; }
+            .print-pagination-root.print-pagination-measuring .quick-print-title { text-align: right; }
+            .print-pagination-root.print-pagination-measuring .quick-print-title h1 { margin: 1mm 0 0; font-size: 18pt; line-height: 1.05; font-weight: 800; letter-spacing: .02em; }
+            .print-pagination-root.print-pagination-measuring .quick-print-badge { display: block; margin: 0; padding: 0; background: transparent; color: #105482; font-size: 7.5pt; font-weight: 700; letter-spacing: .16em; }
+            .print-pagination-root.print-pagination-measuring .quick-print-meta { display: grid; grid-template-columns: 66.25mm 27mm minmax(0, 1fr); gap: 2.5mm; padding: 1.2mm 0; }
+            .print-pagination-root.print-pagination-measuring .quick-print-meta > div { min-width: 0; padding: .8mm 2mm; border-radius: 2mm; background: #f2f6f9; font-size: 7.5pt; line-height: 1.2; }
+            .print-pagination-root.print-pagination-measuring .quick-print-meta strong { display: block; margin: 0 0 .35mm; color: #667085; font-size: 7pt; line-height: 1.1; letter-spacing: .06em; }
+            .print-pagination-root.print-pagination-measuring .quick-print-validity { overflow-wrap: anywhere; color: #b91c1c; }
+            .print-pagination-root.print-pagination-measuring .quick-print-flow { display: block; flex: 0 0 auto; }
+            .print-pagination-root.print-pagination-measuring .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
+            .print-pagination-root.print-pagination-measuring .quick-print-section + .quick-print-section { margin-top: 1.8mm; }
+            .print-pagination-root.print-pagination-measuring .quick-print-term-part + .quick-print-term-part { margin-top: 0; }
+            .print-pagination-root.print-pagination-measuring .quick-print-term-continuation { list-style: none; }
+            .print-pagination-root.print-pagination-measuring .quick-print-section h2 { margin: 0 0 .8mm; padding: .8mm 2mm; border: 0; border-radius: 1.8mm; background: #eaf2f7; color: #105482; font-size: 8pt; line-height: 1.15; font-weight: 700; letter-spacing: .12em; }
+            .print-pagination-root.print-pagination-measuring .quick-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2mm 2.5mm; }
+            .print-pagination-root.print-pagination-measuring .quick-project-item { display: grid; grid-template-columns: 22mm 1fr; min-width: 0; padding: .6mm 2mm; border: 0; border-radius: 1.5mm; background: #f7f9fb; }
+            .print-pagination-root.print-pagination-measuring .quick-project-item strong { color: #667085; font-size: 8pt; font-weight: 600; }
+            .print-pagination-root.print-pagination-measuring .quick-summary-list { display: grid; gap: .7mm; font-size: 8.8pt; }
+            .print-pagination-root.print-pagination-measuring .quick-summary-row { display: grid; grid-template-columns: calc((100% - 2.5mm) / 2 + 21.5mm) 20mm minmax(0, 1fr); gap: 3mm; padding: .4mm 2mm; border: 0; border-radius: 1.3mm; background: #f7f9fb; }
+            .print-pagination-root.print-pagination-measuring .quick-summary-quantity { min-width: 20mm; color: #105482; text-align: center; font-weight: 700; white-space: nowrap; }
+            .print-pagination-root.print-pagination-measuring .quick-summary-row span:last-child { color: #667085; text-align: right; white-space: nowrap; }
+            .print-pagination-root.print-pagination-measuring .quick-print-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: .8mm; padding: 1mm 2mm; border: 0; border-radius: 1.8mm; background: #eaf2f7; color: #105482; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .quick-print-total strong { font-size: 14pt; letter-spacing: .02em; }
+            .print-pagination-root.print-pagination-measuring .quick-print-total-vat { display: block; padding: 0; overflow: hidden; }
+            .print-pagination-root.print-pagination-measuring .quick-print-tax-line,
+            .print-pagination-root.print-pagination-measuring .quick-print-tax-grand-total { display: flex; justify-content: space-between; align-items: baseline; padding: 1mm 2mm; }
+            .print-pagination-root.print-pagination-measuring .quick-print-tax-line { background: #f7f9fb; color: #475467; font-size: 8.4pt; }
+            .print-pagination-root.print-pagination-measuring .quick-print-tax-grand-total { background: #eaf2f7; color: #105482; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .quick-print-tax-grand-total strong { font-size: 14pt; letter-spacing: .02em; }
+            .print-pagination-root.print-pagination-measuring .quick-print-terms { margin: 0; padding-left: 6mm; list-style: decimal; font-size: 8.8pt; line-height: 1.34; }
+            .print-pagination-root.print-pagination-measuring .quick-print-terms li { margin-bottom: .4mm; padding-left: 1mm; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-list { display: grid; gap: 0; border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-header,
+            .print-pagination-root.print-pagination-measuring .quick-payment-row { display: grid; grid-template-columns: 31mm 14mm minmax(0, 1fr) 36mm; gap: 3mm; align-items: center; border: 0; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-header { padding: .7mm 2mm; background: #105482; color: white; font-size: 7.5pt; font-weight: 700; letter-spacing: .04em; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-row { padding: .7mm 2mm; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-header > span,
+            .print-pagination-root.print-pagination-measuring .quick-payment-row > * { text-align: center !important; }
+            .print-pagination-root.print-pagination-measuring .quick-payment-condition,
+            .print-pagination-root.print-pagination-measuring .quick-payment-note { color: #4b5563; font-size: 8.1pt; line-height: 1.25; text-align: center; }
+            .print-pagination-root.print-pagination-measuring .quick-bank { margin-top: 2mm; padding: 1.2mm 2mm; border: 0; border-radius: 2mm; background: #f2f6f9; font-size: 8.5pt; line-height: 1.35; }
+            .print-pagination-root.print-pagination-measuring .quick-bank-title { display: block; margin-bottom: 1mm; color: #105482; }
+            .print-pagination-root.print-pagination-measuring .quick-bank-grid { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 3mm; }
+            .print-pagination-root.print-pagination-measuring .quick-bank-item span { display: block; margin-bottom: .25mm; color: #667085; font-size: 7.2pt; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .quick-bank-item strong { display: block; color: #182230; font-weight: 600; overflow-wrap: anywhere; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-wrap { border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table { width: 100%; table-layout: fixed; margin: 0; border: 0; font-size: 8pt; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-label-col { width: 18mm; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-party-col { width: calc((100% - 18mm) / 2); }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table th,
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table td { padding: .4mm 2mm; border: 0; border-right: 1px solid #e3e9ee; border-bottom: 1px solid #e3e9ee; background: white; color: #182230; text-align: center; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table thead th { padding: .7mm 2mm; background: #105482; color: white; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table tbody th { width: 18mm; background: #eaf2f7; color: #105482; text-align: left; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table tbody td { vertical-align: middle; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table tr > *:last-child { border-right: 0; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature-placeholder { opacity: .1; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature img { max-width: 95%; max-height: 27mm; object-fit: contain; }
+            .print-pagination-root.print-pagination-measuring .quick-print-warning { margin: 1.5mm 0 0; color: #b91c1c; font-size: 8.2pt; line-height: 1.25; }
+            .print-pagination-root.print-pagination-measuring .quick-print-footer,
+            .print-pagination-root.print-pagination-measuring .detailed-print-footer { display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; color: #667085; font-size: 7pt; letter-spacing: .08em; }
+            .print-pagination-root.print-pagination-measuring .no-print { display: none !important; }
+            .print-pagination-root.print-pagination-measuring .print-only { display: block !important; }
+            .print-pagination-root.print-pagination-measuring input,
+            .print-pagination-root.print-pagination-measuring textarea,
+            .print-pagination-root.print-pagination-measuring select { border: 0; background: transparent; padding: 0; resize: none; appearance: none; box-shadow: none; line-height: 1.3; }
+            .print-pagination-root.print-pagination-measuring .print-table-container { border: 1px solid #808080; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: transparent; box-shadow: none; }
+            .print-pagination-root.print-pagination-measuring th,
+            .print-pagination-root.print-pagination-measuring td { border-bottom: 1px solid #808080; border-right: 1px solid #808080; padding: 4px 6px; vertical-align: middle; }
+            .print-pagination-root.print-pagination-measuring tr:last-child td { border-bottom: 0; }
+            .print-pagination-root.print-pagination-measuring th:last-child,
+            .print-pagination-root.print-pagination-measuring td:last-child { border-right: 0; }
+            .print-pagination-root.print-pagination-measuring .item-table th,
+            .print-pagination-root.print-pagination-measuring .item-table td { font-size: 9pt; }
+            .print-pagination-root.print-pagination-measuring .item-table thead th { background: #f0f6fa; color: #000; font-weight: 700; }
+            .print-pagination-root.print-pagination-measuring .print-category-header input { font-size: 10pt; color: white; font-weight: 700; }
+        }
 
         /* [v1.09 Change] Robust Footer Background Control */
         .footer-total-area {
@@ -97,6 +213,9 @@
             
             .no-print { display: none !important; }
             .print-only { display: block !important; }
+            html.print-pagination-active .print-pagination-root { display: block !important; }
+            html.print-pagination-active .print-pagination-source-hidden { display: none !important; }
+            html.print-pagination-active .print-pagination-source-document-hidden { display: none !important; }
 
             /* [v1.10 Change] Force Footer Background to #F9FAFB in Print */
             .footer-total-area {
@@ -360,6 +479,8 @@
             .quick-print-flow { display: block; }
             .quick-print-section { break-inside: avoid; page-break-inside: avoid; }
             .quick-print-section + .quick-print-section { margin-top: 1.8mm; }
+            .print-pagination-root .quick-print-term-part + .quick-print-term-part { margin-top: 0 !important; }
+            .print-pagination-root .quick-print-term-continuation { list-style: none; }
             .quick-print-section h2 {
                 margin: 0 0 .8mm;
                 padding: .8mm 2mm;
@@ -473,6 +594,42 @@
             .quotation-detailed .item-table tr { break-inside: avoid; page-break-inside: avoid; }
             .detailed-print-footer { display:flex !important; width:100%; justify-content:space-between; margin-top: 4mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; color: #667085; font-size: 7pt; letter-spacing: .08em; }
             .detailed-print-footer > span:last-child { margin-left:auto; text-align:right; }
+
+            /* 動態列印頁：每一張紙都有自己的頁尾，頁碼由列印前實際分頁結果填入。 */
+            .print-pagination-root .print-page {
+                display: flex !important;
+                flex-direction: column;
+                box-sizing: border-box;
+                width: 100%;
+                min-height: calc(297mm - 22mm);
+                break-inside: avoid;
+                page-break-inside: avoid;
+                break-after: page;
+                page-break-after: always;
+            }
+            .print-pagination-root .print-page:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+            .print-pagination-root .quick-print-flow,
+            .print-pagination-root .detailed-page-content {
+                flex: 0 0 auto;
+            }
+            .print-pagination-root .quick-print-footer,
+            .print-pagination-root .detailed-print-footer {
+                margin-top: auto;
+            }
+            .print-pagination-root .print-pagination-measuring {
+                display: block !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+            }
+            .print-pagination-root .print-page.detailed-section {
+                break-before: auto !important;
+                page-break-before: auto !important;
+                padding-top: 0 !important;
+            }
         }
 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -1697,6 +1854,277 @@
             const [history, setHistory] = useState([getInitialData()]);
             const [historyIndex, setHistoryIndex] = useState(0);
             const historyTimeoutRef = useRef(null);
+            const printPaginationCleanupRef = useRef(null);
+
+            const PRINT_PAGE_HEIGHT = 'calc(297mm - 22mm)';
+            const padPrintPage = value => String(value).padStart(2, '0');
+            const getPrintFooterLabel = footer => {
+                const firstSpan = footer?.querySelector('span');
+                return firstSpan?.textContent?.replace(/^.*?\/\s*/, '').trim() || 'QUICK QUOTATION';
+            };
+            const makePrintFooter = (sourceFooter, pageNumber, totalPages) => {
+                const footer = sourceFooter
+                    ? sourceFooter.cloneNode(true)
+                    : document.createElement('footer');
+                if (!footer.className) footer.className = 'quick-print-footer';
+                let spans = footer.querySelectorAll('span');
+                if (spans.length < 2) {
+                    footer.replaceChildren(document.createElement('span'), document.createElement('span'));
+                    spans = footer.querySelectorAll('span');
+                }
+                spans[0].textContent = `KINO STUDIO / ${getPrintFooterLabel(sourceFooter)}`;
+                spans[1].textContent = `${padPrintPage(pageNumber)} / ${padPrintPage(totalPages)}`;
+                return footer;
+            };
+            const measurePrintPage = page => {
+                page.classList.add('print-pagination-measuring');
+                const height = page.getBoundingClientRect().height;
+                page.classList.remove('print-pagination-measuring');
+                return height;
+            };
+            const createTermPart = (section, sourceList, text, itemIndex, continuation, includeHeading) => {
+                const part = section.cloneNode(false);
+                part.classList.add('quick-print-term-part');
+                if (includeHeading) {
+                    const heading = section.querySelector('h2');
+                    if (heading) part.appendChild(heading.cloneNode(true));
+                }
+                const partList = sourceList.cloneNode(false);
+                partList.start = itemIndex + 1;
+                const item = document.createElement('li');
+                item.textContent = text;
+                item.value = itemIndex + 1;
+                if (continuation) item.classList.add('quick-print-term-continuation');
+                partList.appendChild(item);
+                part.appendChild(partList);
+                return part;
+            };
+            const createQuickPrintPage = (root, sourceSheet, sourceFooter, includeHeader) => {
+                const page = document.createElement('article');
+                page.className = 'quick-print-sheet print-page';
+                page.setAttribute('aria-hidden', 'true');
+                if (includeHeader) {
+                    const header = sourceSheet.querySelector('.quick-print-header');
+                    const meta = sourceSheet.querySelector('.quick-print-meta');
+                    if (header) page.appendChild(header.cloneNode(true));
+                    if (meta) page.appendChild(meta.cloneNode(true));
+                }
+                const flow = document.createElement('div');
+                flow.className = 'quick-print-flow';
+                page.appendChild(flow);
+                const footer = makePrintFooter(sourceFooter, 1, 1);
+                page.appendChild(footer);
+                root.appendChild(page);
+                return { page, flow, footer };
+            };
+            const appendPrintUnit = (page, unit, targetHeight) => {
+                const clone = unit.cloneNode(true);
+                page.flow.appendChild(clone);
+                const fits = measurePrintPage(page.page) <= targetHeight + 1;
+                if (!fits) page.flow.removeChild(clone);
+                return fits;
+            };
+            const appendTermParts = (pages, currentPage, section, targetHeight, sourceSheet, sourceFooter, root) => {
+                const sourceList = section.querySelector('.quick-print-terms');
+                const items = Array.from(sourceList?.children || []);
+                if (!sourceList || !items.length) {
+                    currentPage.flow.appendChild(section.cloneNode(true));
+                    return currentPage;
+                }
+                items.forEach((item, itemIndex) => {
+                    let remaining = item.textContent || '';
+                    let continuation = false;
+                    while (remaining.length > 0) {
+                        const hasTermPart = Boolean(currentPage.flow.lastElementChild?.querySelector('.quick-print-terms'));
+                        const includeHeading = !hasTermPart;
+                        let low = 1;
+                        let high = remaining.length;
+                        let best = 0;
+                        while (low <= high) {
+                            const middle = Math.ceil((low + high) / 2);
+                            const candidate = createTermPart(section, sourceList, remaining.slice(0, middle), itemIndex, continuation, includeHeading);
+                            currentPage.flow.appendChild(candidate);
+                            const fits = measurePrintPage(currentPage.page) <= targetHeight + 1;
+                            currentPage.flow.removeChild(candidate);
+                            if (fits) {
+                                best = middle;
+                                low = middle + 1;
+                            } else {
+                                high = middle - 1;
+                            }
+                        }
+
+                        if (best === 0) {
+                            if (currentPage.flow.childElementCount > 0) {
+                                currentPage = createQuickPrintPage(root, sourceSheet, sourceFooter, false);
+                                pages.push(currentPage);
+                                continue;
+                            }
+                            // A single character can still exceed the available
+                            // height only for an unusually large unbroken token.
+                            // Preserve it and let Chromium perform the unavoidable
+                            // line break rather than dropping the term.
+                            best = 1;
+                        }
+
+                        currentPage.flow.appendChild(createTermPart(section, sourceList, remaining.slice(0, best), itemIndex, continuation, includeHeading));
+                        remaining = remaining.slice(best);
+                        continuation = true;
+                    }
+                });
+                return currentPage;
+            };
+            const paginateQuickSummary = (root, sourceSheet, sourceFooter, targetHeight) => {
+                const pages = [];
+                let currentPage = createQuickPrintPage(root, sourceSheet, sourceFooter, true);
+                pages.push(currentPage);
+                const sections = Array.from(sourceSheet.querySelectorAll('.quick-print-flow > .quick-print-section'));
+                sections.forEach(section => {
+                    if (appendPrintUnit(currentPage, section, targetHeight)) return;
+                    currentPage = createQuickPrintPage(root, sourceSheet, sourceFooter, false);
+                    pages.push(currentPage);
+                    if (appendPrintUnit(currentPage, section, targetHeight)) return;
+                    currentPage = appendTermParts(pages, currentPage, section, targetHeight, sourceSheet, sourceFooter, root);
+                });
+                return pages;
+            };
+            const createDetailedPrintPage = (root, sourceFooter, heading) => {
+                const page = document.createElement('article');
+                page.className = 'print-page detailed-section';
+                page.setAttribute('aria-hidden', 'true');
+                if (heading) page.appendChild(heading.cloneNode(true));
+                const content = document.createElement('div');
+                content.className = 'detailed-page-content';
+                page.appendChild(content);
+                const footer = makePrintFooter(sourceFooter, 1, 1);
+                page.appendChild(footer);
+                root.appendChild(page);
+                return { page, content, footer };
+            };
+            const createDetailedCategoryPart = (category, rows, includeTotal) => {
+                const part = category.cloneNode(true);
+                const body = part.querySelector('.item-table tbody');
+                if (body) body.replaceChildren(...rows.map(row => row.cloneNode(true)));
+                if (!includeTotal) part.querySelector('.detailed-services-footer')?.remove();
+                return part;
+            };
+            const paginateDetailedServices = (root, detailedSection, sourceFooter, targetHeight, pages) => {
+                const heading = detailedSection.querySelector('h2');
+                const categories = Array.from(detailedSection.children).filter(child => child.classList.contains('print-table-container'));
+                let currentPage = null;
+                const startPage = includeHeading => {
+                    currentPage = createDetailedPrintPage(root, sourceFooter, includeHeading ? heading : null);
+                    pages.push(currentPage);
+                };
+                const pageFits = (page, categoryPart) => {
+                    page.content.appendChild(categoryPart);
+                    const fits = measurePrintPage(page.page) <= targetHeight + 1;
+                    page.content.removeChild(categoryPart);
+                    return fits;
+                };
+                const appendCategory = category => {
+                    const rows = Array.from(category.querySelectorAll('.item-table tbody > tr'));
+                    if (!rows.length) {
+                        if (appendPrintUnit({ page: currentPage.page, flow: currentPage.content }, category, targetHeight)) return;
+                        startPage(false);
+                        currentPage.content.appendChild(category.cloneNode(true));
+                        return;
+                    }
+
+                    let rowIndex = 0;
+                    while (rowIndex < rows.length) {
+                        let fittingRows = 0;
+                        for (let end = rowIndex + 1; end <= rows.length; end += 1) {
+                            const part = createDetailedCategoryPart(category, rows.slice(rowIndex, end), end === rows.length);
+                            if (!pageFits(currentPage, part)) break;
+                            fittingRows = end - rowIndex;
+                        }
+
+                        if (fittingRows === 0) {
+                            if (currentPage.content.childElementCount > 0) {
+                                startPage(false);
+                                continue;
+                            }
+                            // A single row can itself be taller than the usable
+                            // page. Keep it intact rather than dropping data; the
+                            // browser will perform the unavoidable row split.
+                            currentPage.content.appendChild(createDetailedCategoryPart(category, rows.slice(rowIndex), true));
+                            return;
+                        }
+
+                        const lastRow = rowIndex + fittingRows === rows.length;
+                        currentPage.content.appendChild(createDetailedCategoryPart(category, rows.slice(rowIndex, rowIndex + fittingRows), lastRow));
+                        rowIndex += fittingRows;
+                        if (rowIndex < rows.length) startPage(false);
+                    }
+                };
+
+                if (!categories.length) startPage(true);
+                categories.forEach(category => {
+                    if (!currentPage) startPage(true);
+                    appendCategory(category);
+                });
+                return pages;
+            };
+            const preparePrintPagination = () => {
+                printPaginationCleanupRef.current?.();
+                const documentRoot = document.querySelector('.quotation-document');
+                const sourceSheet = documentRoot?.querySelector('.quick-print-sheet');
+                if (!documentRoot || !sourceSheet) return;
+
+                const sourceFooter = sourceSheet.querySelector('.quick-print-footer');
+                const isDetailed = documentRoot.classList.contains('quotation-detailed');
+                const detailedSection = isDetailed ? documentRoot.querySelector('.standard-document-content .detailed-section') : null;
+                const detailedFooter = detailedSection?.querySelector('.detailed-print-footer');
+                const root = document.createElement('div');
+                document.documentElement.classList.add('print-pagination-active');
+                root.className = `quotation-document quotation-${isDetailed ? 'detailed' : 'quick'} print-pagination-root print-pagination-active print-pagination-measuring`;
+                root.setAttribute('aria-hidden', 'true');
+                root.style.visibility = 'hidden';
+                document.body.appendChild(root);
+
+                const probe = document.createElement('div');
+                probe.style.cssText = `position:absolute;visibility:hidden;width:1px;height:${PRINT_PAGE_HEIGHT};`;
+                document.body.appendChild(probe);
+                const targetHeight = probe.getBoundingClientRect().height || 1039;
+                probe.remove();
+
+                sourceSheet.classList.add('print-pagination-source-hidden');
+                const standardContent = documentRoot.querySelector('.standard-document-content');
+                standardContent?.classList.add('print-pagination-source-hidden');
+                documentRoot.classList.add('print-pagination-source-document-hidden');
+
+                const pages = paginateQuickSummary(root, sourceSheet, sourceFooter, targetHeight);
+                if (isDetailed && detailedSection && detailedFooter) {
+                    paginateDetailedServices(root, detailedSection, detailedFooter, targetHeight, pages);
+                }
+                pages.forEach((page, index) => {
+                    const totalPages = pages.length;
+                    page.footer.replaceWith(makePrintFooter(page.footer, index + 1, totalPages));
+                    page.footer = page.page.querySelector('.quick-print-footer, .detailed-print-footer');
+                });
+                root.classList.remove('print-pagination-measuring');
+                root.style.visibility = 'visible';
+                printPaginationCleanupRef.current = () => {
+                    root.remove();
+                    document.documentElement.classList.remove('print-pagination-active');
+                    sourceSheet.classList.remove('print-pagination-source-hidden');
+                    standardContent?.classList.remove('print-pagination-source-hidden');
+                    documentRoot.classList.remove('print-pagination-source-document-hidden');
+                    printPaginationCleanupRef.current = null;
+                };
+            };
+            useEffect(() => {
+                const beforePrint = () => preparePrintPagination();
+                // Keep the generated pages until the next print preparation. In
+                // Chromium, afterprint may arrive before the compositor has
+                // finished capturing the PDF; immediate cleanup can re-expose the
+                // source document and create a duplicate page.
+                window.addEventListener('beforeprint', beforePrint);
+                return () => {
+                    window.removeEventListener('beforeprint', beforePrint);
+                };
+            }, []);
 
             const setData = (newDataOrFn) => {
                 const newData = typeof newDataOrFn === 'function' ? newDataOrFn(data) : newDataOrFn;
