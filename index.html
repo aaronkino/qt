@@ -927,10 +927,15 @@
             }
         };
 
+        const getQuotationDisplayTitle = value => {
+            const title = String(value || '奇諾影像報價單').replace(/\s*\(Quotation\)\s*/gi, '').trim();
+            return title || '奇諾影像報價單';
+        };
+
         const getInitialData = () => ({
             schemaVersion: 4,
             quotationType: 'quick',
-            header: { title: '奇諾影像報價單(Quotation)', quotationId: '', quotationDate: getLocalISODate(), validityLabel: '有效期限：', validity: '本報價單自發出日起 14 天內有效。' },
+            header: { title: '奇諾影像報價單', quotationId: '', quotationDate: getLocalISODate(), validityLabel: '有效期限：', validity: '本報價單自發出日起 14 天內有效。' },
             project: [...DEFAULT_PROJECT],
             categories: [...DEFAULT_CATEGORIES],
             items: JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
@@ -3332,7 +3337,7 @@
             const notes = Array.isArray(data.notes) ? data.notes : [];
             const paymentTerms = Array.isArray(data.payment?.terms) ? data.payment.terms : [];
             const taxLabel = data.taxMode === 'included' ? 'VAT 5%' : (data.taxMode === 'inclusive_flat' ? '含稅' : '未稅');
-            const quickTitle = (data.header.title || '奇諾影像報價單').replace(/\s*\(Quotation\)\s*/i, '');
+            const quickTitle = getQuotationDisplayTitle(data.header.title);
             const printModeLabel = data.quotationType === 'detailed' ? 'DETAILED QUOTATION' : 'QUICK QUOTATION';
 
             return (
@@ -3522,7 +3527,7 @@
                                 {/* [v1.08 Change] Header: Use Flexbox in print mode to prevent title overlapping/cutting */}
                                 <div className="document-title-row flex items-center justify-between mb-4 border-b-4 border-kino pb-2 relative print:border-b-2">
                                     {/* Logo Column */}
-                                    <div className="flex items-center group cursor-pointer relative flex-shrink-0" onClick={() => document.getElementById('d-logo-upload').click()}>
+                                    <div className="flex w-[120px] items-center group cursor-pointer relative flex-shrink-0" onClick={() => document.getElementById('d-logo-upload').click()}>
                                         {data.logo ? <img src={data.logo} className="max-h-[56px] max-w-[120px] object-contain" alt="Logo" /> : <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 border-2 border-dashed border-gray-300 group-hover:bg-gray-200"><i className="fas fa-image"></i></div>}
                                         <input type="file" id="d-logo-upload" className="hidden" accept="image/*" onChange={handleLogoUpload} />
                                     </div>
@@ -3532,12 +3537,12 @@
                                         {/* Screen Mode: Input */}
                                         <input 
                                             className="text-2xl font-extrabold text-gray-900 text-center bg-transparent focus:outline-none w-full no-print" 
-                                            value={data.header.title || "奇諾影像報價單(Quotation)"} 
+                                            value={getQuotationDisplayTitle(data.header.title)}
                                             onChange={e => updateField('header', 'title', e.target.value)} 
                                         />
                                         {/* [v1.08 Change] Print Mode: Div with wrap enabled to prevent cutting */}
                                         <div className="document-print-title print-only text-2xl font-extrabold text-gray-900 text-center whitespace-pre-wrap leading-tight">
-                                            {data.header.title || "奇諾影像報價單(Quotation)"}
+                                            {getQuotationDisplayTitle(data.header.title)}
                                         </div>
                                         <div className="document-print-type print-only mt-1 text-[9pt] font-bold tracking-widest text-kino">
                                             {QUOTATION_TYPES[data.quotationType || 'quick'].label}
@@ -3697,7 +3702,7 @@
                                     </div>
                                 </div>
                                 <div className={`detailed-section mt-6 border-t pt-4 page-break-before-always ${!data.printSettings.showDetails ? 'no-print' : ''}`}>
-                                    <h2 className="text-xl font-bold mb-4 border-l-8 border-kino pl-4">六、 服務細項與描述 (Detailed Services)</h2>
+                                    <h2 className="text-xl font-bold mb-4 border-l-8 border-kino pl-4">DETAILED SERVICES / 服務細項與描述</h2>
                                     {data.categories.map((cat, idx) => {
                                         const isDark = idx % 2 === 0; 
                                         const headerClass = isDark ? 'bg-kino-darker text-white' : 'bg-kino-medium text-white'; 
