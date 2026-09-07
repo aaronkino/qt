@@ -170,6 +170,239 @@ const mapClause = (row) => ({
   updatedAt: row.updated_at,
 });
 
+const VERSION_RETENTION_DAYS = 365;
+const VERSION_MINIMUM_COUNT = 30;
+
+const pruneWorkspaceVersions = async (env, workspaceId) => {
+  const cutoff = new Date(
+    Date.now() - VERSION_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const expiredVersionQuery = `
+    SELECT id
+    FROM cloud_workspace_versions
+    WHERE workspace_id = ?1
+      AND created_at < ?2
+      AND id NOT IN (
+        SELECT id
+        FROM cloud_workspace_versions
+        WHERE workspace_id = ?1
+        ORDER BY created_at DESC
+        LIMIT ${VERSION_MINIMUM_COUNT}
+      )`;
+  await env.DB.batch([
+    env.DB.prepare(
+      `DELETE FROM cloud_workspace_version_records
+       WHERE version_id IN (${expiredVersionQuery})`,
+    ).bind(workspaceId, cutoff),
+    env.DB.prepare(
+      `DELETE FROM cloud_workspace_versions
+       WHERE id IN (${expiredVersionQuery})`,
+    ).bind(workspaceId, cutoff),
+  ]);
+};
+
+const createWorkspaceVersion = async (env, workspaceId, source) => {
+  const versionId = `ver_${crypto.randomUUID()}`;
+  const createdAt = new Date().toISOString();
+  const safeSource = String(source || "before-change").slice(0, 80);
+  const stats = await env.DB.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM cloud_projects WHERE workspace_id = ?1) project_count,
+       (SELECT COUNT(*) FROM cloud_contract_templates WHERE workspace_id = ?1) template_count,
+       (SELECT COUNT(*) FROM cloud_clause_categories WHERE workspace_id = ?1) category_count,
+       (SELECT COUNT(*) FROM cloud_clauses WHERE workspace_id = ?1) clause_count,
+       COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name) + LENGTH(data_json)) FROM cloud_projects WHERE workspace_id = ?1), 0)
+       + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name) + LENGTH(notes_json)) FROM cloud_contract_templates WHERE workspace_id = ?1), 0)
+       + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name)) FROM cloud_clause_categories WHERE workspace_id = ?1), 0)
+       + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(category) + LENGTH(clause_text)) FROM cloud_clauses WHERE workspace_id = ?1), 0)
+       AS byte_size`,
+  ).bind(workspaceId).first();
+
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_versions
+         (id, workspace_id, source, project_count, template_count,
+          category_count, clause_count, byte_size, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+    ).bind(
+      versionId,
+      workspaceId,
+      safeSource,
+      Number(stats?.project_count || 0),
+      Number(stats?.template_count || 0),
+      Number(stats?.category_count || 0),
+      Number(stats?.clause_count || 0),
+      Number(stats?.byte_size || 0),
+      createdAt,
+    ),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'project', id,
+         json_object('id', id, 'name', name, 'data', json(data_json),
+                     'updatedAt', updated_at)
+       FROM cloud_projects WHERE workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'template', id,
+         json_object('id', id, 'name', name, 'notes', json(notes_json),
+                     'updatedAt', updated_at)
+       FROM cloud_contract_templates WHERE workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'category', id,
+         json_object('id', id, 'name', name, 'sortOrder', sort_order,
+                     'updatedAt', updated_at)
+       FROM cloud_clause_categories WHERE workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'clause', id,
+         json_object('id', id, 'categoryId', COALESCE(category_id, ''),
+                     'category', category, 'text', clause_text,
+                     'severity', severity, 'sortOrder', sort_order,
+                     'isCore', is_core, 'coreOrder', core_order,
+                     'updatedAt', updated_at)
+       FROM cloud_clauses WHERE workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'workspaceState', workspace_id,
+         json_object('clauseLibraryInitialized', clause_library_initialized,
+                     'clauseCategoriesInitialized', clause_categories_initialized,
+                     'updatedAt', updated_at)
+       FROM cloud_workspace_state WHERE workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
+  ]);
+  await pruneWorkspaceVersions(env, workspaceId);
+  return versionId;
+};
+
+const getWorkspaceVersion = async (env, workspaceId, versionId) => {
+  const version = await env.DB.prepare(
+    `SELECT id, source, project_count, template_count, category_count,
+            clause_count, byte_size, created_at
+     FROM cloud_workspace_versions
+     WHERE workspace_id = ?1 AND id = ?2
+     LIMIT 1`,
+  ).bind(workspaceId, versionId).first();
+  if (!version) throw new ApiError("找不到版本紀錄", 404);
+  const records = await env.DB.prepare(
+    `SELECT entity_type, payload_json
+     FROM cloud_workspace_version_records
+     WHERE version_id = ?1
+     ORDER BY entity_type, entity_id`,
+  ).bind(versionId).all();
+  const snapshot = {
+    projects: [],
+    templates: [],
+    categories: [],
+    clauses: [],
+    workspaceState: null,
+  };
+  for (const record of records.results) {
+    const payload = JSON.parse(record.payload_json);
+    if (record.entity_type === "project") snapshot.projects.push(payload);
+    if (record.entity_type === "template") snapshot.templates.push(payload);
+    if (record.entity_type === "category") snapshot.categories.push(payload);
+    if (record.entity_type === "clause") snapshot.clauses.push(payload);
+    if (record.entity_type === "workspaceState") snapshot.workspaceState = payload;
+  }
+  return {
+    id: version.id,
+    source: version.source,
+    projectCount: Number(version.project_count),
+    templateCount: Number(version.template_count),
+    categoryCount: Number(version.category_count),
+    clauseCount: Number(version.clause_count),
+    byteSize: Number(version.byte_size),
+    createdAt: version.created_at,
+    snapshot,
+  };
+};
+
+const restoreWorkspaceVersion = async (env, workspaceId, versionId) => {
+  await getWorkspaceVersion(env, workspaceId, versionId);
+  await createWorkspaceVersion(env, workspaceId, "before-restore");
+  // The new snapshot may trigger retention cleanup. Re-check before deleting
+  // current data so a just-pruned, very old target can never restore as empty.
+  await getWorkspaceVersion(env, workspaceId, versionId);
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM cloud_clauses WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_clause_categories WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_projects WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_contract_templates WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_workspace_state WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_projects (workspace_id, id, name, data_json, updated_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.name'),
+              json_extract(payload_json, '$.data'),
+              json_extract(payload_json, '$.updatedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'project'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_contract_templates
+         (workspace_id, id, name, notes_json, updated_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.name'),
+              json_extract(payload_json, '$.notes'),
+              json_extract(payload_json, '$.updatedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'template'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_clause_categories
+         (workspace_id, id, name, sort_order, updated_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.name'),
+              json_extract(payload_json, '$.sortOrder'),
+              json_extract(payload_json, '$.updatedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'category'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_clauses
+         (workspace_id, id, category_id, category, clause_text, severity,
+          sort_order, is_core, core_order, updated_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.categoryId'),
+              json_extract(payload_json, '$.category'),
+              json_extract(payload_json, '$.text'),
+              json_extract(payload_json, '$.severity'),
+              json_extract(payload_json, '$.sortOrder'),
+              json_extract(payload_json, '$.isCore'),
+              json_extract(payload_json, '$.coreOrder'),
+              json_extract(payload_json, '$.updatedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'clause'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_state
+         (workspace_id, clause_library_initialized,
+          clause_categories_initialized, updated_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.clauseLibraryInitialized'),
+              json_extract(payload_json, '$.clauseCategoriesInitialized'),
+              json_extract(payload_json, '$.updatedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'workspaceState'`,
+    ).bind(workspaceId, versionId),
+  ]);
+  await pruneWorkspaceVersions(env, workspaceId);
+};
+
 const upsertProject = (env, workspaceId, project) => {
   if (!validId(project?.id) || !validName(project?.name) || !project?.data) {
     throw new ApiError("專案資料格式不正確");
@@ -420,6 +653,43 @@ const routeRequest = async (request, env) => {
 
   const workspaceId = auth.workspaceId;
 
+  if (request.method === "GET" && url.pathname === "/api/versions") {
+    const versions = await env.DB.prepare(
+      `SELECT id, source, project_count, template_count, category_count,
+              clause_count, byte_size, created_at
+       FROM cloud_workspace_versions
+       WHERE workspace_id = ?1
+       ORDER BY created_at DESC
+       LIMIT 200`,
+    ).bind(workspaceId).all();
+    return json({
+      versions: versions.results.map((version) => ({
+        id: version.id,
+        source: version.source,
+        projectCount: Number(version.project_count),
+        templateCount: Number(version.template_count),
+        categoryCount: Number(version.category_count),
+        clauseCount: Number(version.clause_count),
+        byteSize: Number(version.byte_size),
+        createdAt: version.created_at,
+      })),
+      retentionDays: VERSION_RETENTION_DAYS,
+      minimumVersions: VERSION_MINIMUM_COUNT,
+    });
+  }
+
+  if (parts[0] === "api" && parts[1] === "versions" && parts[2]) {
+    const versionId = decodeURIComponent(parts[2]);
+    if (!validId(versionId)) throw new ApiError("版本 ID 不正確");
+    if (request.method === "GET") {
+      return json(await getWorkspaceVersion(env, workspaceId, versionId));
+    }
+    if (request.method === "POST" && parts[3] === "restore") {
+      await restoreWorkspaceVersion(env, workspaceId, versionId);
+      return json({ ok: true, restoredVersionId: versionId });
+    }
+  }
+
   if (request.method === "GET" && url.pathname === "/api/sync") {
     const [projects, templates, categories, clauses, workspaceState] =
       await Promise.all([
@@ -562,7 +832,10 @@ const routeRequest = async (request, env) => {
         ),
       );
     }
-    if (statements.length) await env.DB.batch(statements);
+    if (statements.length) {
+      await createWorkspaceVersion(env, workspaceId, "before-sync");
+      await env.DB.batch(statements);
+    }
     return json({
       ok: true,
       projects: projects.length,
@@ -581,10 +854,12 @@ const routeRequest = async (request, env) => {
     if (!validId(id)) throw new ApiError("專案 ID 不正確");
     if (request.method === "PUT") {
       const body = await readJson(request);
+      await createWorkspaceVersion(env, workspaceId, "before-project-update");
       await upsertProject(env, workspaceId, { ...body, id }).run();
       return json({ ok: true });
     }
     if (request.method === "DELETE") {
+      await createWorkspaceVersion(env, workspaceId, "before-project-delete");
       await env.DB.prepare(
         "DELETE FROM cloud_projects WHERE workspace_id = ?1 AND id = ?2",
       ).bind(workspaceId, id).run();
@@ -597,10 +872,12 @@ const routeRequest = async (request, env) => {
     if (!validId(id)) throw new ApiError("範本 ID 不正確");
     if (request.method === "PUT") {
       const body = await readJson(request);
+      await createWorkspaceVersion(env, workspaceId, "before-template-update");
       await upsertTemplate(env, workspaceId, { ...body, id }).run();
       return json({ ok: true });
     }
     if (request.method === "DELETE") {
+      await createWorkspaceVersion(env, workspaceId, "before-template-delete");
       await env.DB.prepare(
         `DELETE FROM cloud_contract_templates
          WHERE workspace_id = ?1 AND id = ?2`,
@@ -616,6 +893,7 @@ const routeRequest = async (request, env) => {
       const body = await readJson(request);
       const category = { ...body, id };
       const name = String(category.name || "").trim();
+      await createWorkspaceVersion(env, workspaceId, "before-category-update");
       await env.DB.batch([
         upsertCategory(env, workspaceId, category),
         env.DB.prepare(
@@ -632,6 +910,7 @@ const routeRequest = async (request, env) => {
       return json({ ok: true });
     }
     if (request.method === "DELETE") {
+      await createWorkspaceVersion(env, workspaceId, "before-category-delete");
       await env.DB.batch([
         env.DB.prepare(
           "DELETE FROM cloud_clauses WHERE workspace_id = ?1 AND category_id = ?2",
@@ -650,10 +929,12 @@ const routeRequest = async (request, env) => {
     if (!validId(id)) throw new ApiError("條款 ID 不正確");
     if (request.method === "PUT") {
       const body = await readJson(request);
+      await createWorkspaceVersion(env, workspaceId, "before-clause-update");
       await upsertClause(env, workspaceId, { ...body, id }).run();
       return json({ ok: true });
     }
     if (request.method === "DELETE") {
+      await createWorkspaceVersion(env, workspaceId, "before-clause-delete");
       await env.DB.prepare(
         "DELETE FROM cloud_clauses WHERE workspace_id = ?1 AND id = ?2",
       ).bind(workspaceId, id).run();

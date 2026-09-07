@@ -192,12 +192,12 @@
         // V12.9.3: 新增付款預設方案
         const paymentPresets = {
             'default': [ // 三期 (4:3:3) - 原始預設
-                { id: 1, stage: '第一期 (訂金)', percent: 40, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
+                { id: 1, stage: '第一期 (定金)', percent: 40, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
                 { id: 2, stage: '第二期 (拍攝款)', percent: 30, condition: '影片拍攝日結束後 3 日內支付。', note: '拍攝團隊費用' },
                 { id: 3, stage: '第三期 (尾款)', percent: 30, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
             ],
             'two_parts': [ // 兩期 (5:5)
-                { id: 1, stage: '第一期 (訂金)', percent: 50, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
+                { id: 1, stage: '第一期 (定金)', percent: 50, condition: '本報價單/合約簽訂後 3 日內支付。', note: '專案正式啟動' },
                 { id: 2, stage: '第二期 (尾款)', percent: 50, condition: '最終成品 (Final) 交付後 7 日內支付。', note: '專案結案及剪輯費用' }
             ],
             'full_payment_upfront': [ // 一期 (全款 - 簽訂後支付)

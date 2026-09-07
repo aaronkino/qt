@@ -818,7 +818,7 @@
             postProduction: [ { desc: "影片剪輯（含毛片初剪、精剪，2 次修改）", qty: 1, unit: "式", price: 0 }, { desc: "校色調光（一級校色還原、二級調光）", qty: 1, unit: "式", price: 0 }, { desc: "視覺特效和字卡（效果字和2D動畫等）", qty: 1, unit: "式", price: 0 }, { desc: "版權配樂和音效處理（商用授權）", qty: 1, unit: "次", price: 0 }, ],
         };
         const DEFAULT_PROJECT = [ { label: "專案名稱", value: "形象影片" }, { label: "專案類型", value: "影片統籌製作" }, { label: "片長預估", value: "約2分鐘" }, { label: "交付格式", value: "Full HD" } ];
-        const DEFAULT_PAYMENT = [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ];
+        const DEFAULT_PAYMENT = [ { phase: "第一期 (定金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ];
         
         // [v1.10 Restore] Define DEFAULT_NOTES_TEXT to fix ReferenceError
         const DEFAULT_NOTES_TEXT = [
@@ -1176,6 +1176,7 @@
         const CloudSyncControls = ({ onSync, onManage, status = 'idle', compact = false, authUser = null }) => {
             const state = {
                 idle: { icon: authUser ? 'fa-user-check' : 'fa-cloud', label: authUser ? '同步帳號資料' : 'Google 登入', className: 'bg-kino hover:bg-kino-darker' },
+                pending: { icon: 'fa-clock-rotate-left', label: '待確認同步', className: 'bg-amber-600 hover:bg-amber-700' },
                 syncing: { icon: 'fa-spinner fa-spin', label: '同步中', className: 'bg-gray-500 cursor-wait' },
                 success: { icon: 'fa-check', label: '已同步', className: 'bg-emerald-600 hover:bg-emerald-700' },
                 error: { icon: 'fa-exclamation-triangle', label: '同步失敗', className: 'bg-red-600 hover:bg-red-700' }
@@ -1326,7 +1327,7 @@
             );
         };
 
-        const CloudSyncKeyModal = ({ onSave, onClose, googleClientId, onGoogleCredential, authUser, onLogout, authStatus = 'idle' }) => {
+        const CloudSyncKeyModal = ({ onSave, onClose, googleClientId, onGoogleCredential, authUser, lastAuthUser, onLogout, onOpenVersions, authStatus = 'idle' }) => {
             const [syncKey, setSyncKey] = useState('');
             const [showKey, setShowKey] = useState(false);
             const [copied, setCopied] = useState(false);
@@ -1390,8 +1391,9 @@
                                 {authUser.picture ? <img src={authUser.picture} className="h-10 w-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-kino text-white"><i className="fas fa-user"></i></span>}
                                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-800">{authUser.name}</p><p className="truncate text-xs text-gray-500">{authUser.email}</p></div>
                             </div>
-                            <div className="mt-3 flex gap-2"><button type="button" onClick={onClose} className="flex-1 rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white">繼續使用</button><button type="button" onClick={onLogout} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">登出</button></div>
+                            <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={onOpenVersions} className="rounded-lg border border-kino/20 bg-white px-3 py-2 text-xs font-bold text-kino"><i className="fas fa-clock-rotate-left mr-1"></i>版本紀錄</button><button type="button" onClick={onClose} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white">繼續使用</button><button type="button" onClick={onLogout} className="col-span-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">登出</button></div>
                         </div> : <>
+                            {lastAuthUser?.email && <div className="mb-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"><i className="fas fa-history mr-1.5"></i>上次登入：<strong>{lastAuthUser.name || lastAuthUser.email}</strong><span className="block pl-4 text-[11px] text-amber-700">{lastAuthUser.email}</span></div>}
                             {googleClientId ? <div className="rounded-2xl border border-kino/10 bg-kino/5 p-3">
                                 <p className="mb-3 text-center text-xs font-bold text-kino">建議使用 Google 帳號快速登入</p>
                                 <div ref={googleButtonRef} className="flex min-h-[44px] w-full items-center justify-center"></div>
@@ -1428,6 +1430,41 @@
                     </div>
                 </div>
             );
+        };
+
+        const CLOUD_COLLECTION_LABELS = {
+            projects: '完整專案',
+            templates: '條款範本',
+            categories: '條款分類',
+            clauses: '條款內容'
+        };
+        const CloudSyncPreviewModal = ({ account, summary, pendingDeleteCount, includeDeletes, onToggleDeletes, onCancel, onRemoteOnly, onMerge, status }) => (
+            <div className="no-print fixed inset-0 z-[140] flex items-center justify-center bg-gray-950/60 p-4">
+                <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div><p className="text-xs font-black tracking-[0.14em] text-kino">SYNC PREVIEW</p><h3 className="mt-1 text-lg font-black text-gray-900">同步前差異確認</h3><p className="mt-1 text-xs text-gray-500">帳號：{account?.email || '同步金鑰工作區'}</p></div>
+                        <button type="button" onClick={onCancel} className="delete-action" aria-label="關閉同步差異"><i className="fas fa-times"></i></button>
+                    </div>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        {summary.map(item => <div key={item.key} className={`rounded-2xl border p-4 ${item.changed ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-100 bg-emerald-50/50'}`}>
+                            <div className="flex items-center justify-between"><p className="text-sm font-black text-gray-800">{CLOUD_COLLECTION_LABELS[item.key]}</p><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${item.changed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>{item.changed ? '有差異' : '一致'}</span></div>
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><span className="rounded-lg bg-white px-2.5 py-2 text-gray-500">本機 <strong className="float-right text-gray-900">{item.localCount}</strong></span><span className="rounded-lg bg-white px-2.5 py-2 text-gray-500">雲端 <strong className="float-right text-gray-900">{item.remoteCount}</strong></span></div>
+                            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">僅本機 {item.localOnly}・僅雲端 {item.remoteOnly}・內容不同 {item.conflicts}</p>
+                        </div>)}
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-relaxed text-blue-900"><i className="fas fa-shield-halved mr-1.5"></i>目前畫面中尚未存成「完整專案」的報價內容不會被取代。選擇安全合併後，伺服器會先建立還原版本，再以更新時間較新的內容合併。</div>
+                    {pendingDeleteCount > 0 && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-4"><input type="checkbox" checked={includeDeletes} onChange={event => onToggleDeletes(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-red-700" /><span><strong className="block text-sm text-red-800">同步本機刪除紀錄（{pendingDeleteCount} 筆）</strong><span className="mt-1 block text-xs leading-relaxed text-red-700">預設不勾選。勾選後，這些本機已刪除的雲端專案／範本／條款也會被刪除，但仍可從版本紀錄還原。</span></span></label>}
+                    <div className="mt-5 grid gap-2 sm:grid-cols-3"><button type="button" disabled={status === 'syncing'} onClick={onCancel} className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600">取消</button><button type="button" disabled={status === 'syncing'} onClick={onRemoteOnly} className="rounded-xl border border-kino/25 px-4 py-3 text-sm font-bold text-kino"><i className="fas fa-cloud-arrow-down mr-1.5"></i>僅載入雲端</button><button type="button" disabled={status === 'syncing'} onClick={onMerge} className="rounded-xl bg-kino px-4 py-3 text-sm font-black text-white disabled:opacity-50"><i className={`fas ${status === 'syncing' ? 'fa-spinner fa-spin' : 'fa-code-merge'} mr-1.5`}></i>安全合併</button></div>
+                </div>
+            </div>
+        );
+        const CloudVersionModal = ({ versions, status, onClose, onRefresh, onDownload, onRestore }) => {
+            const sourceLabel = source => ({ sync: '同步前', restore: '還原前', 'before-restore': '還原前', api: '資料變更前' }[source] || '資料變更前');
+            return <div className="no-print fixed inset-0 z-[140] flex items-center justify-center bg-gray-950/60 p-4"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
+                <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black tracking-[0.14em] text-kino">VERSION HISTORY</p><h3 className="mt-1 text-lg font-black text-gray-900">雲端版本紀錄</h3><p className="mt-1 text-xs leading-relaxed text-gray-500">保留一年，且無論日期至少保留最新 30 版。</p></div><button type="button" onClick={onClose} className="delete-action" aria-label="關閉版本紀錄"><i className="fas fa-times"></i></button></div>
+                <div className="mt-4 flex justify-end"><button type="button" onClick={onRefresh} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600"><i className={`fas fa-rotate mr-1 ${status === 'loading' ? 'fa-spin' : ''}`}></i>重新整理</button></div>
+                <div className="mt-3 space-y-2">{status === 'loading' && !versions.length ? <p className="py-12 text-center text-sm text-gray-400">正在載入版本…</p> : versions.length ? versions.map(version => <div key={version.id} className="rounded-2xl border border-gray-200 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm text-gray-900">{new Date(version.createdAt).toLocaleString('zh-TW')}</strong><span className="rounded-full bg-kino/8 px-2 py-0.5 text-[11px] font-bold text-kino">{sourceLabel(version.source)}</span></div><p className="mt-1 text-xs text-gray-500">專案 {version.projectCount}・範本 {version.templateCount}・分類 {version.categoryCount}・條款 {version.clauseCount}・約 {Math.max(1, Math.round((version.byteSize || 0) / 1024))} KB</p></div><div className="flex shrink-0 gap-2"><button type="button" onClick={() => onDownload(version)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600"><i className="fas fa-download mr-1"></i>下載</button><button type="button" onClick={() => onRestore(version)} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white"><i className="fas fa-clock-rotate-left mr-1"></i>還原</button></div></div></div>) : <p className="rounded-2xl bg-gray-50 py-12 text-center text-sm text-gray-400">目前尚無版本紀錄；第一次確認同步後會自動建立。</p>}</div>
+            </div></div>;
         };
 
         const ProjectManagerRow = ({ project, onLoad, onSaveContent, onSave, onDelete }) => {
@@ -1648,8 +1685,8 @@
         };
 
         const PAYMENT_TEMPLATES = {
-            "3stage": [ { phase: "第一期 (訂金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
-            "2stage": [ { phase: "第一期 (訂金)", percent: "50%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (尾款)", percent: "50%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
+            "3stage": [ { phase: "第一期 (定金)", percent: "40%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (拍攝款)", percent: "30%", condition: "影片拍攝日結束後 3 日內支付。", notes: "拍攝團隊費用" }, { phase: "第三期 (尾款)", percent: "30%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
+            "2stage": [ { phase: "第一期 (定金)", percent: "50%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "專案正式啟動" }, { phase: "第二期 (尾款)", percent: "50%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "專案結案及剪輯費用" } ],
             "full_pre": [ { phase: "全額付清 (先付)", percent: "100%", condition: "本報價單/合約簽訂後 3 日內支付。", notes: "一次性付款 (預付)" } ],
             "full_post": [ { phase: "全額付清 (後付)", percent: "100%", condition: "最終成品 (Final) 交付後 7 日內支付。", notes: "一次性付款 (驗收後)" } ]
         };
@@ -1664,6 +1701,7 @@
         const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
         const CLOUD_AUTH_TOKEN_STORAGE_KEY = 'kino_quotation_cloud_auth_token';
         const CLOUD_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_auth_user';
+        const CLOUD_LAST_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_last_auth_user_v1';
         const ONEDRIVE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_folder_v1';
         const ONEDRIVE_PARENT_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_parent_folder_v1';
         const ONEDRIVE_AUTO_CREATE_FOLDER_STORAGE_KEY = 'kino_quotation_onedrive_auto_create_folder_v1';
@@ -1954,7 +1992,16 @@
                 try { return JSON.parse(sessionStorage.getItem(CLOUD_AUTH_USER_STORAGE_KEY) || 'null'); }
                 catch { return null; }
             });
+            const [lastCloudAuthUser, setLastCloudAuthUser] = useState(() => {
+                try { return JSON.parse(localStorage.getItem(CLOUD_LAST_AUTH_USER_STORAGE_KEY) || 'null'); }
+                catch { return null; }
+            });
             const [showCloudKeyModal, setShowCloudKeyModal] = useState(false);
+            const [cloudSyncPreview, setCloudSyncPreview] = useState(null);
+            const [includeCloudDeletes, setIncludeCloudDeletes] = useState(false);
+            const [showCloudVersionsModal, setShowCloudVersionsModal] = useState(false);
+            const [cloudVersions, setCloudVersions] = useState([]);
+            const [cloudVersionStatus, setCloudVersionStatus] = useState('idle');
             const [showOneDriveModal, setShowOneDriveModal] = useState(false);
             const [oneDriveAccount, setOneDriveAccount] = useState(null);
             const [oneDriveFolder, setOneDriveFolder] = useState(loadOneDriveFolder);
@@ -2629,6 +2676,8 @@
                         if (result.user) {
                             setCloudAuthUser(result.user);
                             sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
+                            setLastCloudAuthUser(result.user);
+                            localStorage.setItem(CLOUD_LAST_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
                         }
                     })
                     .catch(error => console.warn('Cloud session restore error', error));
@@ -2648,6 +2697,8 @@
                     sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
                     sessionStorage.removeItem(CLOUD_SYNC_KEY_STORAGE_KEY);
                     setCloudAuthUser(result.user);
+                    setLastCloudAuthUser(result.user);
+                    localStorage.setItem(CLOUD_LAST_AUTH_USER_STORAGE_KEY, JSON.stringify(result.user));
                     setCloudAuthStatus('success');
                     setShowCloudKeyModal(false);
                     showToast(`已登入 ${result.user.name}`);
@@ -2909,15 +2960,60 @@
                     }
                 }
             };
-            const saveRecordToCloud = async (path, record) => {
-                if (!getCloudSyncKey()) return;
-                try {
-                    await cloudRequest(path, { method: 'PUT', body: JSON.stringify(record) }, false);
-                    setCloudSyncStatus('success');
-                } catch (error) {
-                    console.warn('Cloud save error', error);
-                    setCloudSyncStatus('error');
+            const saveRecordToCloud = () => {
+                if (getCloudSyncKey()) setCloudSyncStatus('pending');
+            };
+            const normalizeRemoteCloudData = remote => {
+                const projects = (Array.isArray(remote?.projects) ? remote.projects : []).filter(project => project?.id && project?.name && project?.data).map(project => ({ ...project, data: normalizeQuotationData(project.data) }));
+                const templates = (Array.isArray(remote?.templates) ? remote.templates : []).filter(template => template?.id && template?.name && Array.isArray(template?.notes));
+                const clauses = sortClauseLibrary((Array.isArray(remote?.clauses) ? remote.clauses : []).map(normalizeClauseRecord).filter(clause => clause?.text));
+                const categories = sortClauseCategories((Array.isArray(remote?.categories) ? remote.categories : []).map(normalizeClauseCategoryRecord).filter(Boolean));
+                return { ...remote, projects, templates, clauses, categories };
+            };
+            const comparableCloudRecord = record => {
+                const copy = JSON.parse(JSON.stringify(record || {}));
+                delete copy.updatedAt;
+                return JSON.stringify(copy);
+            };
+            const buildCloudCollectionDiff = (key, localRecords, remoteRecords) => {
+                const localMap = new Map(localRecords.map(record => [record.id, record]));
+                const remoteMap = new Map(remoteRecords.map(record => [record.id, record]));
+                let localOnly = 0, remoteOnly = 0, conflicts = 0;
+                localMap.forEach((record, id) => {
+                    if (!remoteMap.has(id)) localOnly += 1;
+                    else if (comparableCloudRecord(record) !== comparableCloudRecord(remoteMap.get(id))) conflicts += 1;
+                });
+                remoteMap.forEach((record, id) => { if (!localMap.has(id)) remoteOnly += 1; });
+                return { key, localCount: localRecords.length, remoteCount: remoteRecords.length, localOnly, remoteOnly, conflicts, changed: Boolean(localOnly || remoteOnly || conflicts) };
+            };
+            const buildCloudSyncSummary = remote => [
+                buildCloudCollectionDiff('projects', projectLibrary, remote.projects),
+                buildCloudCollectionDiff('templates', contractTemplates, remote.templates),
+                buildCloudCollectionDiff('categories', clauseCategories, remote.categories),
+                buildCloudCollectionDiff('clauses', clauseLibrary, remote.clauses)
+            ];
+            const clearCloudDeletionQueue = () => {
+                setDeletedProjectIds([]);
+                setDeletedTemplateIds([]);
+                setDeletedClauseCategoryIds([]);
+                setDeletedClauseIds([]);
+            };
+            const applyRemoteCloudData = (remote, message = '') => {
+                setProjectLibrary(remote.projects);
+                setContractTemplates(remote.templates);
+                setClauseCategories(remote.categories.length ? remote.categories : buildInitialClauseCategories(remote.clauses));
+                setClauseLibrary(remote.clauses);
+                hadLocalClauseLibraryRef.current = true;
+                hadLocalClauseCategoriesRef.current = true;
+                if (remote.user) {
+                    setCloudAuthUser(remote.user);
+                    setLastCloudAuthUser(remote.user);
+                    sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(remote.user));
+                    localStorage.setItem(CLOUD_LAST_AUTH_USER_STORAGE_KEY, JSON.stringify(remote.user));
                 }
+                clearCloudDeletionQueue();
+                setCloudSyncStatus('success');
+                if (message) showToast(message);
             };
             const syncCloudData = async () => {
                 if (!getCloudSyncKey()) {
@@ -2927,9 +3023,31 @@
                 }
                 setCloudSyncStatus('syncing');
                 try {
-                    const preflight = await cloudRequest('/api/sync');
-                    const shouldAdoptRemoteClauses = Boolean(preflight.clauseLibraryInitialized) && !hadLocalClauseLibraryRef.current;
-                    const shouldAdoptRemoteCategories = Boolean(preflight.clauseCategoriesInitialized) && !hadLocalClauseCategoriesRef.current;
+                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
+                    setCloudSyncPreview({ remote, summary: buildCloudSyncSummary(remote) });
+                    setIncludeCloudDeletes(false);
+                    setCloudSyncStatus('pending');
+                } catch (error) {
+                    if (error.message !== 'SYNC_CANCELLED') {
+                        console.error('Cloud sync error', error);
+                        showToast(error.status === 401 ? '同步金鑰格式不正確，請重新輸入' : '雲端同步失敗，已保留本機資料');
+                    }
+                    setCloudSyncStatus(error.message === 'SYNC_CANCELLED' ? 'idle' : 'error');
+                }
+            };
+            const loadRemoteOnly = () => {
+                if (!cloudSyncPreview?.remote) return;
+                const remote = cloudSyncPreview.remote;
+                applyRemoteCloudData(remote, `已載入雲端：${remote.projects.length} 個專案、${remote.clauses.length} 條條款`);
+                setCloudSyncPreview(null);
+            };
+            const confirmCloudSync = async () => {
+                if (!cloudSyncPreview?.remote) return;
+                const preflight = cloudSyncPreview.remote;
+                const shouldAdoptRemoteClauses = Boolean(preflight.clauseLibraryInitialized) && !hadLocalClauseLibraryRef.current;
+                const shouldAdoptRemoteCategories = Boolean(preflight.clauseCategoriesInitialized) && !hadLocalClauseCategoriesRef.current;
+                setCloudSyncStatus('syncing');
+                try {
                     await cloudRequest('/api/sync', {
                         method: 'POST',
                         body: JSON.stringify({
@@ -2937,48 +3055,64 @@
                             templates: contractTemplates,
                             categories: shouldAdoptRemoteCategories ? [] : clauseCategories,
                             clauses: shouldAdoptRemoteClauses ? [] : clauseLibrary,
-                            deletedProjectIds,
-                            deletedTemplateIds,
-                            deletedCategoryIds: shouldAdoptRemoteCategories ? [] : deletedClauseCategoryIds,
-                            deletedClauseIds: shouldAdoptRemoteClauses ? [] : deletedClauseIds,
+                            deletedProjectIds: includeCloudDeletes ? deletedProjectIds : [],
+                            deletedTemplateIds: includeCloudDeletes ? deletedTemplateIds : [],
+                            deletedCategoryIds: includeCloudDeletes && !shouldAdoptRemoteCategories ? deletedClauseCategoryIds : [],
+                            deletedClauseIds: includeCloudDeletes && !shouldAdoptRemoteClauses ? deletedClauseIds : [],
                             initializeClauseLibrary: !preflight.clauseLibraryInitialized || hadLocalClauseLibraryRef.current,
                             initializeClauseCategories: !preflight.clauseCategoriesInitialized || hadLocalClauseCategoriesRef.current
                         })
                     });
-                    setDeletedProjectIds([]);
-                    setDeletedTemplateIds([]);
-                    setDeletedClauseCategoryIds([]);
-                    setDeletedClauseIds([]);
-                    const remote = await cloudRequest('/api/sync');
-                    const syncedProjects = (Array.isArray(remote.projects) ? remote.projects : [])
-                        .filter(project => project?.id && project?.name && project?.data)
-                        .map(project => ({ ...project, data: normalizeQuotationData(project.data) }));
-                    const syncedTemplates = (Array.isArray(remote.templates) ? remote.templates : [])
-                        .filter(template => template?.id && template?.name && Array.isArray(template?.notes));
-                    const syncedClauses = sortClauseLibrary((Array.isArray(remote.clauses) ? remote.clauses : [])
-                        .map(normalizeClauseRecord)
-                        .filter(clause => clause?.text));
-                    const syncedCategories = sortClauseCategories((Array.isArray(remote.categories) ? remote.categories : [])
-                        .map(normalizeClauseCategoryRecord)
-                        .filter(Boolean));
-                    setProjectLibrary(syncedProjects);
-                    setContractTemplates(syncedTemplates);
-                    setClauseCategories(syncedCategories.length ? syncedCategories : buildInitialClauseCategories(syncedClauses));
-                    setClauseLibrary(syncedClauses);
-                    hadLocalClauseLibraryRef.current = true;
-                    hadLocalClauseCategoriesRef.current = true;
-                    if (remote.user) {
-                        setCloudAuthUser(remote.user);
-                        sessionStorage.setItem(CLOUD_AUTH_USER_STORAGE_KEY, JSON.stringify(remote.user));
-                    }
-                    setCloudSyncStatus('success');
-                    showToast(`雲端同步完成：${syncedProjects.length} 個專案、${syncedClauses.length} 條條款`);
+                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
+                    applyRemoteCloudData(remote, `安全同步完成：${remote.projects.length} 個專案、${remote.clauses.length} 條條款`);
+                    setCloudSyncPreview(null);
                 } catch (error) {
-                    if (error.message !== 'SYNC_CANCELLED') {
-                        console.error('Cloud sync error', error);
-                        showToast(error.status === 401 ? '同步金鑰格式不正確，請重新輸入' : '雲端同步失敗，已保留本機資料');
-                    }
-                    setCloudSyncStatus(error.message === 'SYNC_CANCELLED' ? 'idle' : 'error');
+                    console.error('Confirmed cloud sync error', error);
+                    setCloudSyncStatus('error');
+                    showToast('同步失敗，雲端寫入前版本仍保留');
+                }
+            };
+            const loadCloudVersions = async () => {
+                setCloudVersionStatus('loading');
+                try {
+                    const result = await cloudRequest('/api/versions');
+                    setCloudVersions(Array.isArray(result.versions) ? result.versions : []);
+                    setCloudVersionStatus('success');
+                } catch (error) {
+                    console.error('Cloud version load error', error);
+                    setCloudVersionStatus('error');
+                    showToast('無法載入雲端版本紀錄');
+                }
+            };
+            const openCloudVersions = () => {
+                setShowCloudKeyModal(false);
+                setShowCloudVersionsModal(true);
+                loadCloudVersions();
+            };
+            const downloadCloudVersion = async version => {
+                try {
+                    const result = await cloudRequest(`/api/versions/${encodeURIComponent(version.id)}`);
+                    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = `KINO-cloud-version-${version.createdAt.slice(0, 10)}-${version.id.slice(-8)}.json`;
+                    anchor.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                } catch (error) { showToast('版本下載失敗'); }
+            };
+            const restoreCloudVersion = async version => {
+                if (!confirm(`確定還原至 ${new Date(version.createdAt).toLocaleString('zh-TW')}？\n\n目前雲端內容會先另存一個版本，再執行還原。`)) return;
+                setCloudVersionStatus('loading');
+                try {
+                    await cloudRequest(`/api/versions/${encodeURIComponent(version.id)}/restore`, { method: 'POST', body: '{}' });
+                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
+                    applyRemoteCloudData(remote, '雲端版本已還原並載入本機');
+                    await loadCloudVersions();
+                } catch (error) {
+                    console.error('Cloud restore error', error);
+                    setCloudVersionStatus('error');
+                    showToast('版本還原失敗');
                 }
             };
             const saveCloudSyncKey = (syncKey) => {
@@ -3023,15 +3157,7 @@
                 if (!current || !confirm(`確定刪除專案「${current.name}」？`)) return;
                 setProjectLibrary(prev => prev.filter(project => project.id !== projectId));
                 setDeletedProjectIds(prev => [...new Set([...prev, projectId])]);
-                if (getCloudSyncKey()) {
-                    try {
-                        await cloudRequest(`/api/projects/${encodeURIComponent(projectId)}`, { method: 'DELETE' }, false);
-                        setDeletedProjectIds(prev => prev.filter(id => id !== projectId));
-                    } catch (error) {
-                        console.warn('Cloud project delete error', error);
-                        setCloudSyncStatus('error');
-                    }
-                }
+                saveRecordToCloud();
                 showToast(`已刪除專案「${current.name}」`);
             };
             const loadSavedProject = (projectId) => {
@@ -3120,16 +3246,7 @@
                 setClauseLibrary(prev => prev.filter(clause => clause.categoryId !== categoryId));
                 setDeletedClauseCategoryIds(prev => [...new Set([...prev, categoryId])]);
                 setDeletedClauseIds(prev => [...new Set([...prev, ...relatedClauses.map(clause => clause.id)])]);
-                if (getCloudSyncKey()) {
-                    try {
-                        await cloudRequest(`/api/categories/${encodeURIComponent(categoryId)}`, { method: 'DELETE' }, false);
-                        setDeletedClauseCategoryIds(prev => prev.filter(id => id !== categoryId));
-                        setDeletedClauseIds(prev => prev.filter(id => !relatedClauses.some(clause => clause.id === id)));
-                    } catch (error) {
-                        console.warn('Cloud category delete error', error);
-                        setCloudSyncStatus('error');
-                    }
-                }
+                saveRecordToCloud();
                 showToast(`已刪除分類「${current.name}」`);
             };
             const createClauseRecord = (categoryId, text, severity) => {
@@ -3159,15 +3276,7 @@
                 markClauseLibraryLocal();
                 setClauseLibrary(prev => prev.filter(clause => clause.id !== clauseId));
                 setDeletedClauseIds(prev => [...new Set([...prev, clauseId])]);
-                if (getCloudSyncKey()) {
-                    try {
-                        await cloudRequest(`/api/clauses/${encodeURIComponent(clauseId)}`, { method: 'DELETE' }, false);
-                        setDeletedClauseIds(prev => prev.filter(id => id !== clauseId));
-                    } catch (error) {
-                        console.warn('Cloud clause delete error', error);
-                        setCloudSyncStatus('error');
-                    }
-                }
+                saveRecordToCloud();
                 showToast('已刪除條款');
             };
             const applyContractTemplate = (templateId) => {
@@ -3212,15 +3321,7 @@
                 if (!current || !confirm(`確定刪除條款範本「${current.name}」？`)) return;
                 setContractTemplates(prev => prev.filter(template => template.id !== templateId));
                 setDeletedTemplateIds(prev => [...new Set([...prev, templateId])]);
-                if (getCloudSyncKey()) {
-                    try {
-                        await cloudRequest(`/api/templates/${encodeURIComponent(templateId)}`, { method: 'DELETE' }, false);
-                        setDeletedTemplateIds(prev => prev.filter(id => id !== templateId));
-                    } catch (error) {
-                        console.warn('Cloud template delete error', error);
-                        setCloudSyncStatus('error');
-                    }
-                }
+                saveRecordToCloud();
                 showToast(`已刪除條款範本「${current.name}」`);
             };
             useEffect(() => {
@@ -3239,7 +3340,9 @@
             return (
                 <div className={`quotation-document quotation-${data.quotationType || 'quick'}`} data-quotation-type={data.quotationType || 'quick'}>
                     {toast && <Toast message={toast} />}
-                    {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} onLogout={logoutCloudAccount} authStatus={cloudAuthStatus} />}
+                    {showCloudKeyModal && <CloudSyncKeyModal onSave={saveCloudSyncKey} onClose={() => setShowCloudKeyModal(false)} googleClientId={googleClientId} onGoogleCredential={handleGoogleCredential} authUser={cloudAuthUser} lastAuthUser={lastCloudAuthUser} onLogout={logoutCloudAccount} onOpenVersions={openCloudVersions} authStatus={cloudAuthStatus} />}
+                    {cloudSyncPreview && <CloudSyncPreviewModal account={cloudSyncPreview.remote.user || cloudAuthUser} summary={cloudSyncPreview.summary} pendingDeleteCount={deletedProjectIds.length + deletedTemplateIds.length + deletedClauseCategoryIds.length + deletedClauseIds.length} includeDeletes={includeCloudDeletes} onToggleDeletes={setIncludeCloudDeletes} onCancel={() => { setCloudSyncPreview(null); setCloudSyncStatus('pending'); }} onRemoteOnly={loadRemoteOnly} onMerge={confirmCloudSync} status={cloudSyncStatus} />}
+                    {showCloudVersionsModal && <CloudVersionModal versions={cloudVersions} status={cloudVersionStatus} onClose={() => setShowCloudVersionsModal(false)} onRefresh={loadCloudVersions} onDownload={downloadCloudVersion} onRestore={restoreCloudVersion} />}
                     {showOneDriveModal && <OneDriveModal
                         onClose={() => setShowOneDriveModal(false)}
                         clientId={microsoftClientId}
