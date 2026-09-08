@@ -131,7 +131,7 @@
             .print-pagination-root.print-pagination-measuring .quick-bank-grid { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 3mm; }
             .print-pagination-root.print-pagination-measuring .quick-bank-item span { display: block; margin-bottom: .25mm; color: #667085; font-size: 7.2pt; font-weight: 700; }
             .print-pagination-root.print-pagination-measuring .quick-bank-item strong { display: block; color: #182230; font-weight: 600; overflow-wrap: anywhere; }
-            .print-pagination-root.print-pagination-measuring .quick-acceptance-wrap { border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-wrap { position: relative; border: 1px solid #d8e2e9; border-radius: 2mm; overflow: visible; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-table { width: 100%; table-layout: fixed; margin: 0; border: 0; font-size: 8pt; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-label-col { width: 18mm; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-party-col { width: calc((100% - 18mm) / 2); }
@@ -142,9 +142,10 @@
             .print-pagination-root.print-pagination-measuring .quick-acceptance-table tbody td { vertical-align: middle; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-table tr > *:last-child { border-right: 0; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0; }
-            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature { position: relative; display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; overflow: visible; }
             .print-pagination-root.print-pagination-measuring .quick-acceptance-signature-placeholder { opacity: .1; }
-            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature img { max-width: 95%; max-height: 27mm; object-fit: contain; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature img { position: relative; z-index: 4; max-width: 95%; max-height: 27mm; object-fit: contain; }
+            .print-pagination-root.print-pagination-measuring .quick-acceptance-signature .stamp-layer-root { z-index: auto; }
             .print-pagination-root.print-pagination-measuring .quick-print-warning { margin: 1.5mm 0 0; color: #b91c1c; font-size: 8.2pt; line-height: 1.25; }
             .print-pagination-root.print-pagination-measuring .quick-print-footer,
             .print-pagination-root.print-pagination-measuring .detailed-print-footer { display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; color: #667085; font-size: 7pt; letter-spacing: .08em; }
@@ -281,7 +282,7 @@
             .print-table-container {
                 border: 1px solid #808080 !important;
                 border-radius: 8px !important;
-                overflow: hidden !important;
+                overflow: visible !important;
                 margin-bottom: 12px !important;
                 background-color: transparent !important;
                 box-shadow: none !important;
@@ -376,7 +377,7 @@
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                overflow: hidden !important;
+                overflow: visible !important;
                 padding: 0 !important;
             }
 
@@ -562,7 +563,7 @@
             .quick-bank-grid { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 3mm; }
             .quick-bank-item span { display: block; margin-bottom: .25mm; color: #667085; font-size: 7.2pt; font-weight: 700; }
             .quick-bank-item strong { display: block; color: #182230; font-weight: 600; overflow-wrap: anywhere; }
-            .quick-acceptance-wrap { border: 1px solid #d8e2e9; border-radius: 2mm; overflow: hidden; }
+            .quick-acceptance-wrap { position: relative; border: 1px solid #d8e2e9; border-radius: 2mm; overflow: visible !important; }
             .quick-acceptance-table { width: 100%; table-layout: fixed; margin: 0 !important; border: 0 !important; font-size: 8pt; }
             .quick-acceptance-label-col { width: 18mm; }
             .quick-acceptance-party-col { width: calc((100% - 18mm) / 2); }
@@ -574,9 +575,10 @@
             .quick-acceptance-table tr > *:last-child { border-right: 0 !important; }
             .quick-acceptance-table tbody tr:last-child > * { border-bottom: 0 !important; }
             /* 內容框 29.2mm + 儲存格內距與邊框後，整個簽署列為 30mm（3cm）。 */
-            .quick-acceptance-signature { display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; }
+            .quick-acceptance-signature { position: relative; display: flex; align-items: center; justify-content: center; height: 29.2mm; color: #667085; overflow: visible !important; }
             .quick-acceptance-signature-placeholder { opacity: .1; }
-            .quick-acceptance-signature img { max-width: 95%; max-height: 27mm; object-fit: contain; }
+            .quick-acceptance-signature img { position: relative; z-index: 4; max-width: 95%; max-height: 27mm; object-fit: contain; }
+            .quick-acceptance-signature .stamp-layer-root { z-index: auto; }
             .quick-print-warning { margin: 1.5mm 0 0; color: #b91c1c; -webkit-text-fill-color: #b91c1c; font-size: 8.2pt; line-height: 1.25; }
             .print-overdue-warning { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; opacity: 1 !important; }
             .quick-print-footer { display:flex; justify-content:space-between; margin-top: 3mm; padding-top: 1.5mm; border-top: 1px solid #d0d5dd; text-align: left; color: #667085; font-size: 7pt; letter-spacing: .08em; }
@@ -681,7 +683,7 @@
         /* 桌面工作區預覽使用 3 cm 簽署列；輸出高度另由列印樣式校準。 */
         .signature-cell-strict-height {
             height: 3cm;
-            overflow: hidden;
+            overflow: visible;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -691,6 +693,154 @@
             max-height: 90%;
             max-width: 90%;
             object-fit: contain;
+        }
+
+        /* 印章是簽署格上的獨立圖層，不參與表格流向。位置與尺寸一律由 mm
+           設定，避免手機預覽的像素差異寫入報價資料。 */
+        .stamp-layer-root {
+            position: absolute;
+            inset: 0;
+            overflow: visible;
+            pointer-events: none;
+            z-index: auto;
+        }
+        .signature-cell-inner > .no-print { z-index: 20; }
+        .stamp-visual {
+            position: absolute;
+            left: calc(50% + var(--stamp-x-mm, 0mm));
+            top: calc(50% + var(--stamp-y-mm, 0mm));
+            width: var(--stamp-width-mm, 18mm);
+            height: var(--stamp-height-mm, 18mm);
+            transform: translate(-50%, -50%) rotate(var(--stamp-rotation, 0deg));
+            transform-origin: center center;
+            opacity: var(--stamp-opacity, .96);
+            mix-blend-mode: var(--stamp-blend-mode, normal);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--stamp-layer-z, 2);
+        }
+        .stamp-visual-frame {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .stamp-visual img {
+            position: absolute;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: fill;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .stamp-visual-frame.has-crop img {
+            width: calc(100% / var(--stamp-crop-width, 1));
+            height: calc(100% / var(--stamp-crop-height, 1));
+            left: calc(-100% * var(--stamp-crop-x, 0) / var(--stamp-crop-width, 1));
+            top: calc(-100% * var(--stamp-crop-y, 0) / var(--stamp-crop-height, 1));
+        }
+        .stamp-adjust-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 110;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(15, 23, 42, .58);
+        }
+        .stamp-adjust-panel {
+            width: min(980px, 100%);
+            max-height: min(760px, calc(100vh - 2rem));
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 1.25rem;
+            background: white;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, .28);
+        }
+        .stamp-adjust-body {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+        }
+        .stamp-adjust-preview {
+            min-height: 390px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: linear-gradient(145deg, #eef5f9, #f8fbfd);
+        }
+        .stamp-preview-paper {
+            position: relative;
+            width: min(100%, 270px);
+            aspect-ratio: 210 / 297;
+            overflow: visible;
+            border: 1px solid #cbd5e1;
+            border-radius: .35rem;
+            background: white;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+        }
+        .stamp-preview-signature-cell {
+            position: absolute;
+            left: 18%;
+            right: 8%;
+            bottom: 10%;
+            height: 13%;
+            border: 1px solid #94a3b8;
+            background: rgba(248, 250, 252, .82);
+        }
+        .stamp-adjust-controls {
+            min-height: 0;
+            overflow-y: auto;
+            padding: 1.25rem;
+        }
+        .stamp-adjust-controls label { display: block; color: #475569; font-size: .75rem; font-weight: 700; }
+        .stamp-adjust-controls input,
+        .stamp-adjust-controls select {
+            width: 100%;
+            margin-top: .35rem;
+            border: 1px solid #cbd5e1;
+            border-radius: .55rem;
+            padding: .55rem .65rem;
+            color: #1e293b;
+            background: white;
+            font-size: .85rem;
+        }
+        .stamp-adjust-controls input[type="checkbox"] { width: auto; margin: 0; }
+        .stamp-adjust-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: .6rem;
+            padding: .85rem 1.25rem;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .stamp-asset-card {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            width: 100%;
+            padding: .5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: .65rem;
+            background: white;
+            text-align: left;
+        }
+        .stamp-asset-card.selected { border-color: #105482; box-shadow: 0 0 0 2px rgba(16, 84, 130, .12); }
+        .stamp-asset-card img { width: 42px; height: 42px; object-fit: contain; flex: 0 0 auto; }
+        @media (max-width: 767px) {
+            .stamp-adjust-modal { align-items: flex-end; padding: 0; }
+            .stamp-adjust-panel { max-height: 94vh; border-radius: 1.1rem 1.1rem 0 0; }
+            .stamp-adjust-body { display: flex; flex-direction: column; }
+            .stamp-adjust-preview { min-height: 250px; padding: 1rem; }
+            .stamp-preview-paper { width: min(52vw, 220px); }
+            .stamp-adjust-controls { max-height: 42vh; padding: 1rem; }
+            .stamp-adjust-actions { position: sticky; bottom: 0; padding: .75rem 1rem; }
         }
 
         /* Unified, collapsible workspace navigation */
@@ -932,6 +1082,169 @@
             return title || '奇諾影像報價單';
         };
 
+        const STAMP_SCHEMA_VERSION = 1;
+        const STAMP_MAX_FILE_BYTES = 8 * 1024 * 1024;
+        const STAMP_ASSET_STORAGE_KEY = 'kino_quotation_stamp_assets_v1';
+        const STAMP_DEFAULTS = {
+            enabled: true,
+            assetId: '',
+            assetVersionId: '',
+            assetName: '',
+            sourceDataUrl: '',
+            mimeType: '',
+            originalWidthPx: 0,
+            originalHeightPx: 0,
+            widthMm: 18,
+            heightMm: 18,
+            xMm: 0,
+            yMm: 0,
+            rotationDeg: 0,
+            opacity: 96,
+            layer: 'top',
+            allowOverflow: false,
+            lockAspectRatio: true,
+            cropEnabled: false,
+            crop: null,
+            blendMode: 'normal',
+            anchor: 'signature-cell-center',
+            schemaVersion: STAMP_SCHEMA_VERSION
+        };
+
+        const clampNumber = (value, min, max, fallback) => {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+        };
+
+        const normalizeStampCrop = crop => {
+            if (!crop || typeof crop !== 'object') return null;
+            const x = clampNumber(crop.x, 0, 1, 0);
+            const y = clampNumber(crop.y, 0, 1, 0);
+            const width = clampNumber(crop.width, 0.01, 1 - x, 1);
+            const height = clampNumber(crop.height, 0.01, 1 - y, 1);
+            return { x, y, width, height };
+        };
+
+        const normalizeStampInstance = source => {
+            const value = source && typeof source === 'object' ? source : {};
+            return {
+                ...STAMP_DEFAULTS,
+                ...value,
+                widthMm: clampNumber(value.widthMm, 1, 120, STAMP_DEFAULTS.widthMm),
+                heightMm: clampNumber(value.heightMm, 1, 120, STAMP_DEFAULTS.heightMm),
+                xMm: clampNumber(value.xMm, -120, 120, STAMP_DEFAULTS.xMm),
+                yMm: clampNumber(value.yMm, -120, 120, STAMP_DEFAULTS.yMm),
+                rotationDeg: clampNumber(value.rotationDeg, -180, 180, STAMP_DEFAULTS.rotationDeg),
+                opacity: clampNumber(value.opacity, 90, 100, STAMP_DEFAULTS.opacity),
+                layer: value.layer === 'bottom' ? 'bottom' : 'top',
+                blendMode: value.blendMode === 'multiply' ? 'multiply' : 'normal',
+                allowOverflow: Boolean(value.allowOverflow),
+                lockAspectRatio: value.lockAspectRatio !== false,
+                cropEnabled: Boolean(value.cropEnabled),
+                crop: normalizeStampCrop(value.crop),
+                schemaVersion: STAMP_SCHEMA_VERSION
+            };
+        };
+
+        const normalizeStampAsset = source => {
+            const value = source && typeof source === 'object' ? source : {};
+            return {
+                id: String(value.id || generateId()),
+                versionId: String(value.versionId || value.assetVersionId || ''),
+                name: String(value.name || '未命名印章').trim() || '未命名印章',
+                dataUrl: typeof value.dataUrl === 'string' ? value.dataUrl : '',
+                mimeType: typeof value.mimeType === 'string' ? value.mimeType : '',
+                originalWidthPx: Number(value.originalWidthPx) || 0,
+                originalHeightPx: Number(value.originalHeightPx) || 0,
+                aspectRatio: Number(value.aspectRatio) > 0 ? Number(value.aspectRatio) : 1,
+                crop: normalizeStampCrop(value.crop),
+                updatedAt: value.updatedAt || new Date().toISOString(),
+                cloudState: value.cloudState === 'synced' ? 'synced' : 'local',
+                cloudName: String(value.cloudName || value.name || '').trim(),
+                // Keep the raw File only for the current browser session. It is
+                // intentionally omitted by JSON.stringify/localStorage, while
+                // uploadStampAssetToCloud can still send the original bytes
+                // before the page is reloaded.
+                file: typeof File !== 'undefined' && value.file instanceof File ? value.file : undefined
+            };
+        };
+
+        const loadStampAssets = () => {
+            try {
+                const raw = JSON.parse(localStorage.getItem(STAMP_ASSET_STORAGE_KEY) || '[]');
+                return Array.isArray(raw) ? raw.map(normalizeStampAsset).filter(asset => asset.dataUrl || asset.versionId) : [];
+            } catch {
+                return [];
+            }
+        };
+
+        const readImageFile = file => new Promise((resolve, reject) => {
+            if (!file || !String(file.type || '').startsWith('image/')) {
+                reject(new Error('請選擇 PNG、JPEG、WebP 或其他有效圖片檔。'));
+                return;
+            }
+            if (file.size > STAMP_MAX_FILE_BYTES) {
+                reject(new Error('印章圖片不可超過 8 MB。'));
+                return;
+            }
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('無法讀取印章圖片。'));
+            reader.onload = event => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('圖片格式無法解析。'));
+                img.onload = () => {
+                    const maxDimension = 1800;
+                    const sourceWidth = img.naturalWidth || img.width;
+                    const sourceHeight = img.naturalHeight || img.height;
+                    const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+                    const width = Math.max(1, Math.round(sourceWidth * scale));
+                    const height = Math.max(1, Math.round(sourceHeight * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, width, height);
+                    context.drawImage(img, 0, 0, width, height);
+                    const keepAlpha = file.type !== 'image/jpeg' && file.type !== 'image/jpg';
+                    const dataUrl = canvas.toDataURL(keepAlpha ? 'image/png' : 'image/jpeg', keepAlpha ? undefined : 0.88);
+                    resolve({ file, dataUrl, mimeType: keepAlpha ? 'image/png' : 'image/jpeg', originalWidthPx: sourceWidth, originalHeightPx: sourceHeight, aspectRatio: sourceWidth / sourceHeight });
+                };
+                img.src = String(event.target.result || '');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        const detectTransparentCrop = dataUrl => new Promise((resolve, reject) => {
+            if (!dataUrl) { resolve(null); return; }
+            const img = new Image();
+            img.onerror = () => reject(new Error('無法分析圖片透明邊界。'));
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(img, 0, 0);
+                const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
+                for (let y = 0; y < canvas.height; y += 1) {
+                    for (let x = 0; x < canvas.width; x += 1) {
+                        const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+                        if (alpha > 8) {
+                            minX = Math.min(minX, x);
+                            minY = Math.min(minY, y);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+                if (maxX < 0 || maxY < 0) { resolve(null); return; }
+                resolve({ x: minX / canvas.width, y: minY / canvas.height, width: (maxX - minX + 1) / canvas.width, height: (maxY - minY + 1) / canvas.height });
+            };
+            img.src = dataUrl;
+        });
+
+        const getStampImageSource = (stamp, asset) => stamp?.sourceDataUrl || asset?.dataUrl || '';
+
         const getInitialData = () => ({
             schemaVersion: 4,
             quotationType: 'quick',
@@ -943,7 +1256,7 @@
             notes: DEFAULT_NOTES_TEXT.map(text => ({ id: generateId(), text })),
             payment: { terms: [...DEFAULT_PAYMENT] },
             bank: { ...DEFAULT_BANK },
-            signature: { clientCompany: '', clientContact: '', clientTaxId: '', clientPhone: '', vendorCompany: '奇諾影像有限公司', vendorContact: '陳廷安', vendorTaxId: '83115577', vendorPhone: '0911715138', signatureDate: getLocalISODate(), clientSigImg: '', vendorSigImg: '' },
+            signature: { clientCompany: '', clientContact: '', clientTaxId: '', clientPhone: '', vendorCompany: '奇諾影像有限公司', vendorContact: '陳廷安', vendorTaxId: '83115577', vendorPhone: '0911715138', signatureDate: getLocalISODate(), clientSigImg: '', vendorSigImg: '', clientStamp: normalizeStampInstance(), vendorStamp: normalizeStampInstance() },
             logo: DEFAULT_LOGO_SVG, taxMode: 'excluded', printSettings: { scaledMode: true, showDetails: false, showSigDate: false }
         });
 
@@ -960,7 +1273,12 @@
                 schemaVersion: 4,
                 quotationType,
                 header: { ...defaults.header, ...(source.header || {}) },
-                signature: { ...defaults.signature, ...(source.signature || {}) },
+                signature: {
+                    ...defaults.signature,
+                    ...(source.signature || {}),
+                    clientStamp: normalizeStampInstance(source.signature?.clientStamp),
+                    vendorStamp: normalizeStampInstance(source.signature?.vendorStamp)
+                },
                 payment: { ...defaults.payment, ...(source.payment || {}), terms: source.payment?.terms?.length ? source.payment.terms : defaults.payment.terms },
                 // 舊版預設 PNG 自動改用正式 SVG；使用者自行上傳的標誌維持不變。
                 logo: source.logo === DEFAULT_LOGO ? DEFAULT_LOGO_SVG : (source.logo || defaults.logo),
@@ -1436,7 +1754,8 @@
             projects: '完整專案',
             templates: '條款範本',
             categories: '條款分類',
-            clauses: '條款內容'
+            clauses: '條款內容',
+            stamps: '簽署印章'
         };
         const makeEmptyCloudSyncSelection = () => Object.fromEntries(Object.keys(CLOUD_COLLECTION_LABELS).map(key => [key, []]));
         const truncateCloudPreview = (value, length = 160) => {
@@ -1459,6 +1778,7 @@
                 return { title: record.name || '未命名範本', meta: `${notes.length} 條條款`, detail: truncateCloudPreview(notes[0] || '條款範本內容尚未填寫') };
             }
             if (key === 'categories') return { title: record.name || '未命名分類', meta: `排序：${Number(record.sortOrder || 0) + 1}`, detail: '條款分類名稱或排序不同' };
+            if (key === 'stamps') return { title: record.name || '未命名印章', meta: record.cloudState === 'synced' || record.versionId ? '印章資產' : '本機印章', detail: `${record.originalWidthPx || 0} × ${record.originalHeightPx || 0} px` };
             return { title: record.category || '未分類條款', meta: record.isCore ? `原始第 ${record.coreOrder || '-'} 條` : `嚴重度：${record.severity || 1}`, detail: truncateCloudPreview(record.text || '條款內容尚未填寫', 220) };
         };
         const CloudSyncPreviewModal = ({ account, summary, selection, pendingDeleteCount, includeDeletes, onToggleItem, onSelectAll, onClearSelection, onToggleDeletes, onCancel, onRemoteOnly, onMerge, status }) => {
@@ -1666,8 +1986,281 @@
             </select>
         );
 
-        const SignatureCapture = ({ label, image, uploadId, onChange, compact = false }) => {
+        const SIGNATURE_CELL_MM = { width: 88, height: 29.2 };
+        const STAMP_PREVIEW_CELL_MM = { width: 210 * (1 - .18 - .08), height: 297 * .13 };
+        const getStampAspectRatio = (stamp, asset) => {
+            const crop = stamp?.cropEnabled ? normalizeStampCrop(stamp.crop) : null;
+            const sourceRatio = Number(asset?.aspectRatio) > 0 ? Number(asset.aspectRatio) : 1;
+            return crop?.width && crop?.height ? sourceRatio * crop.width / crop.height : sourceRatio;
+        };
+        const clampStampToSignatureCell = (source, asset) => {
+            const stamp = normalizeStampInstance(source);
+            if (stamp.allowOverflow) return stamp;
+            const angle = Math.abs(stamp.rotationDeg * Math.PI / 180);
+            const rotatedWidth = Math.abs(stamp.widthMm * Math.cos(angle)) + Math.abs(stamp.heightMm * Math.sin(angle));
+            const rotatedHeight = Math.abs(stamp.widthMm * Math.sin(angle)) + Math.abs(stamp.heightMm * Math.cos(angle));
+            const fitScale = Math.min(1, SIGNATURE_CELL_MM.width / Math.max(rotatedWidth, .001), SIGNATURE_CELL_MM.height / Math.max(rotatedHeight, .001));
+            const fittedStamp = fitScale < 1
+                ? { ...stamp, widthMm: stamp.widthMm * fitScale, heightMm: stamp.heightMm * fitScale }
+                : stamp;
+            const fittedAngle = Math.abs(fittedStamp.rotationDeg * Math.PI / 180);
+            const fittedRotatedWidth = Math.abs(fittedStamp.widthMm * Math.cos(fittedAngle)) + Math.abs(fittedStamp.heightMm * Math.sin(fittedAngle));
+            const fittedRotatedHeight = Math.abs(fittedStamp.widthMm * Math.sin(fittedAngle)) + Math.abs(fittedStamp.heightMm * Math.cos(fittedAngle));
+            const maxX = Math.max(0, (SIGNATURE_CELL_MM.width - fittedRotatedWidth) / 2);
+            const maxY = Math.max(0, (SIGNATURE_CELL_MM.height - fittedRotatedHeight) / 2);
+            return { ...fittedStamp, xMm: clampNumber(fittedStamp.xMm, -maxX, maxX, 0), yMm: clampNumber(fittedStamp.yMm, -maxY, maxY, 0) };
+        };
+
+        const StampVisual = ({ stamp, asset, className = '' }) => {
+            const source = getStampImageSource(stamp, asset);
+            if (!stamp?.enabled || !source) return null;
+            const crop = stamp.cropEnabled ? normalizeStampCrop(stamp.crop) : null;
+            const layerZ = stamp.layer === 'bottom' ? 2 : 8;
+            return (
+                <div
+                    className={`stamp-visual ${className}`}
+                    aria-hidden="true"
+                    style={{
+                        '--stamp-width-mm': `${stamp.widthMm}mm`,
+                        '--stamp-height-mm': `${stamp.heightMm}mm`,
+                        '--stamp-x-mm': `${stamp.xMm}mm`,
+                        '--stamp-y-mm': `${stamp.yMm}mm`,
+                        '--stamp-rotation': `${stamp.rotationDeg}deg`,
+                        '--stamp-opacity': String(stamp.opacity / 100),
+                        '--stamp-layer-z': String(layerZ),
+                        '--stamp-blend-mode': stamp.blendMode || 'normal',
+                        '--stamp-crop-x': String(crop?.x || 0),
+                        '--stamp-crop-y': String(crop?.y || 0),
+                        '--stamp-crop-width': String(crop?.width || 1),
+                        '--stamp-crop-height': String(crop?.height || 1)
+                    }}
+                >
+                    <div className={`stamp-visual-frame ${crop ? 'has-crop' : ''}`}>
+                        <img src={source} alt="" />
+                    </div>
+                </div>
+            );
+        };
+
+        const StampPreviewOverlay = ({ stamp, asset, onPointerDown }) => {
+            const source = getStampImageSource(stamp, asset);
+            if (!stamp?.enabled || !source) return null;
+            const crop = stamp.cropEnabled ? normalizeStampCrop(stamp.crop) : null;
+            const width = stamp.widthMm / STAMP_PREVIEW_CELL_MM.width * 100;
+            const height = stamp.heightMm / STAMP_PREVIEW_CELL_MM.height * 100;
+            const x = stamp.xMm / STAMP_PREVIEW_CELL_MM.width * 100;
+            const y = stamp.yMm / STAMP_PREVIEW_CELL_MM.height * 100;
+            const layerZ = stamp.layer === 'bottom' ? 2 : 8;
+            return (
+                <div
+                    className="stamp-preview-visual"
+                    style={{ position: 'absolute', left: `calc(50% + ${x}%)`, top: `calc(50% + ${y}%)`, width: `${width}%`, height: `${height}%`, transform: `translate(-50%, -50%) rotate(${stamp.rotationDeg}deg)`, transformOrigin: 'center', opacity: stamp.opacity / 100, mixBlendMode: stamp.blendMode || 'normal', zIndex: layerZ, cursor: 'grab', touchAction: 'none' }}
+                >
+                    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+                        <img
+                            src={source}
+                            alt="印章預覽"
+                            style={crop ? { position: 'absolute', maxWidth: 'none', width: `${100 / crop.width}%`, height: `${100 / crop.height}%`, left: `${-100 * crop.x / crop.width}%`, top: `${-100 * crop.y / crop.height}%` } : { width: '100%', height: '100%', objectFit: 'fill' }}
+                        />
+                    </div>
+                </div>
+            );
+        };
+
+        const StampAdjustModal = ({ label, stamp, assets, initialFile = null, onClose, onSave }) => {
+            const initialStamp = normalizeStampInstance(stamp);
+            const legacyAsset = initialStamp.sourceDataUrl && !assets.some(asset => asset.id === initialStamp.assetId)
+                ? normalizeStampAsset({ id: `legacy-${Date.now()}`, versionId: initialStamp.assetVersionId, name: `${label}印章`, dataUrl: initialStamp.sourceDataUrl, mimeType: initialStamp.mimeType, originalWidthPx: initialStamp.originalWidthPx, originalHeightPx: initialStamp.originalHeightPx, aspectRatio: initialStamp.originalWidthPx && initialStamp.originalHeightPx ? initialStamp.originalWidthPx / initialStamp.originalHeightPx : 1 })
+                : null;
+            const [localAssets, setLocalAssets] = useState(() => legacyAsset ? [...assets, legacyAsset] : assets);
+            const [draft, setDraft] = useState(() => clampStampToSignatureCell({ ...initialStamp, assetId: initialStamp.assetId || legacyAsset?.id || assets[0]?.id || '' }, legacyAsset || assets.find(asset => asset.id === initialStamp.assetId) || assets[0]));
+            const [activeAssetId, setActiveAssetId] = useState(() => initialStamp.assetId || legacyAsset?.id || assets[0]?.id || '');
+            const [busy, setBusy] = useState(false);
+            const [error, setError] = useState('');
+            const dragRef = useRef(null);
+            const activeAsset = localAssets.find(asset => asset.id === activeAssetId) || null;
+            const initialSnapshotRef = useRef(null);
+            const getDraftSnapshot = (stampValue, assetList) => JSON.stringify({
+                stamp: normalizeStampInstance(stampValue),
+                assets: assetList.map(asset => {
+                    const { file, ...portableAsset } = asset;
+                    return portableAsset;
+                })
+            });
+            if (!initialSnapshotRef.current) initialSnapshotRef.current = getDraftSnapshot(initialStamp, localAssets);
+            const hasUnsavedChanges = initialSnapshotRef.current !== getDraftSnapshot(draft, localAssets);
+            const requestClose = () => {
+                if (busy) {
+                    setError('圖片仍在處理中，請稍候完成後再關閉。');
+                    return;
+                }
+                if (hasUnsavedChanges && !confirm('尚有未儲存的修改，要放棄這次調整嗎？')) return;
+                onClose();
+            };
+
+            const updateDraft = (patchValue, selectedAsset = activeAsset) => {
+                setDraft(prev => clampStampToSignatureCell({ ...prev, ...patchValue }, selectedAsset));
+            };
+            const selectAsset = asset => {
+                if (!asset) return;
+                const aspectRatio = getStampAspectRatio(draft, asset);
+                const nextHeight = draft.lockAspectRatio ? draft.widthMm / Math.max(.1, aspectRatio) : draft.heightMm;
+                setActiveAssetId(asset.id);
+                setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: asset.versionId || '', assetName: asset.name, sourceDataUrl: asset.dataUrl || prev.sourceDataUrl, mimeType: asset.mimeType || prev.mimeType, originalWidthPx: asset.originalWidthPx || prev.originalWidthPx, originalHeightPx: asset.originalHeightPx || prev.originalHeightPx, heightMm: nextHeight, crop: asset.crop || prev.crop, cropEnabled: Boolean(asset.crop || prev.cropEnabled) }, asset));
+            };
+            const uploadFile = async file => {
+                if (!file) return;
+                setBusy(true);
+                setError('');
+                try {
+                    const result = await readImageFile(file);
+                    const sessionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
+                    const asset = normalizeStampAsset({ id: `stamp-${Date.now()}-${sessionId}`, name: file.name.replace(/\.[^.]+$/, '') || '新印章', dataUrl: result.dataUrl, mimeType: result.mimeType, originalWidthPx: result.originalWidthPx, originalHeightPx: result.originalHeightPx, aspectRatio: result.aspectRatio, updatedAt: new Date().toISOString(), file: result.file });
+                    setLocalAssets(prev => [asset, ...prev.filter(item => item.id !== asset.id)]);
+                    setActiveAssetId(asset.id);
+                    setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: '', assetName: asset.name, sourceDataUrl: asset.dataUrl, mimeType: asset.mimeType, originalWidthPx: asset.originalWidthPx, originalHeightPx: asset.originalHeightPx, heightMm: prev.lockAspectRatio ? prev.widthMm / asset.aspectRatio : prev.heightMm }, asset));
+                } catch (uploadError) {
+                    setError(uploadError.message || '印章上傳失敗');
+                } finally {
+                    setBusy(false);
+                }
+            };
+            const uploadAsset = event => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                uploadFile(file);
+            };
+            useEffect(() => {
+                if (initialFile) uploadFile(initialFile);
+            }, [initialFile]);
+            const renameAsset = value => {
+                setLocalAssets(prev => prev.map(asset => asset.id === activeAssetId ? { ...asset, name: value, updatedAt: new Date().toISOString() } : asset));
+                setDraft(prev => ({ ...prev, assetName: value }));
+            };
+            const autoCrop = async () => {
+                if (!activeAsset?.dataUrl) return;
+                setBusy(true);
+                setError('');
+                try {
+                    const crop = await detectTransparentCrop(activeAsset.dataUrl);
+                    if (!crop) throw new Error('找不到可用的透明邊界，已保留原始範圍。');
+                    setDraft(prev => {
+                        const next = { ...prev, crop, cropEnabled: true };
+                        if (prev.lockAspectRatio) next.heightMm = prev.widthMm / getStampAspectRatio(next, activeAsset);
+                        return clampStampToSignatureCell(next, activeAsset);
+                    });
+                } catch (cropError) {
+                    setError(cropError.message || '透明邊界分析失敗');
+                } finally {
+                    setBusy(false);
+                }
+            };
+            const removeAsset = () => {
+                if (!activeAsset) return;
+                if (!confirm(`從印章清單移除「${activeAsset.name}」？已套用到既有報價的印章不會被刪除。`)) return;
+                const remaining = localAssets.filter(asset => asset.id !== activeAsset.id);
+                setLocalAssets(remaining);
+                const next = remaining[0] || null;
+                setActiveAssetId(next?.id || '');
+                if (next) selectAsset(next);
+                else setDraft(normalizeStampInstance({ ...STAMP_DEFAULTS, enabled: false }));
+            };
+            const handlePreviewPointerDown = event => {
+                if (!activeAsset) return;
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                const rect = event.currentTarget.getBoundingClientRect();
+                dragRef.current = {
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    xMm: draft.xMm,
+                    yMm: draft.yMm,
+                    pxPerMmX: rect.width / STAMP_PREVIEW_CELL_MM.width,
+                    pxPerMmY: rect.height / STAMP_PREVIEW_CELL_MM.height
+                };
+                const move = moveEvent => {
+                    if (!dragRef.current) return;
+                    updateDraft({
+                        xMm: dragRef.current.xMm + (moveEvent.clientX - dragRef.current.clientX) / Math.max(dragRef.current.pxPerMmX, .01),
+                        yMm: dragRef.current.yMm + (moveEvent.clientY - dragRef.current.clientY) / Math.max(dragRef.current.pxPerMmY, .01)
+                    });
+                };
+                const end = () => {
+                    dragRef.current = null;
+                    window.removeEventListener('pointermove', move);
+                    window.removeEventListener('pointerup', end);
+                    window.removeEventListener('pointercancel', end);
+                };
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', end, { once: true });
+                window.addEventListener('pointercancel', end, { once: true });
+            };
+            const save = () => {
+                const selected = localAssets.find(asset => asset.id === activeAssetId);
+                const finalStamp = clampStampToSignatureCell({ ...draft, assetId: selected?.id || '', assetVersionId: selected?.versionId || draft.assetVersionId, assetName: selected?.name || draft.assetName, sourceDataUrl: selected?.dataUrl || draft.sourceDataUrl, mimeType: selected?.mimeType || draft.mimeType, originalWidthPx: selected?.originalWidthPx || draft.originalWidthPx, originalHeightPx: selected?.originalHeightPx || draft.originalHeightPx }, selected);
+                onSave(finalStamp, localAssets);
+            };
+            return (
+                <div className="stamp-adjust-modal no-print" role="dialog" aria-modal="true" aria-label={`${label}印章調整`}>
+                    <div className="stamp-adjust-panel">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                            <div><h3 className="text-lg font-bold text-kino">{label}印章設定</h3><p className="mt-1 text-xs text-slate-500">位置、尺寸以毫米保存；不會改變表格列高。</p></div>
+                            <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><i className="fas fa-times"></i></button>
+                        </div>
+                        <div className="stamp-adjust-body">
+                            <div className="stamp-adjust-preview">
+                                <div className="stamp-preview-paper">
+                                    <div className="absolute inset-x-[12%] top-[12%] h-2 rounded bg-slate-100"></div>
+                                    <div className="absolute inset-x-[12%] top-[19%] h-1 rounded bg-slate-100"></div>
+                                    <div className="stamp-preview-signature-cell" onPointerDown={handlePreviewPointerDown}>
+                                        <span className="absolute left-2 top-1 text-[9px] text-slate-400">{label}簽署格</span>
+                                        <StampPreviewOverlay stamp={draft} asset={activeAsset} onPointerDown={handlePreviewPointerDown} />
+                                    </div>
+                                    <div className="absolute inset-x-[12%] bottom-[5%] flex justify-between border-t border-slate-200 pt-1 text-[7px] text-slate-400"><span>QUOTATION</span><span>PREVIEW</span></div>
+                                </div>
+                            </div>
+                            <div className="stamp-adjust-controls space-y-4">
+                                <div>
+                                    <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-600">印章資產</span><label className="cursor-pointer rounded-md bg-kino px-2 py-1 text-[11px] font-bold text-white">新增／上傳<input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={uploadAsset} /></label></div>
+                                    <div className="space-y-2">{localAssets.length ? localAssets.map(asset => <button type="button" key={asset.id} className={`stamp-asset-card ${activeAssetId === asset.id ? 'selected' : ''}`} onClick={() => selectAsset(asset)}><img src={asset.dataUrl || ''} alt="" /><span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-700">{asset.name}</strong><small className="block text-[10px] text-slate-400">{asset.cloudState === 'synced' ? '已同步' : '本機資產'}</small></span>{activeAssetId === asset.id && <i className="fas fa-check text-kino"></i>}</button>) : <p className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">尚未有印章，請先上傳圖片。</p>}</div>
+                                </div>
+                                {activeAsset && <>
+                                    <label>印章名稱<input value={activeAsset.name} onChange={event => renameAsset(event.target.value)} /></label>
+                                    <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-kino/25 bg-kino/5 px-3 py-2 text-xs font-bold text-kino">更換印章圖樣（建立新資產）<input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={uploadAsset} /></label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label>寬度 mm<input type="number" min="1" max="120" step="0.1" value={draft.widthMm} onChange={event => { const width = clampNumber(event.target.value, 1, 120, draft.widthMm); updateDraft({ widthMm: width, heightMm: draft.lockAspectRatio ? width / getStampAspectRatio(draft, activeAsset) : draft.heightMm }); }} /></label>
+                                        <label>高度 mm<input type="number" min="1" max="120" step="0.1" value={draft.heightMm} onChange={event => { const height = clampNumber(event.target.value, 1, 120, draft.heightMm); updateDraft({ heightMm: height, widthMm: draft.lockAspectRatio ? height * getStampAspectRatio(draft, activeAsset) : draft.widthMm }); }} /></label>
+                                    </div>
+                                    <label className="flex items-center gap-2"><input type="checkbox" checked={draft.lockAspectRatio} onChange={event => updateDraft({ lockAspectRatio: event.target.checked })} />鎖定印章比例</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label>X 位移 mm<input type="number" step="0.1" value={draft.xMm} onChange={event => updateDraft({ xMm: event.target.value })} /></label>
+                                        <label>Y 位移 mm<input type="number" step="0.1" value={draft.yMm} onChange={event => updateDraft({ yMm: event.target.value })} /></label>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label>旋轉 °<input type="number" min="-180" max="180" step="1" value={draft.rotationDeg} onChange={event => updateDraft({ rotationDeg: event.target.value })} /></label>
+                                        <label>透明度 {draft.opacity}%<input type="range" min="90" max="100" step="1" value={draft.opacity} onChange={event => updateDraft({ opacity: event.target.value })} /></label>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label>圖層<select value={draft.layer} onChange={event => updateDraft({ layer: event.target.value })}><option value="bottom">置底：低於文字／格線</option><option value="top">置頂：高於文字／格線</option></select></label>
+                                        <label>混合模式<select value={draft.blendMode} onChange={event => updateDraft({ blendMode: event.target.value })}><option value="normal">一般</option><option value="multiply">Multiply</option></select></label>
+                                    </div>
+                                    <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowOverflow} onChange={event => updateDraft({ allowOverflow: event.target.checked })} />允許印章跨出簽署格</label>
+                                    <div className="flex flex-wrap gap-2"><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 14, heightMm: 14 / getStampAspectRatio(draft, activeAsset) })}>小章 14mm</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 24, heightMm: 24 / getStampAspectRatio(draft, activeAsset) })}>大章 24mm</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 18, heightMm: 18 / getStampAspectRatio(draft, activeAsset) })}>發票章</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={autoCrop} disabled={busy}>自動裁切透明邊界</button><button type="button" className="rounded-md border border-red-200 px-2 py-1 text-[11px] text-red-500" onClick={removeAsset}>移除資產</button></div>
+                                    <label className="flex items-center gap-2"><input type="checkbox" checked={draft.cropEnabled} onChange={event => { const enabled = event.target.checked; const next = { ...draft, cropEnabled: enabled }; updateDraft({ cropEnabled: enabled, heightMm: draft.lockAspectRatio ? draft.widthMm / getStampAspectRatio(next, activeAsset) : draft.heightMm }); }} />套用透明邊界裁切（保留原圖）</label>
+                                </>}
+                                {error && <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700">{error}</p>}
+                                {busy && <p className="text-xs text-slate-400">正在處理圖片…</p>}
+                            </div>
+                        </div>
+                        <div className="stamp-adjust-actions"><button type="button" onClick={requestClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">取消</button><button type="button" onClick={save} disabled={busy} className="rounded-lg bg-kino px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">套用至本報價單／儲存印章設定</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SignatureCapture = ({ label, image, stamp, assets = [], uploadId, onChange, onStampChange, onStampAssetsChange, compact = false }) => {
             const [isSigning, setIsSigning] = useState(false);
+            const [isStampAdjusting, setIsStampAdjusting] = useState(false);
+            const [pendingStampFile, setPendingStampFile] = useState(null);
             const canvasRef = useRef(null);
             const drawingRef = useRef(false);
             const pointRef = useRef(null);
@@ -1704,12 +2297,15 @@
                 <>
                     <div className={`signature-cell-inner signature-cell-strict-height relative ${compact ? 'signature-capture-compact border border-dashed border-gray-300 rounded-lg bg-gray-50' : ''}`}>
                         {image ? <img src={image} alt={`${label}簽章`} /> : <span className="no-print text-xs text-gray-300">尚未簽署</span>}
+                        <div className="stamp-layer-root"><StampVisual stamp={stamp} asset={assets.find(asset => asset.id === stamp?.assetId)} /></div>
                         <div className="no-print absolute inset-x-0 bottom-1 flex justify-center gap-1">
                             <button type="button" onClick={() => setIsSigning(true)} className="rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">手寫簽名</button>
-                            <label className="cursor-pointer rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">上傳印章<input id={uploadId} type="file" className="hidden" accept="image/*" onChange={async event => { if (event.target.files[0]) onChange(await compressImage(event.target.files[0])); event.target.value = ''; }} /></label>
+                            <label className="cursor-pointer rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">上傳印章<input id={uploadId} type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={event => { const file = event.target.files?.[0] || null; event.target.value = ''; setPendingStampFile(file); setIsStampAdjusting(true); }} /></label>
+                            {stamp?.enabled && getStampImageSource(stamp, assets.find(asset => asset.id === stamp?.assetId)) && <button type="button" onClick={() => setIsStampAdjusting(true)} className="rounded bg-white/95 border border-gray-200 px-1.5 py-0.5 text-[10px] text-kino shadow-sm">調整印章</button>}
                             {image && <button type="button" onClick={() => onChange('')} className="rounded bg-white/95 border border-red-200 px-1.5 py-0.5 text-[10px] text-red-500 shadow-sm">清除</button>}
                         </div>
                     </div>
+                    {isStampAdjusting && <StampAdjustModal label={label} stamp={stamp} assets={assets} initialFile={pendingStampFile} onClose={() => { setPendingStampFile(null); setIsStampAdjusting(false); }} onSave={(nextStamp, nextAssets) => { onStampChange?.(nextStamp); onStampAssetsChange?.(nextAssets); setPendingStampFile(null); setIsStampAdjusting(false); }} />}
                     {isSigning && <div className="no-print fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4">
                         <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl">
                             <div className="mb-3 flex items-center justify-between"><h3 className="font-bold text-kino">{label}手寫簽名</h3><button type="button" onClick={() => setIsSigning(false)} className="text-gray-400 hover:text-gray-700"><i className="fas fa-times"></i></button></div>
@@ -2018,6 +2614,7 @@
             const [projectLibrary, setProjectLibrary] = useState(loadProjectLibrary);
             const [clauseLibrary, setClauseLibrary] = useState(loadClauseLibrary);
             const [clauseCategories, setClauseCategories] = useState(loadClauseCategories);
+            const [stampAssets, setStampAssets] = useState(loadStampAssets);
             const [deletedProjectIds, setDeletedProjectIds] = useState(() => loadDeletedIds(DELETED_PROJECT_STORAGE_KEY));
             const [deletedTemplateIds, setDeletedTemplateIds] = useState(() => loadDeletedIds(DELETED_TEMPLATE_STORAGE_KEY));
             const [deletedClauseIds, setDeletedClauseIds] = useState(() => loadDeletedIds(DELETED_CLAUSE_STORAGE_KEY));
@@ -2438,6 +3035,7 @@
             useEffect(() => { localStorage.setItem(PROJECT_LIBRARY_STORAGE_KEY, JSON.stringify(projectLibrary)); }, [projectLibrary]);
             useEffect(() => { localStorage.setItem(CLAUSE_LIBRARY_STORAGE_KEY, JSON.stringify(clauseLibrary)); }, [clauseLibrary]);
             useEffect(() => { localStorage.setItem(CLAUSE_CATEGORY_STORAGE_KEY, JSON.stringify(clauseCategories)); }, [clauseCategories]);
+            useEffect(() => { localStorage.setItem(STAMP_ASSET_STORAGE_KEY, JSON.stringify(stampAssets)); }, [stampAssets]);
             useEffect(() => { localStorage.setItem(DELETED_PROJECT_STORAGE_KEY, JSON.stringify(deletedProjectIds)); }, [deletedProjectIds]);
             useEffect(() => { localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(deletedTemplateIds)); }, [deletedTemplateIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_STORAGE_KEY, JSON.stringify(deletedClauseIds)); }, [deletedClauseIds]);
@@ -2490,16 +3088,35 @@
                 setPrintScale(nextScale);
                 localStorage.setItem(PRINT_SCALE_STORAGE_KEY, nextScale);
 
+                const stampReady = [data.signature.clientStamp, data.signature.vendorStamp].every(stamp => {
+                    if (!stamp?.enabled) return true;
+                    const asset = stampAssets.find(item => item.id === stamp.assetId);
+                    return Boolean(getStampImageSource(stamp, asset));
+                });
+                if (!stampReady) {
+                    showToast('印章圖片尚未載入完成，請稍候再列印。');
+                    return;
+                }
+
                 const originalTitle = document.title;
                 const quotationId = String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-');
-                const print = () => {
+                const waitForPrintAssets = async () => {
+                    if (document.fonts?.ready) await document.fonts.ready;
+                    const images = Array.from(document.querySelectorAll('.quick-print-sheet img, .print-pagination-root img'));
+                    await Promise.all(images.filter(image => !image.complete).map(image => new Promise(resolve => {
+                        image.addEventListener('load', resolve, { once: true });
+                        image.addEventListener('error', resolve, { once: true });
+                    })));
+                };
+                const print = async () => {
+                    await waitForPrintAssets();
                     document.title = quotationId || 'quotation';
                     window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
                     window.print();
                 };
                 // Let the selected scale settle before beforeprint builds the
                 // hidden print tree and measures its final geometry.
-                requestAnimationFrame(() => requestAnimationFrame(print));
+                requestAnimationFrame(() => requestAnimationFrame(() => { void print(); }));
             };
             const handlePrint = selectedScale => handlePrintWithScale(selectedScale || printScaleRef.current);
             const handlePrintScaleChange = value => {
@@ -2655,6 +3272,36 @@
                 }
                 return response.json();
             };
+            const cloudMultipartRequest = async (path, formData, method = 'POST') => {
+                const syncKey = getCloudSyncKey();
+                if (!syncKey) throw new Error('SYNC_CANCELLED');
+                const response = await fetch(`${CLOUD_SYNC_API_URL}${path}`, {
+                    method,
+                    headers: { authorization: `Bearer ${syncKey}` },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.error || `印章同步失敗 (${response.status})`);
+                }
+                return response.json();
+            };
+            const cloudBinaryRequest = async path => {
+                const syncKey = getCloudSyncKey();
+                if (!syncKey) throw new Error('SYNC_CANCELLED');
+                const response = await fetch(`${CLOUD_SYNC_API_URL}${path}`, { headers: { authorization: `Bearer ${syncKey}` } });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.error || `印章載入失敗 (${response.status})`);
+                }
+                return response.blob();
+            };
+            const blobToDataUrl = blob => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('印章圖片轉換失敗'));
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.readAsDataURL(blob);
+            });
             useEffect(() => {
                 fetch(`${CLOUD_SYNC_API_URL}/api/config`)
                     .then(response => response.ok ? response.json() : Promise.reject(new Error('Config unavailable')))
@@ -3007,11 +3654,14 @@
                 const templates = (Array.isArray(remote?.templates) ? remote.templates : []).filter(template => template?.id && template?.name && Array.isArray(template?.notes));
                 const clauses = sortClauseLibrary((Array.isArray(remote?.clauses) ? remote.clauses : []).map(normalizeClauseRecord).filter(clause => clause?.text));
                 const categories = sortClauseCategories((Array.isArray(remote?.categories) ? remote.categories : []).map(normalizeClauseCategoryRecord).filter(Boolean));
-                return { ...remote, projects, templates, clauses, categories };
+                const stamps = (Array.isArray(remote?.stamps) ? remote.stamps : []).map(normalizeStampAsset).filter(asset => asset.id && asset.versionId);
+                return { ...remote, projects, templates, clauses, categories, stamps };
             };
             const comparableCloudRecord = record => {
                 const copy = JSON.parse(JSON.stringify(record || {}));
                 delete copy.updatedAt;
+                delete copy.dataUrl;
+                delete copy.cloudState;
                 return JSON.stringify(copy);
             };
             const buildCloudCollectionDiff = (key, localRecords, remoteRecords) => {
@@ -3035,8 +3685,55 @@
                 buildCloudCollectionDiff('projects', projectLibrary, remote.projects),
                 buildCloudCollectionDiff('templates', contractTemplates, remote.templates),
                 buildCloudCollectionDiff('categories', clauseCategories, remote.categories),
-                buildCloudCollectionDiff('clauses', clauseLibrary, remote.clauses)
+                buildCloudCollectionDiff('clauses', clauseLibrary, remote.clauses),
+                buildCloudCollectionDiff('stamps', stampAssets, remote.stamps)
             ];
+            const hydrateCloudStampAssets = async assets => Promise.all((Array.isArray(assets) ? assets : []).map(async asset => {
+                if (asset.dataUrl || !asset.id || !asset.versionId) return normalizeStampAsset(asset);
+                try {
+                    const blob = await cloudBinaryRequest(`/api/stamps/${encodeURIComponent(asset.id)}/content?version=${encodeURIComponent(asset.versionId)}`);
+                    return normalizeStampAsset({ ...asset, dataUrl: await blobToDataUrl(blob), cloudState: 'synced' });
+                } catch (error) {
+                    console.warn('Stamp asset hydration error', error);
+                    return normalizeStampAsset(asset);
+                }
+            }));
+            const uploadStampAssetToCloud = async asset => {
+                if (asset?.cloudState === 'synced' && asset.versionId) {
+                    if (asset.name !== (asset.cloudName || asset.name)) {
+                        await cloudRequest(`/api/stamps/${encodeURIComponent(asset.id)}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ name: asset.name })
+                        });
+                        return normalizeStampAsset({ ...asset, cloudName: asset.name, updatedAt: new Date().toISOString() });
+                    }
+                    return normalizeStampAsset(asset);
+                }
+                if (!asset?.dataUrl) throw new Error(`印章「${asset?.name || '未命名'}」沒有可上傳的圖片`);
+                const blob = typeof File !== 'undefined' && asset.file instanceof File
+                    ? asset.file
+                    : await (await fetch(asset.dataUrl)).blob();
+                const formData = new FormData();
+                formData.append('name', asset.name || '未命名印章');
+                formData.append('originalWidthPx', String(asset.originalWidthPx || 0));
+                formData.append('originalHeightPx', String(asset.originalHeightPx || 0));
+                formData.append('aspectRatio', String(asset.aspectRatio || 1));
+                formData.append('crop', JSON.stringify(asset.crop || null));
+                formData.append('file', blob, `${asset.name || 'stamp'}.${asset.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`);
+                const result = await cloudMultipartRequest('/api/stamps', formData);
+                return normalizeStampAsset({ ...asset, ...result.asset, versionId: result.asset?.versionId || '', cloudState: 'synced' });
+            };
+            const remapProjectStampRefs = (project, assetMap) => {
+                const copy = JSON.parse(JSON.stringify(project || {}));
+                ['clientStamp', 'vendorStamp'].forEach(key => {
+                    const stamp = copy.data?.signature?.[key];
+                    const remote = stamp && assetMap.get(stamp.assetId);
+                    if (remote) {
+                        copy.data.signature[key] = { ...stamp, assetId: remote.id, assetVersionId: remote.versionId, assetName: remote.name, sourceDataUrl: '' };
+                    }
+                });
+                return copy;
+            };
             const mergeRemoteWithLocalSelection = (remote, localSnapshot, selection, preserveDeletions) => {
                 const merged = { ...remote };
                 Object.keys(CLOUD_COLLECTION_LABELS).forEach(key => {
@@ -3065,11 +3762,17 @@
                 setDeletedClauseCategoryIds([]);
                 setDeletedClauseIds([]);
             };
-            const applyRemoteCloudData = (remote, message = '', { clearDeletionQueue = true } = {}) => {
+            const applyRemoteCloudData = async (remote, message = '', { clearDeletionQueue = true } = {}) => {
                 setProjectLibrary(remote.projects);
                 setContractTemplates(remote.templates);
                 setClauseCategories(remote.categories.length ? remote.categories : buildInitialClauseCategories(remote.clauses));
                 setClauseLibrary(remote.clauses);
+                try {
+                    setStampAssets(await hydrateCloudStampAssets(remote.stamps));
+                } catch (error) {
+                    console.warn('Cloud stamp load error', error);
+                    setStampAssets(remote.stamps);
+                }
                 hadLocalClauseLibraryRef.current = true;
                 hadLocalClauseCategoriesRef.current = true;
                 if (remote.user) {
@@ -3090,7 +3793,8 @@
                 }
                 setCloudSyncStatus('syncing');
                 try {
-                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
+                    const [syncResult, stampResult] = await Promise.all([cloudRequest('/api/sync'), cloudRequest('/api/stamps')]);
+                    const remote = normalizeRemoteCloudData({ ...syncResult, stamps: stampResult.assets || [] });
                     setCloudSyncPreview({
                         remote,
                         summary: buildCloudSyncSummary(remote),
@@ -3099,6 +3803,7 @@
                             templates: contractTemplates,
                             categories: clauseCategories,
                             clauses: clauseLibrary,
+                            stamps: stampAssets,
                             deletedProjectIds,
                             deletedTemplateIds,
                             deletedClauseCategoryIds,
@@ -3116,10 +3821,10 @@
                     setCloudSyncStatus(error.message === 'SYNC_CANCELLED' ? 'idle' : 'error');
                 }
             };
-            const loadRemoteOnly = () => {
+            const loadRemoteOnly = async () => {
                 if (!cloudSyncPreview?.remote) return;
                 const remote = cloudSyncPreview.remote;
-                applyRemoteCloudData(remote, `已載入雲端：${remote.projects.length} 個專案、${remote.clauses.length} 條條款`);
+                await applyRemoteCloudData(remote, `已載入雲端：${remote.projects.length} 個專案、${remote.clauses.length} 條條款`);
                 setCloudSyncPreview(null);
                 setCloudSyncSelection(makeEmptyCloudSyncSelection());
             };
@@ -3131,6 +3836,7 @@
                     templates: contractTemplates,
                     categories: clauseCategories,
                     clauses: clauseLibrary,
+                    stamps: stampAssets,
                     deletedProjectIds,
                     deletedTemplateIds,
                     deletedClauseCategoryIds,
@@ -3138,14 +3844,53 @@
                 };
                 const selected = cloudSyncSelection || makeEmptyCloudSyncSelection();
                 const selectedAt = new Date().toISOString();
-                const selectedProjects = localSnapshot.projects.filter(record => selected.projects.includes(record.id)).map(record => ({ ...record, updatedAt: selectedAt }));
+                const selectedProjectRecords = localSnapshot.projects.filter(record => selected.projects.includes(record.id));
                 const selectedTemplates = localSnapshot.templates.filter(record => selected.templates.includes(record.id)).map(record => ({ ...record, updatedAt: selectedAt }));
                 const selectedCategories = localSnapshot.categories.filter(record => selected.categories.includes(record.id)).map(record => ({ ...record, updatedAt: selectedAt }));
                 const selectedClauses = localSnapshot.clauses.filter(record => selected.clauses.includes(record.id)).map(record => ({ ...record, updatedAt: selectedAt }));
+                const selectedStampRecords = localSnapshot.stamps.filter(record => selected.stamps.includes(record.id));
                 const shouldAdoptRemoteClauses = Boolean(preflight.clauseLibraryInitialized) && !hadLocalClauseLibraryRef.current && !selectedClauses.length;
                 const shouldAdoptRemoteCategories = Boolean(preflight.clauseCategoriesInitialized) && !hadLocalClauseCategoriesRef.current && !selectedCategories.length;
                 setCloudSyncStatus('syncing');
                 try {
+                    const assetMap = new Map();
+                    const referencedStampIds = new Set();
+                    const localStampAssetsForSync = [...localSnapshot.stamps];
+                    selectedProjectRecords.forEach(project => ['clientStamp', 'vendorStamp'].forEach(key => {
+                        const stamp = project.data?.signature?.[key];
+                        const id = stamp?.assetId;
+                        if (!id) return;
+                        referencedStampIds.add(id);
+                        if (!localStampAssetsForSync.some(asset => asset.id === id) && stamp.sourceDataUrl) {
+                            localStampAssetsForSync.push(normalizeStampAsset({
+                                id,
+                                versionId: stamp.assetVersionId,
+                                name: stamp.assetName || `${key === 'clientStamp' ? '甲方' : '乙方'}印章`,
+                                dataUrl: stamp.sourceDataUrl,
+                                mimeType: stamp.mimeType,
+                                originalWidthPx: stamp.originalWidthPx,
+                                originalHeightPx: stamp.originalHeightPx,
+                                aspectRatio: stamp.originalWidthPx && stamp.originalHeightPx ? stamp.originalWidthPx / stamp.originalHeightPx : 1,
+                                crop: stamp.crop,
+                                updatedAt: selectedAt
+                            }));
+                        }
+                    }));
+                    const stampUploadCandidates = localStampAssetsForSync.filter(asset => selectedStampRecords.some(record => record.id === asset.id) || referencedStampIds.has(asset.id));
+                    for (const stampAsset of stampUploadCandidates) {
+                        const uploaded = await uploadStampAssetToCloud(stampAsset);
+                        assetMap.set(stampAsset.id, uploaded);
+                    }
+                    const selectedProjects = selectedProjectRecords.map(record => ({ ...remapProjectStampRefs(record, assetMap), updatedAt: selectedAt }));
+                    const localSnapshotForMerge = {
+                        ...localSnapshot,
+                        projects: localSnapshot.projects.map(record => selected.projects.includes(record.id) ? remapProjectStampRefs(record, assetMap) : record),
+                        stamps: localStampAssetsForSync.map(record => assetMap.get(record.id) || record)
+                    };
+                    const selectionForMerge = {
+                        ...selected,
+                        stamps: stampUploadCandidates.map(record => (assetMap.get(record.id) || record).id)
+                    };
                     await cloudRequest('/api/sync', {
                         method: 'POST',
                         body: JSON.stringify({
@@ -3161,9 +3906,10 @@
                             initializeClauseCategories: selectedCategories.length > 0
                         })
                     });
-                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
-                    const merged = mergeRemoteWithLocalSelection(remote, localSnapshot, selected, !includeCloudDeletes);
-                    applyRemoteCloudData(merged, `已合併 ${selectedProjects.length + selectedTemplates.length + selectedCategories.length + selectedClauses.length} 筆本機項目${includeCloudDeletes ? '，並同步刪除紀錄' : ''}`, { clearDeletionQueue: includeCloudDeletes });
+                    const [syncResult, stampResult] = await Promise.all([cloudRequest('/api/sync'), cloudRequest('/api/stamps')]);
+                    const remote = normalizeRemoteCloudData({ ...syncResult, stamps: stampResult.assets || [] });
+                    const merged = mergeRemoteWithLocalSelection(remote, localSnapshotForMerge, selectionForMerge, !includeCloudDeletes);
+                    await applyRemoteCloudData(merged, `已合併 ${selectedProjects.length + selectedTemplates.length + selectedCategories.length + selectedClauses.length + assetMap.size} 筆本機項目${includeCloudDeletes ? '，並同步刪除紀錄' : ''}`, { clearDeletionQueue: includeCloudDeletes });
                     setCloudSyncPreview(null);
                     setCloudSyncSelection(makeEmptyCloudSyncSelection());
                 } catch (error) {
@@ -3206,8 +3952,9 @@
                 setCloudVersionStatus('loading');
                 try {
                     await cloudRequest(`/api/versions/${encodeURIComponent(version.id)}/restore`, { method: 'POST', body: '{}' });
-                    const remote = normalizeRemoteCloudData(await cloudRequest('/api/sync'));
-                    applyRemoteCloudData(remote, '雲端版本已還原並載入本機');
+                    const [syncResult, stampResult] = await Promise.all([cloudRequest('/api/sync'), cloudRequest('/api/stamps')]);
+                    const remote = normalizeRemoteCloudData({ ...syncResult, stamps: stampResult.assets || [] });
+                    await applyRemoteCloudData(remote, '雲端版本已還原並載入本機');
                     await loadCloudVersions();
                 } catch (error) {
                     console.error('Cloud restore error', error);
@@ -3435,6 +4182,9 @@
                     if (oneDriveAutoSaveTimerRef.current) clearTimeout(oneDriveAutoSaveTimerRef.current);
                 };
             }, [data, oneDriveAutoSave, oneDriveAutoCreateProjectFolder, oneDriveAccount?.homeAccountId, oneDriveFolder?.id, oneDriveParentFolder?.id]);
+            const handleStampAssetsChange = nextAssets => {
+                setStampAssets(Array.isArray(nextAssets) ? nextAssets.map(normalizeStampAsset) : []);
+            };
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
             return (
@@ -3502,7 +4252,7 @@
 
                     <div id="desktop-root" style={{ display: mode === 'desktop' ? 'block' : 'none' }}>
                         <DesktopView 
-                            data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
+                            data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} stampAssets={stampAssets} onStampAssetsChange={handleStampAssetsChange}
                             handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} handleManualSave={handleManualSave}
                             openClausePicker={() => setShowClausePicker(true)}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
@@ -3525,7 +4275,7 @@
                     
                     <div id="mobile-root" style={{ display: mode === 'mobile' ? 'block' : 'none' }}>
                         <MobileView 
-                            data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} 
+                            data={data} setData={setData} updateField={updateField} calcs={calculations} compressImage={compressImage} stampAssets={stampAssets} onStampAssetsChange={handleStampAssetsChange}
                             handleOpen={handleOpen} handleSave={handleSave} handleSaveAs={handleSaveAs} handleReset={handleReset} mode={mode}
                             openClausePicker={() => setShowClausePicker(true)}
                             syncCloudData={syncCloudData} cloudSyncStatus={cloudSyncStatus}
@@ -3548,7 +4298,7 @@
             );
         };
 
-        const QuickPrintView = ({ data, calcs }) => {
+        const QuickPrintView = ({ data, calcs, stampAssets = [] }) => {
             const categories = Array.isArray(data.categories) ? data.categories : [];
             const project = Array.isArray(data.project) ? data.project : [];
             const notes = Array.isArray(data.notes) ? data.notes : [];
@@ -3653,8 +4403,8 @@
                                             <tr><th>電話</th><td>{data.signature.clientPhone || '　'}</td><td>{data.signature.vendorPhone || '　'}</td></tr>
                                             <tr>
                                                 <th>簽署</th>
-                                                <td><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
-                                                <td><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}</div></td>
+                                                <td><div className="quick-acceptance-signature">{data.signature.clientSigImg ? <img src={data.signature.clientSigImg} alt="甲方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}<div className="stamp-layer-root"><StampVisual stamp={data.signature.clientStamp} asset={stampAssets.find(asset => asset.id === data.signature.clientStamp?.assetId)} /></div></div></td>
+                                                <td><div className="quick-acceptance-signature">{data.signature.vendorSigImg ? <img src={data.signature.vendorSigImg} alt="乙方簽名" /> : <span className="quick-acceptance-signature-placeholder">簽章</span>}<div className="stamp-layer-root"><StampVisual stamp={data.signature.vendorStamp} asset={stampAssets.find(asset => asset.id === data.signature.vendorStamp?.assetId)} /></div></div></td>
                                             </tr>
                                             {data.printSettings.showSigDate && <tr><th>日期</th><td colSpan="2">{data.signature.signatureDate || '　　　　'}</td></tr>}
                                         </tbody>
@@ -3668,7 +4418,7 @@
             );
         };
 
-        const DesktopView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
+        const DesktopView = ({ data, setData, updateField, calcs, compressImage, stampAssets = [], onStampAssetsChange, handleOpen, handleSave, handleSaveAs, handleReset, handleManualSave, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
             const handleLogoUpload = async (e) => { if (e.target.files[0]) { const base64 = await compressImage(e.target.files[0]); setData(prev => ({ ...prev, logo: base64 })); } };
             const [draggedNoteId, setDraggedNoteId] = useState(null);
             const [dragOverNoteId, setDragOverNoteId] = useState(null);
@@ -3739,7 +4489,7 @@
                         </div>
 
                         <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-10 page-container border border-gray-200 flex flex-col min-h-[calc(100vh-12rem)] mt-6">
-                            <QuickPrintView data={data} calcs={calcs} />
+                            <QuickPrintView data={data} calcs={calcs} stampAssets={stampAssets} />
                             <div className="standard-document-content flex-grow">
                                 {/* [v1.08 Change] Header: Use Flexbox in print mode to prevent title overlapping/cutting */}
                                 <div className="document-title-row flex items-center justify-between mb-4 border-b-4 border-kino pb-2 relative print:border-b-2">
@@ -3909,8 +4659,8 @@
                                                 {/* Strict Height Signature Row */}
                                                 <tr className="bg-white border-b border-gray-200">
                                                     <td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">簽署</td>
-                                                    <td className="border-r border-gray-200 print-signature-row"><SignatureCapture label="甲方" image={data.signature.clientSigImg} uploadId="client-sig-upload" onChange={value => updateField('signature', 'clientSigImg', value)} /></td>
-                                                    <td className="print-signature-row"><SignatureCapture label="乙方" image={data.signature.vendorSigImg} uploadId="vendor-sig-upload" onChange={value => updateField('signature', 'vendorSigImg', value)} /></td>
+                                                    <td className="border-r border-gray-200 print-signature-row"><SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} uploadId="client-sig-upload" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
+                                                    <td className="print-signature-row"><SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} uploadId="vendor-sig-upload" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
                                                 </tr>
 
                                                 {data.printSettings.showSigDate && (<tr className="bg-white"><td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">日期</td><td colSpan="2" className="p-2 text-center"><input type="date" value={data.signature.signatureDate} onChange={e => updateField('signature', 'signatureDate', e.target.value)} className="input-bg-print-remove text-kino font-bold" /></td></tr>)}
@@ -3968,7 +4718,7 @@
             );
         };
 
-        const MobileView = ({ data, setData, updateField, calcs, compressImage, handleOpen, handleSave, handleSaveAs, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
+        const MobileView = ({ data, setData, updateField, calcs, compressImage, stampAssets = [], onStampAssetsChange, handleOpen, handleSave, handleSaveAs, handleReset, openClausePicker, syncCloudData, cloudSyncStatus, cloudAuthUser, openCloudAuth, openOneDrive, oneDriveAccount, oneDriveFolder, oneDriveAutoSave, oneDriveStatus, openDataManager, applyPaymentTemplate, handlePrint, printScale, onPrintScaleChange, mode, undo, redo, canUndo, canRedo }) => {
             const [draggingIdx, setDraggingIdx] = useState(null);
             // [v1.08 Change] Animation Lock to prevent double-click race conditions
             const [isAnimating, setIsAnimating] = useState(false);
@@ -4245,7 +4995,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.clientTaxId} onChange={e => updateField('signature', 'clientTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.clientPhone} onChange={e => updateField('signature', 'clientPhone', e.target.value)} />
-                                    <SignatureCapture label="甲方" image={data.signature.clientSigImg} uploadId="m-client-sig" onChange={value => updateField('signature', 'clientSigImg', value)} compact={true} />
+                                    <SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} uploadId="m-client-sig" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
                                 </div>
                             </div>
                             <div>
@@ -4257,7 +5007,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.vendorTaxId} onChange={e => updateField('signature', 'vendorTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.vendorPhone} onChange={e => updateField('signature', 'vendorPhone', e.target.value)} />
-                                    <SignatureCapture label="乙方" image={data.signature.vendorSigImg} uploadId="m-vendor-sig" onChange={value => updateField('signature', 'vendorSigImg', value)} compact={true} />
+                                    <SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} uploadId="m-vendor-sig" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
                                 </div>
                             </div>
                         </div>

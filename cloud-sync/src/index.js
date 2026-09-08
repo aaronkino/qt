@@ -2,6 +2,8 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_STAMP_BYTES = 8 * 1024 * 1024;
+const STAMP_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 const GOOGLE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs"),
@@ -170,6 +172,163 @@ const mapClause = (row) => ({
   updatedAt: row.updated_at,
 });
 
+const parseCropJson = value => {
+  if (!value) return null;
+  try {
+    const crop = JSON.parse(value);
+    if (!crop || typeof crop !== "object") return null;
+    return crop;
+  } catch {
+    return null;
+  }
+};
+
+const mapStampAsset = row => ({
+  id: row.id,
+  name: row.name,
+  cloudName: row.name,
+  versionId: row.version_id || "",
+  mimeType: row.mime_type || "",
+  originalWidthPx: Number(row.original_width_px || 0),
+  originalHeightPx: Number(row.original_height_px || 0),
+  aspectRatio: Number(row.aspect_ratio || 1),
+  crop: parseCropJson(row.crop_json),
+  updatedAt: row.updated_at || row.version_created_at || "",
+  cloudState: "synced",
+});
+
+const validStampName = value =>
+  typeof value === "string" && value.trim().length > 0 && value.trim().length <= 200;
+
+const validStampId = value =>
+  typeof value === "string" && /^stamp_[A-Za-z0-9_-]{8,80}$/.test(value);
+
+const getStampRows = (env, workspaceId) => env.DB.prepare(
+  `SELECT
+     a.id, a.name, a.updated_at,
+     v.id version_id, v.mime_type, v.original_width_px,
+     v.original_height_px, v.aspect_ratio, v.crop_json,
+     v.created_at version_created_at
+   FROM cloud_stamp_assets a
+   LEFT JOIN cloud_stamp_asset_versions v
+     ON v.workspace_id = a.workspace_id AND v.id = a.current_version_id
+   WHERE a.workspace_id = ?1 AND a.deleted_at IS NULL
+   ORDER BY a.updated_at DESC, a.name COLLATE NOCASE`,
+).bind(workspaceId);
+
+const getStampVersion = async (env, workspaceId, assetId, versionId = "") => {
+  const row = await env.DB.prepare(
+    `SELECT a.id asset_id, a.name, a.deleted_at,
+            v.id version_id, v.object_key, v.mime_type, v.byte_size,
+            v.original_width_px, v.original_height_px, v.aspect_ratio,
+            v.crop_json
+     FROM cloud_stamp_assets a
+     JOIN cloud_stamp_asset_versions v
+       ON v.workspace_id = a.workspace_id AND v.asset_id = a.id
+     WHERE a.workspace_id = ?1
+       AND a.id = ?2
+       AND (?3 = '' OR v.id = ?3)
+     ORDER BY CASE WHEN v.id = a.current_version_id THEN 0 ELSE 1 END,
+              v.created_at DESC
+     LIMIT 1`,
+  ).bind(workspaceId, assetId, versionId).first();
+  if (!row) throw new ApiError("找不到印章資產", 404);
+  return row;
+};
+
+const readStampFormUpload = async request => {
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!file || typeof file.arrayBuffer !== "function") {
+    throw new ApiError("缺少印章圖片檔");
+  }
+  const contentType = String(file.type || "").split(";")[0].toLowerCase();
+  if (!STAMP_MIME_TYPES.has(contentType)) throw new ApiError("印章格式僅支援 PNG、JPEG、WebP 或 GIF");
+  if (Number(file.size || 0) > MAX_STAMP_BYTES) throw new ApiError("印章圖片不可超過 8 MB", 413);
+  const bytes = await file.arrayBuffer();
+  if (bytes.byteLength > MAX_STAMP_BYTES) throw new ApiError("印章圖片不可超過 8 MB", 413);
+  const name = String(form.get("name") || file.name || "未命名印章").trim().slice(0, 200) || "未命名印章";
+  const originalWidthPx = Math.max(0, Math.trunc(Number(form.get("originalWidthPx") || 0)));
+  const originalHeightPx = Math.max(0, Math.trunc(Number(form.get("originalHeightPx") || 0)));
+  const aspectRatio = Number(form.get("aspectRatio") || 1);
+  let cropJson = null;
+  try {
+    const crop = JSON.parse(String(form.get("crop") || "null"));
+    if (crop && typeof crop === "object") cropJson = JSON.stringify(crop);
+  } catch {
+    cropJson = null;
+  }
+  return { name, contentType, bytes, originalWidthPx, originalHeightPx, aspectRatio: Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1, cropJson };
+};
+
+const requireStampBucket = env => {
+  if (!env.STAMP_BUCKET) throw new ApiError("印章儲存尚未完成 R2 bucket 設定", 503);
+  return env.STAMP_BUCKET;
+};
+
+const createStampAsset = async (env, workspaceId, upload) => {
+  const assetId = `stamp_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+  const versionId = `stampv_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+  const objectKey = stampObjectKey(workspaceId, assetId, versionId, upload.contentType);
+  const now = new Date().toISOString();
+  const bucket = requireStampBucket(env);
+  await bucket.put(objectKey, upload.bytes, {
+    httpMetadata: { contentType: upload.contentType, cacheControl: "private, no-store" },
+    customMetadata: { workspaceId, assetId, versionId },
+  });
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO cloud_stamp_assets
+         (workspace_id, id, name, current_version_id, created_at, updated_at, deleted_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?5, NULL)`,
+    ).bind(workspaceId, assetId, upload.name, versionId, now),
+    env.DB.prepare(
+      `INSERT INTO cloud_stamp_asset_versions
+         (workspace_id, id, asset_id, object_key, mime_type, byte_size,
+          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, now),
+  ]);
+  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, crop: parseCropJson(upload.cropJson), updatedAt: now, cloudState: "synced" };
+};
+
+const createStampAssetVersion = async (env, workspaceId, assetId, upload) => {
+  await getStampVersion(env, workspaceId, assetId);
+  const versionId = `stampv_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+  const objectKey = stampObjectKey(workspaceId, assetId, versionId, upload.contentType);
+  const now = new Date().toISOString();
+  const bucket = requireStampBucket(env);
+  await bucket.put(objectKey, upload.bytes, {
+    httpMetadata: { contentType: upload.contentType, cacheControl: "private, no-store" },
+    customMetadata: { workspaceId, assetId, versionId },
+  });
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO cloud_stamp_asset_versions
+         (workspace_id, id, asset_id, object_key, mime_type, byte_size,
+          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, now),
+    env.DB.prepare(
+      `UPDATE cloud_stamp_assets
+       SET name = ?3, current_version_id = ?4, updated_at = ?5, deleted_at = NULL
+       WHERE workspace_id = ?1 AND id = ?2`,
+    ).bind(workspaceId, assetId, upload.name, versionId, now),
+  ]);
+  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, crop: parseCropJson(upload.cropJson), updatedAt: now, cloudState: "synced" };
+};
+
+const stampObjectKey = (workspaceId, assetId, versionId, mimeType) => {
+  const extension = ({
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  })[mimeType] || "bin";
+  const safeWorkspace = encodeURIComponent(workspaceId).replaceAll("%", "_");
+  return `workspaces/${safeWorkspace}/stamps/${assetId}/${versionId}.${extension}`;
+};
+
 const VERSION_RETENTION_DAYS = 365;
 const VERSION_MINIMUM_COUNT = 30;
 
@@ -211,10 +370,12 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
        (SELECT COUNT(*) FROM cloud_contract_templates WHERE workspace_id = ?1) template_count,
        (SELECT COUNT(*) FROM cloud_clause_categories WHERE workspace_id = ?1) category_count,
        (SELECT COUNT(*) FROM cloud_clauses WHERE workspace_id = ?1) clause_count,
+       (SELECT COUNT(*) FROM cloud_stamp_assets WHERE workspace_id = ?1 AND deleted_at IS NULL) stamp_asset_count,
        COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name) + LENGTH(data_json)) FROM cloud_projects WHERE workspace_id = ?1), 0)
        + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name) + LENGTH(notes_json)) FROM cloud_contract_templates WHERE workspace_id = ?1), 0)
        + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name)) FROM cloud_clause_categories WHERE workspace_id = ?1), 0)
        + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(category) + LENGTH(clause_text)) FROM cloud_clauses WHERE workspace_id = ?1), 0)
+       + COALESCE((SELECT SUM(LENGTH(id) + LENGTH(name) + LENGTH(COALESCE(current_version_id, ''))) FROM cloud_stamp_assets WHERE workspace_id = ?1), 0)
        AS byte_size`,
   ).bind(workspaceId).first();
 
@@ -222,8 +383,8 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
     env.DB.prepare(
       `INSERT INTO cloud_workspace_versions
          (id, workspace_id, source, project_count, template_count,
-          category_count, clause_count, byte_size, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+          category_count, clause_count, stamp_asset_count, byte_size, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     ).bind(
       versionId,
       workspaceId,
@@ -232,6 +393,7 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
       Number(stats?.template_count || 0),
       Number(stats?.category_count || 0),
       Number(stats?.clause_count || 0),
+      Number(stats?.stamp_asset_count || 0),
       Number(stats?.byte_size || 0),
       createdAt,
     ),
@@ -279,6 +441,33 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
                      'updatedAt', updated_at)
        FROM cloud_workspace_state WHERE workspace_id = ?2`,
     ).bind(versionId, workspaceId),
+    env.DB.prepare(
+      `INSERT INTO cloud_workspace_version_records
+         (version_id, entity_type, entity_id, payload_json)
+       SELECT ?1, 'stampAsset', a.id,
+         json_object(
+           'id', a.id,
+           'name', a.name,
+           'currentVersionId', COALESCE(a.current_version_id, ''),
+           'updatedAt', a.updated_at,
+           'deletedAt', a.deleted_at,
+           'version', CASE WHEN v.id IS NULL THEN NULL ELSE json_object(
+             'id', v.id,
+             'objectKey', v.object_key,
+             'mimeType', v.mime_type,
+             'byteSize', v.byte_size,
+             'originalWidthPx', v.original_width_px,
+             'originalHeightPx', v.original_height_px,
+             'aspectRatio', v.aspect_ratio,
+             'crop', json(v.crop_json),
+             'createdAt', v.created_at
+           ) END
+         )
+       FROM cloud_stamp_assets a
+       LEFT JOIN cloud_stamp_asset_versions v
+         ON v.workspace_id = a.workspace_id AND v.id = a.current_version_id
+       WHERE a.workspace_id = ?2`,
+    ).bind(versionId, workspaceId),
   ]);
   await pruneWorkspaceVersions(env, workspaceId);
   return versionId;
@@ -287,7 +476,7 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
 const getWorkspaceVersion = async (env, workspaceId, versionId) => {
   const version = await env.DB.prepare(
     `SELECT id, source, project_count, template_count, category_count,
-            clause_count, byte_size, created_at
+            clause_count, stamp_asset_count, byte_size, created_at
      FROM cloud_workspace_versions
      WHERE workspace_id = ?1 AND id = ?2
      LIMIT 1`,
@@ -304,6 +493,7 @@ const getWorkspaceVersion = async (env, workspaceId, versionId) => {
     templates: [],
     categories: [],
     clauses: [],
+    stampAssets: [],
     workspaceState: null,
   };
   for (const record of records.results) {
@@ -312,6 +502,7 @@ const getWorkspaceVersion = async (env, workspaceId, versionId) => {
     if (record.entity_type === "template") snapshot.templates.push(payload);
     if (record.entity_type === "category") snapshot.categories.push(payload);
     if (record.entity_type === "clause") snapshot.clauses.push(payload);
+    if (record.entity_type === "stampAsset") snapshot.stampAssets.push(payload);
     if (record.entity_type === "workspaceState") snapshot.workspaceState = payload;
   }
   return {
@@ -321,6 +512,7 @@ const getWorkspaceVersion = async (env, workspaceId, versionId) => {
     templateCount: Number(version.template_count),
     categoryCount: Number(version.category_count),
     clauseCount: Number(version.clause_count),
+    stampAssetCount: Number(version.stamp_asset_count || 0),
     byteSize: Number(version.byte_size),
     createdAt: version.created_at,
     snapshot,
@@ -339,6 +531,8 @@ const restoreWorkspaceVersion = async (env, workspaceId, versionId) => {
     env.DB.prepare("DELETE FROM cloud_projects WHERE workspace_id = ?1").bind(workspaceId),
     env.DB.prepare("DELETE FROM cloud_contract_templates WHERE workspace_id = ?1").bind(workspaceId),
     env.DB.prepare("DELETE FROM cloud_workspace_state WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_stamp_asset_versions WHERE workspace_id = ?1").bind(workspaceId),
+    env.DB.prepare("DELETE FROM cloud_stamp_assets WHERE workspace_id = ?1").bind(workspaceId),
     env.DB.prepare(
       `INSERT INTO cloud_projects (workspace_id, id, name, data_json, updated_at)
        SELECT ?1,
@@ -398,6 +592,39 @@ const restoreWorkspaceVersion = async (env, workspaceId, versionId) => {
               json_extract(payload_json, '$.updatedAt')
        FROM cloud_workspace_version_records
        WHERE version_id = ?2 AND entity_type = 'workspaceState'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_stamp_assets
+         (workspace_id, id, name, current_version_id, updated_at, created_at, deleted_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.name'),
+              NULLIF(json_extract(payload_json, '$.currentVersionId'), ''),
+              json_extract(payload_json, '$.updatedAt'),
+              json_extract(payload_json, '$.updatedAt'),
+              json_extract(payload_json, '$.deletedAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2 AND entity_type = 'stampAsset'`,
+    ).bind(workspaceId, versionId),
+    env.DB.prepare(
+      `INSERT INTO cloud_stamp_asset_versions
+         (workspace_id, id, asset_id, object_key, mime_type, byte_size,
+          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
+       SELECT ?1,
+              json_extract(payload_json, '$.version.id'),
+              json_extract(payload_json, '$.id'),
+              json_extract(payload_json, '$.version.objectKey'),
+              json_extract(payload_json, '$.version.mimeType'),
+              json_extract(payload_json, '$.version.byteSize'),
+              json_extract(payload_json, '$.version.originalWidthPx'),
+              json_extract(payload_json, '$.version.originalHeightPx'),
+              json_extract(payload_json, '$.version.aspectRatio'),
+              json_extract(payload_json, '$.version.crop'),
+              json_extract(payload_json, '$.version.createdAt')
+       FROM cloud_workspace_version_records
+       WHERE version_id = ?2
+         AND entity_type = 'stampAsset'
+         AND json_extract(payload_json, '$.version.id') IS NOT NULL`,
     ).bind(workspaceId, versionId),
   ]);
   await pruneWorkspaceVersions(env, workspaceId);
@@ -655,8 +882,8 @@ const routeRequest = async (request, env) => {
 
   if (request.method === "GET" && url.pathname === "/api/versions") {
     const versions = await env.DB.prepare(
-      `SELECT id, source, project_count, template_count, category_count,
-              clause_count, byte_size, created_at
+       `SELECT id, source, project_count, template_count, category_count,
+              clause_count, stamp_asset_count, byte_size, created_at
        FROM cloud_workspace_versions
        WHERE workspace_id = ?1
        ORDER BY created_at DESC
@@ -670,12 +897,70 @@ const routeRequest = async (request, env) => {
         templateCount: Number(version.template_count),
         categoryCount: Number(version.category_count),
         clauseCount: Number(version.clause_count),
+        stampAssetCount: Number(version.stamp_asset_count || 0),
         byteSize: Number(version.byte_size),
         createdAt: version.created_at,
       })),
       retentionDays: VERSION_RETENTION_DAYS,
       minimumVersions: VERSION_MINIMUM_COUNT,
     });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/stamps") {
+    const assets = await getStampRows(env, workspaceId).all();
+    return json({ assets: assets.results.map(mapStampAsset) });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/stamps") {
+    const upload = await readStampFormUpload(request);
+    await createWorkspaceVersion(env, workspaceId, "before-stamp-create");
+    const asset = await createStampAsset(env, workspaceId, upload);
+    return json({ asset }, 201);
+  }
+
+  if (parts[0] === "api" && parts[1] === "stamps" && parts[2]) {
+    const assetId = decodeURIComponent(parts[2]);
+    if (!validStampId(assetId)) throw new ApiError("印章資產 ID 不正確");
+    if (request.method === "GET" && parts[3] === "content") {
+      const versionId = String(url.searchParams.get("version") || "");
+      const version = await getStampVersion(env, workspaceId, assetId, versionId);
+      const object = await requireStampBucket(env).get(version.object_key);
+      if (!object) throw new ApiError("找不到印章檔案", 404);
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set("etag", object.httpEtag);
+      headers.set("cache-control", "private, no-store");
+      headers.set("content-disposition", "inline");
+      return new Response(object.body, { status: 200, headers });
+    }
+    if (request.method === "PUT" && parts[3] === "content") {
+      const upload = await readStampFormUpload(request);
+      await createWorkspaceVersion(env, workspaceId, "before-stamp-version");
+      const asset = await createStampAssetVersion(env, workspaceId, assetId, upload);
+      return json({ asset });
+    }
+    if (request.method === "PUT" && !parts[3]) {
+      const body = await readJson(request);
+      if (!validStampName(body.name)) throw new ApiError("印章名稱格式不正確");
+      await createWorkspaceVersion(env, workspaceId, "before-stamp-rename");
+      const result = await env.DB.prepare(
+        `UPDATE cloud_stamp_assets
+         SET name = ?3, updated_at = ?4
+         WHERE workspace_id = ?1 AND id = ?2 AND deleted_at IS NULL`,
+      ).bind(workspaceId, assetId, body.name.trim(), new Date().toISOString()).run();
+      if (!result.meta.changes) throw new ApiError("找不到印章資產", 404);
+      return json({ ok: true });
+    }
+    if (request.method === "DELETE" && !parts[3]) {
+      await createWorkspaceVersion(env, workspaceId, "before-stamp-delete");
+      const result = await env.DB.prepare(
+        `UPDATE cloud_stamp_assets
+         SET deleted_at = ?3, updated_at = ?3
+         WHERE workspace_id = ?1 AND id = ?2 AND deleted_at IS NULL`,
+      ).bind(workspaceId, assetId, new Date().toISOString()).run();
+      if (!result.meta.changes) throw new ApiError("找不到印章資產", 404);
+      return json({ ok: true });
+    }
   }
 
   if (parts[0] === "api" && parts[1] === "versions" && parts[2]) {
