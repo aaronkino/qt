@@ -192,7 +192,11 @@ const mapStampAsset = row => ({
   originalWidthPx: Number(row.original_width_px || 0),
   originalHeightPx: Number(row.original_height_px || 0),
   aspectRatio: Number(row.aspect_ratio || 1),
+  cropEnabled: Boolean(row.crop_enabled),
   crop: parseCropJson(row.crop_json),
+  defaultWidthMm: Number(row.default_width_mm || 18),
+  defaultHeightMm: Number(row.default_height_mm || 18),
+  schemaVersion: Number(row.schema_version || 1),
   updatedAt: row.updated_at || row.version_created_at || "",
   cloudState: "synced",
 });
@@ -207,7 +211,8 @@ const getStampRows = (env, workspaceId) => env.DB.prepare(
   `SELECT
      a.id, a.name, a.updated_at,
      v.id version_id, v.mime_type, v.original_width_px,
-     v.original_height_px, v.aspect_ratio, v.crop_json,
+     v.original_height_px, v.aspect_ratio, v.crop_enabled, v.crop_json,
+     v.default_width_mm, v.default_height_mm, v.schema_version,
      v.created_at version_created_at
    FROM cloud_stamp_assets a
    LEFT JOIN cloud_stamp_asset_versions v
@@ -251,6 +256,13 @@ const readStampFormUpload = async request => {
   const originalWidthPx = Math.max(0, Math.trunc(Number(form.get("originalWidthPx") || 0)));
   const originalHeightPx = Math.max(0, Math.trunc(Number(form.get("originalHeightPx") || 0)));
   const aspectRatio = Number(form.get("aspectRatio") || 1);
+  const cropEnabled = ["1", "true", "on"].includes(String(form.get("cropEnabled") || "").toLowerCase());
+  const requestedDefaultWidthMm = Number(form.get("defaultWidthMm"));
+  const requestedDefaultHeightMm = Number(form.get("defaultHeightMm"));
+  const requestedSchemaVersion = Number(form.get("schemaVersion"));
+  const defaultWidthMm = Number.isFinite(requestedDefaultWidthMm) ? Math.min(120, Math.max(1, requestedDefaultWidthMm)) : 18;
+  const defaultHeightMm = Number.isFinite(requestedDefaultHeightMm) ? Math.min(120, Math.max(1, requestedDefaultHeightMm)) : 18;
+  const schemaVersion = Number.isFinite(requestedSchemaVersion) ? Math.min(10, Math.max(1, Math.trunc(requestedSchemaVersion))) : 1;
   let cropJson = null;
   try {
     const crop = JSON.parse(String(form.get("crop") || "null"));
@@ -258,7 +270,7 @@ const readStampFormUpload = async request => {
   } catch {
     cropJson = null;
   }
-  return { name, contentType, bytes, originalWidthPx, originalHeightPx, aspectRatio: Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1, cropJson };
+  return { name, contentType, bytes, originalWidthPx, originalHeightPx, aspectRatio: Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1, cropEnabled, cropJson, defaultWidthMm, defaultHeightMm, schemaVersion };
 };
 
 const requireStampBucket = env => {
@@ -285,11 +297,12 @@ const createStampAsset = async (env, workspaceId, upload) => {
     env.DB.prepare(
       `INSERT INTO cloud_stamp_asset_versions
          (workspace_id, id, asset_id, object_key, mime_type, byte_size,
-          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, now),
+           original_width_px, original_height_px, aspect_ratio, crop_json, crop_enabled,
+           default_width_mm, default_height_mm, schema_version, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, upload.cropEnabled ? 1 : 0, upload.defaultWidthMm, upload.defaultHeightMm, upload.schemaVersion, now),
   ]);
-  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, crop: parseCropJson(upload.cropJson), updatedAt: now, cloudState: "synced" };
+  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, cropEnabled: upload.cropEnabled, crop: parseCropJson(upload.cropJson), defaultWidthMm: upload.defaultWidthMm, defaultHeightMm: upload.defaultHeightMm, schemaVersion: upload.schemaVersion, updatedAt: now, cloudState: "synced" };
 };
 
 const createStampAssetVersion = async (env, workspaceId, assetId, upload) => {
@@ -306,16 +319,17 @@ const createStampAssetVersion = async (env, workspaceId, assetId, upload) => {
     env.DB.prepare(
       `INSERT INTO cloud_stamp_asset_versions
          (workspace_id, id, asset_id, object_key, mime_type, byte_size,
-          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, now),
+           original_width_px, original_height_px, aspect_ratio, crop_json, crop_enabled,
+           default_width_mm, default_height_mm, schema_version, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+    ).bind(workspaceId, versionId, assetId, objectKey, upload.contentType, upload.bytes.byteLength, upload.originalWidthPx, upload.originalHeightPx, upload.aspectRatio, upload.cropJson, upload.cropEnabled ? 1 : 0, upload.defaultWidthMm, upload.defaultHeightMm, upload.schemaVersion, now),
     env.DB.prepare(
       `UPDATE cloud_stamp_assets
        SET name = ?3, current_version_id = ?4, updated_at = ?5, deleted_at = NULL
        WHERE workspace_id = ?1 AND id = ?2`,
     ).bind(workspaceId, assetId, upload.name, versionId, now),
   ]);
-  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, crop: parseCropJson(upload.cropJson), updatedAt: now, cloudState: "synced" };
+  return { id: assetId, versionId, name: upload.name, cloudName: upload.name, mimeType: upload.contentType, originalWidthPx: upload.originalWidthPx, originalHeightPx: upload.originalHeightPx, aspectRatio: upload.aspectRatio, cropEnabled: upload.cropEnabled, crop: parseCropJson(upload.cropJson), defaultWidthMm: upload.defaultWidthMm, defaultHeightMm: upload.defaultHeightMm, schemaVersion: upload.schemaVersion, updatedAt: now, cloudState: "synced" };
 };
 
 const stampObjectKey = (workspaceId, assetId, versionId, mimeType) => {
@@ -459,7 +473,11 @@ const createWorkspaceVersion = async (env, workspaceId, source) => {
              'originalWidthPx', v.original_width_px,
              'originalHeightPx', v.original_height_px,
              'aspectRatio', v.aspect_ratio,
+             'cropEnabled', v.crop_enabled,
              'crop', json(v.crop_json),
+             'defaultWidthMm', v.default_width_mm,
+             'defaultHeightMm', v.default_height_mm,
+             'schemaVersion', v.schema_version,
              'createdAt', v.created_at
            ) END
          )
@@ -609,7 +627,8 @@ const restoreWorkspaceVersion = async (env, workspaceId, versionId) => {
     env.DB.prepare(
       `INSERT INTO cloud_stamp_asset_versions
          (workspace_id, id, asset_id, object_key, mime_type, byte_size,
-          original_width_px, original_height_px, aspect_ratio, crop_json, created_at)
+          original_width_px, original_height_px, aspect_ratio, crop_json,
+          crop_enabled, default_width_mm, default_height_mm, schema_version, created_at)
        SELECT ?1,
               json_extract(payload_json, '$.version.id'),
               json_extract(payload_json, '$.id'),
@@ -618,9 +637,13 @@ const restoreWorkspaceVersion = async (env, workspaceId, versionId) => {
               json_extract(payload_json, '$.version.byteSize'),
               json_extract(payload_json, '$.version.originalWidthPx'),
               json_extract(payload_json, '$.version.originalHeightPx'),
-              json_extract(payload_json, '$.version.aspectRatio'),
-              json_extract(payload_json, '$.version.crop'),
-              json_extract(payload_json, '$.version.createdAt')
+               json_extract(payload_json, '$.version.aspectRatio'),
+               json_extract(payload_json, '$.version.crop'),
+               COALESCE(json_extract(payload_json, '$.version.cropEnabled'), 0),
+               COALESCE(json_extract(payload_json, '$.version.defaultWidthMm'), 18),
+               COALESCE(json_extract(payload_json, '$.version.defaultHeightMm'), 18),
+               COALESCE(json_extract(payload_json, '$.version.schemaVersion'), 1),
+               json_extract(payload_json, '$.version.createdAt')
        FROM cloud_workspace_version_records
        WHERE version_id = ?2
          AND entity_type = 'stampAsset'

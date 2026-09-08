@@ -38,9 +38,9 @@
 - 印章在 HTML／列印頁是簽章格上的獨立 absolute layer，沒有把整份報價單 Canvas 化；原有文字仍可在 PDF 中選取、複製與搜尋，也不會把印章推開表格或增加列高。
 - 列印前會等待字型與印章圖片載入；若印章圖片尚未可用，會阻止輸出，避免產生缺章的正式文件。瀏覽器列印請選擇 A4、Actual Size／100%，不要使用 Fit to Page。
 
-印章圖片先保留在目前瀏覽器的本機資產清單；登入並在同步差異視窗勾選後，圖片才會上傳至專用的私有 Cloudflare R2 bucket。D1 只保存資產 metadata、版本與私有 object key，報價單則保存當次使用的資產版本與位置設定。後續更換或刪除資產不會改寫歷史報價快照；R2 圖片也不會產生永久公開 URL。
+印章圖片先保留在目前瀏覽器的本機資產清單；登入並在同步差異視窗勾選後，圖片才會上傳至專用的私有 Cloudflare R2 bucket。若仍在同一次瀏覽器工作階段，會優先上傳原始檔；頁面重載後則以本機保存的受限尺寸預覽圖作為離線備援。D1 只保存資產 metadata、版本與私有 object key，報價單則保存當次使用的資產版本與位置設定。後續更換或刪除資產不會改寫歷史報價快照；R2 圖片也不會產生永久公開 URL。
 
-印章 API 與資料表位於 `cloud-sync/`：`cloud_stamp_assets` 管理資產、`cloud_stamp_asset_versions` 保存不可變圖片版本，`cloud_workspace_versions` 會把目前印章 metadata 一起納入工作區快照。對應 migration 是 `cloud-sync/migrations/0006_stamp_assets.sql`。
+印章 API 與資料表位於 `cloud-sync/`：`cloud_stamp_assets` 管理資產、`cloud_stamp_asset_versions` 保存不可變圖片版本與裁切／預設尺寸 metadata，`cloud_workspace_versions` 會把目前印章 metadata 一起納入工作區快照。對應 migration 是 `cloud-sync/migrations/0006_stamp_assets.sql` 與 `cloud-sync/migrations/0007_stamp_metadata.sql`。移除已同步且未被目前報價引用的印章會先進入本機刪除佇列；同步視窗另有預設不勾選的軟刪除確認，歷史版本仍可還原。
 
 導覽列的按鈕採統一字級與高度。電腦版會把檔案／模式及專案／雲端分成兩列，手機版預設收合；兩種版面皆可按「收合／工具」切換，以保留主要編輯空間。
 

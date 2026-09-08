@@ -217,6 +217,7 @@
             html.print-pagination-active .print-pagination-root { display: block !important; }
             html.print-pagination-active .print-pagination-source-hidden { display: none !important; }
             html.print-pagination-active .print-pagination-source-document-hidden { display: none !important; }
+            html.print-pagination-active .print-pagination-root .quick-print-sheet.print-page { overflow: hidden !important; }
 
             /* [v1.10 Change] Force Footer Background to #F9FAFB in Print */
             .footer-total-area {
@@ -609,6 +610,7 @@
                 break-after: page;
                 page-break-after: always;
             }
+            .print-pagination-root .quick-print-sheet.print-page { overflow: hidden; }
             .print-pagination-root .print-page:last-child {
                 break-after: auto;
                 page-break-after: auto;
@@ -753,6 +755,7 @@
             background: rgba(15, 23, 42, .58);
         }
         .stamp-adjust-panel {
+            position: relative;
             width: min(980px, 100%);
             max-height: min(760px, calc(100vh - 2rem));
             overflow: hidden;
@@ -819,6 +822,24 @@
             padding: .85rem 1.25rem;
             border-top: 1px solid #e2e8f0;
             background: #f8fafc;
+        }
+        .stamp-close-confirm {
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            background: rgba(248, 250, 252, .94);
+        }
+        .stamp-close-confirm-card {
+            width: min(430px, 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 1rem;
+            padding: 1.1rem;
+            background: white;
+            box-shadow: 0 16px 38px rgba(15, 23, 42, .18);
         }
         .stamp-asset-card {
             display: flex;
@@ -1156,7 +1177,11 @@
                 originalWidthPx: Number(value.originalWidthPx) || 0,
                 originalHeightPx: Number(value.originalHeightPx) || 0,
                 aspectRatio: Number(value.aspectRatio) > 0 ? Number(value.aspectRatio) : 1,
+                cropEnabled: Boolean(value.cropEnabled),
                 crop: normalizeStampCrop(value.crop),
+                defaultWidthMm: clampNumber(value.defaultWidthMm, 1, 120, 18),
+                defaultHeightMm: clampNumber(value.defaultHeightMm, 1, 120, 18),
+                schemaVersion: STAMP_SCHEMA_VERSION,
                 updatedAt: value.updatedAt || new Date().toISOString(),
                 cloudState: value.cloudState === 'synced' ? 'synced' : 'local',
                 cloudName: String(value.cloudName || value.name || '').trim(),
@@ -1811,7 +1836,7 @@
                         </div>
                     </div>}
                     {changedCount === 0 && <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800"><i className="fas fa-check-circle mr-1.5"></i>目前沒有可合併的本機差異。若要以雲端內容取代本機，請選擇「僅載入雲端」。</div>}
-                    {pendingDeleteCount > 0 && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-4"><input type="checkbox" checked={includeDeletes} onChange={event => onToggleDeletes(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-red-700" /><span><strong className="block text-sm text-red-800">同步本機刪除紀錄（{pendingDeleteCount} 筆）</strong><span className="mt-1 block text-xs leading-relaxed text-red-700">預設不勾選。勾選後，這些本機已刪除的雲端專案／範本／條款也會被刪除，但仍可從版本紀錄還原。</span></span></label>}
+                    {pendingDeleteCount > 0 && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-4"><input type="checkbox" checked={includeDeletes} onChange={event => onToggleDeletes(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-red-700" /><span><strong className="block text-sm text-red-800">同步本機刪除紀錄（{pendingDeleteCount} 筆）</strong><span className="mt-1 block text-xs leading-relaxed text-red-700">預設不勾選。勾選後，這些本機已刪除的專案、範本、條款或印章會在雲端執行軟刪除，但仍可從版本紀錄還原。</span></span></label>}
                     <div className="mt-5 grid gap-2 sm:grid-cols-3"><button type="button" disabled={status === 'syncing'} onClick={onCancel} className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600">取消</button><button type="button" disabled={status === 'syncing'} onClick={onRemoteOnly} className="rounded-xl border border-kino/25 px-4 py-3 text-sm font-bold text-kino"><i className="fas fa-cloud-arrow-down mr-1.5"></i>僅載入雲端</button><button type="button" disabled={status === 'syncing' || !canMerge} onClick={onMerge} className="rounded-xl bg-kino px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"><i className={`fas ${status === 'syncing' ? 'fa-spinner fa-spin' : 'fa-code-merge'} mr-1.5`}></i>合併已勾選項目</button></div>
                 </div>
             </div>;
@@ -2077,6 +2102,7 @@
             const [activeAssetId, setActiveAssetId] = useState(() => initialStamp.assetId || legacyAsset?.id || assets[0]?.id || '');
             const [busy, setBusy] = useState(false);
             const [error, setError] = useState('');
+            const [showClosePrompt, setShowClosePrompt] = useState(false);
             const dragRef = useRef(null);
             const activeAsset = localAssets.find(asset => asset.id === activeAssetId) || null;
             const initialSnapshotRef = useRef(null);
@@ -2094,7 +2120,10 @@
                     setError('圖片仍在處理中，請稍候完成後再關閉。');
                     return;
                 }
-                if (hasUnsavedChanges && !confirm('尚有未儲存的修改，要放棄這次調整嗎？')) return;
+                if (hasUnsavedChanges) {
+                    setShowClosePrompt(true);
+                    return;
+                }
                 onClose();
             };
 
@@ -2115,7 +2144,7 @@
                 try {
                     const result = await readImageFile(file);
                     const sessionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
-                    const asset = normalizeStampAsset({ id: `stamp-${Date.now()}-${sessionId}`, name: file.name.replace(/\.[^.]+$/, '') || '新印章', dataUrl: result.dataUrl, mimeType: result.mimeType, originalWidthPx: result.originalWidthPx, originalHeightPx: result.originalHeightPx, aspectRatio: result.aspectRatio, updatedAt: new Date().toISOString(), file: result.file });
+                    const asset = normalizeStampAsset({ id: `stamp-${Date.now()}-${sessionId}`, name: file.name.replace(/\.[^.]+$/, '') || '新印章', dataUrl: result.dataUrl, mimeType: result.mimeType, originalWidthPx: result.originalWidthPx, originalHeightPx: result.originalHeightPx, aspectRatio: result.aspectRatio, defaultWidthMm: STAMP_DEFAULTS.widthMm, defaultHeightMm: STAMP_DEFAULTS.heightMm, updatedAt: new Date().toISOString(), file: result.file });
                     setLocalAssets(prev => [asset, ...prev.filter(item => item.id !== asset.id)]);
                     setActiveAssetId(asset.id);
                     setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: '', assetName: asset.name, sourceDataUrl: asset.dataUrl, mimeType: asset.mimeType, originalWidthPx: asset.originalWidthPx, originalHeightPx: asset.originalHeightPx, heightMm: prev.lockAspectRatio ? prev.widthMm / asset.aspectRatio : prev.heightMm }, asset));
@@ -2204,7 +2233,7 @@
                     <div className="stamp-adjust-panel">
                         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                             <div><h3 className="text-lg font-bold text-kino">{label}印章設定</h3><p className="mt-1 text-xs text-slate-500">位置、尺寸以毫米保存；不會改變表格列高。</p></div>
-                            <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><i className="fas fa-times"></i></button>
+                            <button type="button" onClick={requestClose} className="rounded-full px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><i className="fas fa-times"></i></button>
                         </div>
                         <div className="stamp-adjust-body">
                             <div className="stamp-adjust-preview">
@@ -2252,6 +2281,7 @@
                             </div>
                         </div>
                         <div className="stamp-adjust-actions"><button type="button" onClick={requestClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600">取消</button><button type="button" onClick={save} disabled={busy} className="rounded-lg bg-kino px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">套用至本報價單／儲存印章設定</button></div>
+                        {showClosePrompt && <div className="stamp-close-confirm no-print"><div className="stamp-close-confirm-card"><h4 className="text-sm font-black text-slate-800">尚有未儲存的修改</h4><p className="mt-1 text-xs leading-relaxed text-slate-500">請選擇要放棄這次調整、返回編輯，或套用後關閉視窗。</p><div className="mt-4 grid gap-2 sm:grid-cols-3"><button type="button" onClick={() => { setShowClosePrompt(false); onClose(); }} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600">放棄修改</button><button type="button" onClick={() => setShowClosePrompt(false)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-600">返回編輯</button><button type="button" onClick={() => { setShowClosePrompt(false); save(); }} disabled={busy} className="rounded-lg bg-kino px-3 py-2 text-xs font-bold text-white disabled:opacity-50">套用並關閉</button></div></div></div>}
                     </div>
                 </div>
             );
@@ -2332,6 +2362,7 @@
         const DELETED_CLAUSE_STORAGE_KEY = 'kino_quotation_deleted_clauses_v1';
         const CLAUSE_CATEGORY_STORAGE_KEY = 'kino_quotation_clause_categories_v1';
         const DELETED_CLAUSE_CATEGORY_STORAGE_KEY = 'kino_quotation_deleted_clause_categories_v1';
+        const DELETED_STAMP_STORAGE_KEY = 'kino_quotation_deleted_stamps_v1';
         const CLOUD_SYNC_KEY_STORAGE_KEY = 'kino_quotation_cloud_sync_key';
         const CLOUD_AUTH_TOKEN_STORAGE_KEY = 'kino_quotation_cloud_auth_token';
         const CLOUD_AUTH_USER_STORAGE_KEY = 'kino_quotation_cloud_auth_user';
@@ -2619,6 +2650,7 @@
             const [deletedTemplateIds, setDeletedTemplateIds] = useState(() => loadDeletedIds(DELETED_TEMPLATE_STORAGE_KEY));
             const [deletedClauseIds, setDeletedClauseIds] = useState(() => loadDeletedIds(DELETED_CLAUSE_STORAGE_KEY));
             const [deletedClauseCategoryIds, setDeletedClauseCategoryIds] = useState(() => loadDeletedIds(DELETED_CLAUSE_CATEGORY_STORAGE_KEY));
+            const [deletedStampIds, setDeletedStampIds] = useState(() => loadDeletedIds(DELETED_STAMP_STORAGE_KEY));
             const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
             const [cloudAuthStatus, setCloudAuthStatus] = useState('idle');
             const [googleClientId, setGoogleClientId] = useState('');
@@ -3040,6 +3072,7 @@
             useEffect(() => { localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(deletedTemplateIds)); }, [deletedTemplateIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_STORAGE_KEY, JSON.stringify(deletedClauseIds)); }, [deletedClauseIds]);
             useEffect(() => { localStorage.setItem(DELETED_CLAUSE_CATEGORY_STORAGE_KEY, JSON.stringify(deletedClauseCategoryIds)); }, [deletedClauseCategoryIds]);
+            useEffect(() => { localStorage.setItem(DELETED_STAMP_STORAGE_KEY, JSON.stringify(deletedStampIds)); }, [deletedStampIds]);
             useEffect(() => {
                 if (oneDriveFolder) localStorage.setItem(ONEDRIVE_FOLDER_STORAGE_KEY, JSON.stringify(oneDriveFolder));
                 else localStorage.removeItem(ONEDRIVE_FOLDER_STORAGE_KEY);
@@ -3718,7 +3751,11 @@
                 formData.append('originalWidthPx', String(asset.originalWidthPx || 0));
                 formData.append('originalHeightPx', String(asset.originalHeightPx || 0));
                 formData.append('aspectRatio', String(asset.aspectRatio || 1));
+                formData.append('cropEnabled', asset.cropEnabled ? '1' : '0');
                 formData.append('crop', JSON.stringify(asset.crop || null));
+                formData.append('defaultWidthMm', String(asset.defaultWidthMm || 18));
+                formData.append('defaultHeightMm', String(asset.defaultHeightMm || 18));
+                formData.append('schemaVersion', String(asset.schemaVersion || STAMP_SCHEMA_VERSION));
                 formData.append('file', blob, `${asset.name || 'stamp'}.${asset.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`);
                 const result = await cloudMultipartRequest('/api/stamps', formData);
                 return normalizeStampAsset({ ...asset, ...result.asset, versionId: result.asset?.versionId || '', cloudState: 'synced' });
@@ -3749,10 +3786,12 @@
                     const deletedTemplates = new Set(localSnapshot?.deletedTemplateIds || []);
                     const deletedCategories = new Set(localSnapshot?.deletedClauseCategoryIds || []);
                     const deletedClauses = new Set(localSnapshot?.deletedClauseIds || []);
+                    const deletedStamps = new Set(localSnapshot?.deletedStampIds || []);
                     merged.projects = merged.projects.filter(record => !deletedProjects.has(record.id));
                     merged.templates = merged.templates.filter(record => !deletedTemplates.has(record.id));
                     merged.categories = merged.categories.filter(record => !deletedCategories.has(record.id));
                     merged.clauses = merged.clauses.filter(record => !deletedClauses.has(record.id) && !deletedCategories.has(record.categoryId));
+                    merged.stamps = merged.stamps.filter(record => !deletedStamps.has(record.id));
                 }
                 return normalizeRemoteCloudData(merged);
             };
@@ -3761,6 +3800,7 @@
                 setDeletedTemplateIds([]);
                 setDeletedClauseCategoryIds([]);
                 setDeletedClauseIds([]);
+                setDeletedStampIds([]);
             };
             const applyRemoteCloudData = async (remote, message = '', { clearDeletionQueue = true } = {}) => {
                 setProjectLibrary(remote.projects);
@@ -3804,6 +3844,7 @@
                             categories: clauseCategories,
                             clauses: clauseLibrary,
                             stamps: stampAssets,
+                            deletedStampIds,
                             deletedProjectIds,
                             deletedTemplateIds,
                             deletedClauseCategoryIds,
@@ -3837,6 +3878,7 @@
                     categories: clauseCategories,
                     clauses: clauseLibrary,
                     stamps: stampAssets,
+                    deletedStampIds,
                     deletedProjectIds,
                     deletedTemplateIds,
                     deletedClauseCategoryIds,
@@ -3891,6 +3933,15 @@
                         ...selected,
                         stamps: stampUploadCandidates.map(record => (assetMap.get(record.id) || record).id)
                     };
+                    if (includeCloudDeletes) {
+                        for (const stampId of deletedStampIds) {
+                            try {
+                                await cloudRequest(`/api/stamps/${encodeURIComponent(stampId)}`, { method: 'DELETE' });
+                            } catch (error) {
+                                if (error.status !== 404) throw error;
+                            }
+                        }
+                    }
                     await cloudRequest('/api/sync', {
                         method: 'POST',
                         body: JSON.stringify({
@@ -4183,7 +4234,21 @@
                 };
             }, [data, oneDriveAutoSave, oneDriveAutoCreateProjectFolder, oneDriveAccount?.homeAccountId, oneDriveFolder?.id, oneDriveParentFolder?.id]);
             const handleStampAssetsChange = nextAssets => {
-                setStampAssets(Array.isArray(nextAssets) ? nextAssets.map(normalizeStampAsset) : []);
+                const normalized = Array.isArray(nextAssets) ? nextAssets.map(normalizeStampAsset) : [];
+                const nextIds = new Set(normalized.map(asset => asset.id));
+                const currentQuoteStampIds = new Set(['clientStamp', 'vendorStamp']
+                    .map(key => data.signature?.[key])
+                    .filter(stamp => stamp?.enabled && stamp.assetId)
+                    .map(stamp => stamp.assetId));
+                const removedAssets = stampAssets.filter(asset => !nextIds.has(asset.id));
+                const protectedAssets = removedAssets.filter(asset => currentQuoteStampIds.has(asset.id));
+                const removableSyncedIds = removedAssets
+                    .filter(asset => !currentQuoteStampIds.has(asset.id) && asset.cloudState === 'synced' && asset.versionId)
+                    .map(asset => asset.id);
+                const safeAssets = [...normalized, ...protectedAssets].map(normalizeStampAsset);
+                if (protectedAssets.length) showToast('目前報價仍在使用這顆印章，已保留資產以避免既有報價缺章。');
+                setDeletedStampIds(prev => [...new Set([...prev, ...removableSyncedIds])].filter(id => !safeAssets.some(asset => asset.id === id)));
+                setStampAssets(safeAssets);
             };
             const handleReset = () => { if(confirm("確定重置所有內容回到預設值？此動作無法復原。")) { const init = getInitialData(); setData(init); setHistory([init]); setHistoryIndex(0); setFileHandle(null); } };
 
@@ -4195,7 +4260,7 @@
                         account={cloudSyncPreview.remote.user || cloudAuthUser}
                         summary={cloudSyncPreview.summary}
                         selection={cloudSyncSelection}
-                        pendingDeleteCount={deletedProjectIds.length + deletedTemplateIds.length + deletedClauseCategoryIds.length + deletedClauseIds.length}
+                        pendingDeleteCount={deletedProjectIds.length + deletedTemplateIds.length + deletedClauseCategoryIds.length + deletedClauseIds.length + deletedStampIds.length}
                         includeDeletes={includeCloudDeletes}
                         onToggleItem={(key, id) => setCloudSyncSelection(prev => ({ ...prev, [key]: prev[key].includes(id) ? prev[key].filter(itemId => itemId !== id) : [...prev[key], id] }))}
                         onSelectAll={() => setCloudSyncSelection(Object.fromEntries(cloudSyncPreview.summary.map(item => [item.key, item.details.map(detail => detail.id)])))}
