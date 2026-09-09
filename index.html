@@ -778,24 +778,88 @@
             padding: 1.5rem;
             background: linear-gradient(145deg, #eef5f9, #f8fbfd);
         }
-        .stamp-preview-paper {
-            position: relative;
-            width: min(100%, 270px);
-            aspect-ratio: 210 / 297;
-            overflow: visible;
-            border: 1px solid #cbd5e1;
-            border-radius: .35rem;
+        .stamp-preview-acceptance-card { width: min(100%, 560px); }
+        .stamp-preview-caption {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: .55rem;
+            color: #64748b;
+            font-size: .7rem;
+            font-weight: 700;
+        }
+        .stamp-preview-acceptance-section {
+            overflow: hidden;
+            border-radius: .6rem;
             background: white;
             box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
         }
+        .stamp-preview-acceptance-title {
+            margin: 0;
+            padding: .38rem .65rem;
+            background: #eaf2f7;
+            color: #105482;
+            font-size: .67rem;
+            font-weight: 800;
+            letter-spacing: .08em;
+        }
+        .stamp-preview-acceptance-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            color: #182230;
+            background: white;
+            font-size: .65rem;
+        }
+        .stamp-preview-acceptance-table th,
+        .stamp-preview-acceptance-table td {
+            border-right: 1px solid #e3e9ee;
+            border-bottom: 1px solid #e3e9ee;
+            padding: .26rem .42rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .stamp-preview-acceptance-table tr > *:last-child { border-right: 0; }
+        .stamp-preview-acceptance-table tbody tr:last-child > * { border-bottom: 0; }
+        .stamp-preview-acceptance-table thead th {
+            background: #105482;
+            color: white;
+            font-weight: 800;
+        }
+        .stamp-preview-acceptance-table tbody th {
+            background: #eaf2f7;
+            color: #105482;
+            text-align: left;
+            font-weight: 800;
+        }
         .stamp-preview-signature-cell {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 88 / 29.2;
+            overflow: hidden;
+            background: white;
+            touch-action: none;
+        }
+        .stamp-preview-signature-cell.is-active {
+            background: #fbfdff;
+            box-shadow: inset 0 0 0 2px rgba(16, 84, 130, .3);
+            cursor: grab;
+        }
+        .stamp-preview-signature-cell.is-active:active { cursor: grabbing; }
+        .stamp-preview-signature-placeholder {
             position: absolute;
-            left: 18%;
-            right: 8%;
-            bottom: 10%;
-            height: 13%;
-            border: 1px solid #94a3b8;
-            background: rgba(248, 250, 252, .82);
+            inset: 0;
+            display: grid;
+            place-items: center;
+            color: rgba(148, 163, 184, .1);
+            font-size: .65rem;
+            font-weight: 800;
+        }
+        .stamp-preview-note {
+            margin-top: .55rem;
+            color: #64748b;
+            font-size: .66rem;
+            line-height: 1.45;
         }
         .stamp-adjust-controls {
             min-height: 0;
@@ -815,6 +879,37 @@
             font-size: .85rem;
         }
         .stamp-adjust-controls input[type="checkbox"] { width: auto; margin: 0; }
+        .stamp-upload-button {
+            display: inline-flex !important;
+            align-items: center;
+            gap: .35rem;
+            border: 1px solid #0b456d;
+            background: #105482 !important;
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(16, 84, 130, .2);
+        }
+        .stamp-upload-button:hover { background: #0b456d !important; }
+        .stamp-size-preset {
+            border: 1px solid #cbd5e1;
+            border-radius: .5rem;
+            padding: .4rem .55rem;
+            background: white;
+            color: #475569;
+            font-size: .7rem;
+            font-weight: 700;
+        }
+        .stamp-size-preset:hover { border-color: #105482; color: #105482; }
+        .stamp-crop-control {
+            display: flex !important;
+            align-items: flex-start;
+            gap: .6rem;
+            border: 1px solid #dbe4eb;
+            border-radius: .7rem;
+            padding: .7rem;
+            background: #f8fafc;
+            cursor: pointer;
+        }
+        .stamp-crop-control small { display: block; margin-top: .18rem; color: #64748b; font-weight: 500; line-height: 1.4; }
         .stamp-adjust-actions {
             display: flex;
             justify-content: flex-end;
@@ -858,8 +953,11 @@
             .stamp-adjust-modal { align-items: flex-end; padding: 0; }
             .stamp-adjust-panel { max-height: 94vh; border-radius: 1.1rem 1.1rem 0 0; }
             .stamp-adjust-body { display: flex; flex-direction: column; }
-            .stamp-adjust-preview { min-height: 250px; padding: 1rem; }
-            .stamp-preview-paper { width: min(52vw, 220px); }
+            .stamp-adjust-preview { position: sticky; top: 0; z-index: 5; min-height: 250px; padding: 1rem; }
+            .stamp-preview-acceptance-card { width: 100%; }
+            .stamp-preview-acceptance-table { font-size: .56rem; }
+            .stamp-preview-acceptance-table th,
+            .stamp-preview-acceptance-table td { padding: .2rem .26rem; }
             .stamp-adjust-controls { max-height: 42vh; padding: 1rem; }
             .stamp-adjust-actions { position: sticky; bottom: 0; padding: .75rem 1rem; }
         }
@@ -2012,7 +2110,8 @@
         );
 
         const SIGNATURE_CELL_MM = { width: 88, height: 29.2 };
-        const STAMP_PREVIEW_CELL_MM = { width: 210 * (1 - .18 - .08), height: 297 * .13 };
+        const STAMP_PREVIEW_CELL_MM = SIGNATURE_CELL_MM;
+        const formatStampNumber = value => Number(Number(value || 0).toFixed(2));
         const getStampAspectRatio = (stamp, asset) => {
             const crop = stamp?.cropEnabled ? normalizeStampCrop(stamp.crop) : null;
             const sourceRatio = Number(asset?.aspectRatio) > 0 ? Number(asset.aspectRatio) : 1;
@@ -2092,7 +2191,7 @@
             );
         };
 
-        const StampAdjustModal = ({ label, stamp, assets, initialFile = null, onClose, onSave }) => {
+        const StampAdjustModal = ({ label, stamp, assets, signatureData = {}, initialFile = null, onClose, onSave }) => {
             const initialStamp = normalizeStampInstance(stamp);
             const legacyAsset = initialStamp.sourceDataUrl && !assets.some(asset => asset.id === initialStamp.assetId)
                 ? normalizeStampAsset({ id: `legacy-${Date.now()}`, versionId: initialStamp.assetVersionId, name: `${label}印章`, dataUrl: initialStamp.sourceDataUrl, mimeType: initialStamp.mimeType, originalWidthPx: initialStamp.originalWidthPx, originalHeightPx: initialStamp.originalHeightPx, aspectRatio: initialStamp.originalWidthPx && initialStamp.originalHeightPx ? initialStamp.originalWidthPx / initialStamp.originalHeightPx : 1 })
@@ -2103,6 +2202,8 @@
             const [busy, setBusy] = useState(false);
             const [error, setError] = useState('');
             const [showClosePrompt, setShowClosePrompt] = useState(false);
+            const [scalePercent, setScalePercent] = useState(100);
+            const [scaleBaseSize, setScaleBaseSize] = useState(() => ({ widthMm: initialStamp.widthMm, heightMm: initialStamp.heightMm }));
             const dragRef = useRef(null);
             const activeAsset = localAssets.find(asset => asset.id === activeAssetId) || null;
             const initialSnapshotRef = useRef(null);
@@ -2130,10 +2231,30 @@
             const updateDraft = (patchValue, selectedAsset = activeAsset) => {
                 setDraft(prev => clampStampToSignatureCell({ ...prev, ...patchValue }, selectedAsset));
             };
+            const setPhysicalSize = (widthMm, heightMm) => {
+                const nextWidth = formatStampNumber(widthMm);
+                const nextHeight = formatStampNumber(heightMm);
+                const fitted = clampStampToSignatureCell({ ...draft, widthMm: nextWidth, heightMm: nextHeight }, activeAsset);
+                setScalePercent(100);
+                setScaleBaseSize({ widthMm: fitted.widthMm, heightMm: fitted.heightMm });
+                setDraft(fitted);
+            };
+            const applySizePreset = widthMm => {
+                const heightMm = widthMm / Math.max(.1, getStampAspectRatio(draft, activeAsset));
+                setPhysicalSize(widthMm, heightMm);
+            };
+            const applyScalePercent = value => {
+                const nextPercent = clampNumber(value, 70, 150, scalePercent);
+                setScalePercent(Math.round(nextPercent));
+                const ratio = nextPercent / 100;
+                updateDraft({ widthMm: formatStampNumber(scaleBaseSize.widthMm * ratio), heightMm: formatStampNumber(scaleBaseSize.heightMm * ratio) });
+            };
             const selectAsset = asset => {
                 if (!asset) return;
                 const aspectRatio = getStampAspectRatio(draft, asset);
                 const nextHeight = draft.lockAspectRatio ? draft.widthMm / Math.max(.1, aspectRatio) : draft.heightMm;
+                setScalePercent(100);
+                setScaleBaseSize({ widthMm: draft.widthMm, heightMm: nextHeight });
                 setActiveAssetId(asset.id);
                 setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: asset.versionId || '', assetName: asset.name, sourceDataUrl: asset.dataUrl || prev.sourceDataUrl, mimeType: asset.mimeType || prev.mimeType, originalWidthPx: asset.originalWidthPx || prev.originalWidthPx, originalHeightPx: asset.originalHeightPx || prev.originalHeightPx, heightMm: nextHeight, crop: asset.crop || prev.crop, cropEnabled: Boolean(asset.crop || prev.cropEnabled) }, asset));
             };
@@ -2147,6 +2268,8 @@
                     const asset = normalizeStampAsset({ id: `stamp-${Date.now()}-${sessionId}`, name: file.name.replace(/\.[^.]+$/, '') || '新印章', dataUrl: result.dataUrl, mimeType: result.mimeType, originalWidthPx: result.originalWidthPx, originalHeightPx: result.originalHeightPx, aspectRatio: result.aspectRatio, defaultWidthMm: STAMP_DEFAULTS.widthMm, defaultHeightMm: STAMP_DEFAULTS.heightMm, updatedAt: new Date().toISOString(), file: result.file });
                     setLocalAssets(prev => [asset, ...prev.filter(item => item.id !== asset.id)]);
                     setActiveAssetId(asset.id);
+                    setScalePercent(100);
+                    setScaleBaseSize(prev => ({ widthMm: prev.widthMm || STAMP_DEFAULTS.widthMm, heightMm: (prev.widthMm || STAMP_DEFAULTS.widthMm) / asset.aspectRatio }));
                     setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: '', assetName: asset.name, sourceDataUrl: asset.dataUrl, mimeType: asset.mimeType, originalWidthPx: asset.originalWidthPx, originalHeightPx: asset.originalHeightPx, heightMm: prev.lockAspectRatio ? prev.widthMm / asset.aspectRatio : prev.heightMm }, asset));
                 } catch (uploadError) {
                     setError(uploadError.message || '印章上傳失敗');
@@ -2173,9 +2296,17 @@
                 try {
                     const crop = await detectTransparentCrop(activeAsset.dataUrl);
                     if (!crop) throw new Error('找不到可用的透明邊界，已保留原始範圍。');
+                    const isFullImage = crop.x < .002 && crop.y < .002 && crop.width > .996 && crop.height > .996;
+                    if (isFullImage) {
+                        setDraft(prev => ({ ...prev, cropEnabled: false }));
+                        setError('圖片沒有可裁切的透明留白，已保留完整範圍。');
+                        return;
+                    }
                     setDraft(prev => {
                         const next = { ...prev, crop, cropEnabled: true };
                         if (prev.lockAspectRatio) next.heightMm = prev.widthMm / getStampAspectRatio(next, activeAsset);
+                        setScalePercent(100);
+                        setScaleBaseSize({ widthMm: next.widthMm, heightMm: next.heightMm });
                         return clampStampToSignatureCell(next, activeAsset);
                     });
                 } catch (cropError) {
@@ -2183,6 +2314,18 @@
                 } finally {
                     setBusy(false);
                 }
+            };
+            const toggleTransparentCrop = enabled => {
+                if (enabled && !draft.crop && !activeAsset?.crop) {
+                    autoCrop();
+                    return;
+                }
+                const crop = draft.crop || activeAsset?.crop || null;
+                const next = { ...draft, crop, cropEnabled: Boolean(enabled && crop) };
+                const nextHeight = draft.lockAspectRatio ? draft.widthMm / getStampAspectRatio(next, activeAsset) : draft.heightMm;
+                setScalePercent(100);
+                setScaleBaseSize({ widthMm: draft.widthMm, heightMm: nextHeight });
+                updateDraft({ crop, cropEnabled: next.cropEnabled, heightMm: nextHeight });
             };
             const removeAsset = () => {
                 if (!activeAsset) return;
@@ -2228,6 +2371,27 @@
                 const finalStamp = clampStampToSignatureCell({ ...draft, assetId: selected?.id || '', assetVersionId: selected?.versionId || draft.assetVersionId, assetName: selected?.name || draft.assetName, sourceDataUrl: selected?.dataUrl || draft.sourceDataUrl, mimeType: selected?.mimeType || draft.mimeType, originalWidthPx: selected?.originalWidthPx || draft.originalWidthPx, originalHeightPx: selected?.originalHeightPx || draft.originalHeightPx }, selected);
                 onSave(finalStamp, localAssets);
             };
+            const clientPreview = {
+                company: signatureData.clientCompany || '甲方公司',
+                contact: signatureData.clientContact || '　',
+                taxId: signatureData.clientTaxId || '　',
+                phone: signatureData.clientPhone || '　'
+            };
+            const vendorPreview = {
+                company: signatureData.vendorCompany || '奇諾影像有限公司',
+                contact: signatureData.vendorContact || '　',
+                taxId: signatureData.vendorTaxId || '　',
+                phone: signatureData.vendorPhone || '　'
+            };
+            const renderPreviewSignatureCell = partyLabel => {
+                const isActive = partyLabel === label;
+                return (
+                    <div className={`stamp-preview-signature-cell ${isActive ? 'is-active' : ''}`} onPointerDown={isActive ? handlePreviewPointerDown : undefined}>
+                        <span className="stamp-preview-signature-placeholder">簽章</span>
+                        {isActive && <StampPreviewOverlay stamp={draft} asset={activeAsset} onPointerDown={handlePreviewPointerDown} />}
+                    </div>
+                );
+            };
             return (
                 <div className="stamp-adjust-modal no-print" role="dialog" aria-modal="true" aria-label={`${label}印章調整`}>
                     <div className="stamp-adjust-panel">
@@ -2237,27 +2401,53 @@
                         </div>
                         <div className="stamp-adjust-body">
                             <div className="stamp-adjust-preview">
-                                <div className="stamp-preview-paper">
-                                    <div className="absolute inset-x-[12%] top-[12%] h-2 rounded bg-slate-100"></div>
-                                    <div className="absolute inset-x-[12%] top-[19%] h-1 rounded bg-slate-100"></div>
-                                    <div className="stamp-preview-signature-cell" onPointerDown={handlePreviewPointerDown}>
-                                        <span className="absolute left-2 top-1 text-[9px] text-slate-400">{label}簽署格</span>
-                                        <StampPreviewOverlay stamp={draft} asset={activeAsset} onPointerDown={handlePreviewPointerDown} />
+                                <div className="stamp-preview-acceptance-card">
+                                    <div className="stamp-preview-caption">
+                                        <span>列印區塊預覽</span>
+                                        <span>{label}印章可直接拖曳</span>
                                     </div>
-                                    <div className="absolute inset-x-[12%] bottom-[5%] flex justify-between border-t border-slate-200 pt-1 text-[7px] text-slate-400"><span>QUOTATION</span><span>PREVIEW</span></div>
+                                    <section className="stamp-preview-acceptance-section">
+                                        <h4 className="stamp-preview-acceptance-title">ACCEPTANCE / 報價確認</h4>
+                                        <table className="stamp-preview-acceptance-table">
+                                            <colgroup>
+                                                <col style={{ width: '9.28%' }} />
+                                                <col style={{ width: '45.36%' }} />
+                                                <col style={{ width: '45.36%' }} />
+                                            </colgroup>
+                                            <thead><tr><th></th><th>甲方</th><th>乙方</th></tr></thead>
+                                            <tbody>
+                                                <tr><th>抬頭</th><td>{clientPreview.company}</td><td>{vendorPreview.company}</td></tr>
+                                                <tr><th>代表人</th><td>{clientPreview.contact}</td><td>{vendorPreview.contact}</td></tr>
+                                                <tr><th>統編</th><td>{clientPreview.taxId}</td><td>{vendorPreview.taxId}</td></tr>
+                                                <tr><th>電話</th><td>{clientPreview.phone}</td><td>{vendorPreview.phone}</td></tr>
+                                                <tr>
+                                                    <th>簽署</th>
+                                                    <td style={{ padding: 0 }}>{renderPreviewSignatureCell('甲方')}</td>
+                                                    <td style={{ padding: 0 }}>{renderPreviewSignatureCell('乙方')}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </section>
+                                    <p className="stamp-preview-note">依列印版 88 × 29.2 mm 簽署格等比例顯示；位置與尺寸會以毫米保存。</p>
                                 </div>
                             </div>
                             <div className="stamp-adjust-controls space-y-4">
                                 <div>
-                                    <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-600">印章資產</span><label className="cursor-pointer rounded-md bg-kino px-2 py-1 text-[11px] font-bold text-white">新增／上傳<input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={uploadAsset} /></label></div>
+                                    <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-600">印章資產</span><label className="stamp-upload-button cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] font-bold">新增／上傳<input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={uploadAsset} /></label></div>
                                     <div className="space-y-2">{localAssets.length ? localAssets.map(asset => <button type="button" key={asset.id} className={`stamp-asset-card ${activeAssetId === asset.id ? 'selected' : ''}`} onClick={() => selectAsset(asset)}><img src={asset.dataUrl || ''} alt="" /><span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-700">{asset.name}</strong><small className="block text-[10px] text-slate-400">{asset.cloudState === 'synced' ? '已同步' : '本機資產'}</small></span>{activeAssetId === asset.id && <i className="fas fa-check text-kino"></i>}</button>) : <p className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">尚未有印章，請先上傳圖片。</p>}</div>
                                 </div>
                                 {activeAsset && <>
                                     <label>印章名稱<input value={activeAsset.name} onChange={event => renameAsset(event.target.value)} /></label>
                                     <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-kino/25 bg-kino/5 px-3 py-2 text-xs font-bold text-kino">更換印章圖樣（建立新資產）<input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/*" onChange={uploadAsset} /></label>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <label>寬度 mm<input type="number" min="1" max="120" step="0.1" value={draft.widthMm} onChange={event => { const width = clampNumber(event.target.value, 1, 120, draft.widthMm); updateDraft({ widthMm: width, heightMm: draft.lockAspectRatio ? width / getStampAspectRatio(draft, activeAsset) : draft.heightMm }); }} /></label>
-                                        <label>高度 mm<input type="number" min="1" max="120" step="0.1" value={draft.heightMm} onChange={event => { const height = clampNumber(event.target.value, 1, 120, draft.heightMm); updateDraft({ heightMm: height, widthMm: draft.lockAspectRatio ? height * getStampAspectRatio(draft, activeAsset) : draft.widthMm }); }} /></label>
+                                        <label>寬度 mm<input type="number" min="1" max="120" step="0.1" value={formatStampNumber(draft.widthMm)} onChange={event => { const width = clampNumber(event.target.value, 1, 120, draft.widthMm); setPhysicalSize(width, draft.lockAspectRatio ? width / getStampAspectRatio(draft, activeAsset) : draft.heightMm); }} /></label>
+                                        <label>高度 mm<input type="number" min="1" max="120" step="0.1" value={formatStampNumber(draft.heightMm)} onChange={event => { const height = clampNumber(event.target.value, 1, 120, draft.heightMm); setPhysicalSize(draft.lockAspectRatio ? height * getStampAspectRatio(draft, activeAsset) : draft.widthMm, height); }} /></label>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                        <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-600"><span>等比例縮放</span><span>{scalePercent}%</span></div>
+                                        <input type="range" min="70" max="150" step="1" value={scalePercent} onChange={event => applyScalePercent(event.target.value)} />
+                                        <label>縮放百分比<input type="number" min="70" max="150" step="1" value={scalePercent} onChange={event => applyScalePercent(event.target.value)} /></label>
+                                        <p className="mt-1 text-[10px] text-slate-400">70–150%；100% 為目前選用的實體尺寸。</p>
                                     </div>
                                     <label className="flex items-center gap-2"><input type="checkbox" checked={draft.lockAspectRatio} onChange={event => updateDraft({ lockAspectRatio: event.target.checked })} />鎖定印章比例</label>
                                     <div className="grid grid-cols-2 gap-2">
@@ -2273,8 +2463,19 @@
                                         <label>混合模式<select value={draft.blendMode} onChange={event => updateDraft({ blendMode: event.target.value })}><option value="normal">一般</option><option value="multiply">Multiply</option></select></label>
                                     </div>
                                     <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowOverflow} onChange={event => updateDraft({ allowOverflow: event.target.checked })} />允許印章跨出簽署格</label>
-                                    <div className="flex flex-wrap gap-2"><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 14, heightMm: 14 / getStampAspectRatio(draft, activeAsset) })}>小章 14mm</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 24, heightMm: 24 / getStampAspectRatio(draft, activeAsset) })}>大章 24mm</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={() => updateDraft({ widthMm: 18, heightMm: 18 / getStampAspectRatio(draft, activeAsset) })}>發票章</button><button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-600" onClick={autoCrop} disabled={busy}>自動裁切透明邊界</button><button type="button" className="rounded-md border border-red-200 px-2 py-1 text-[11px] text-red-500" onClick={removeAsset}>移除資產</button></div>
-                                    <label className="flex items-center gap-2"><input type="checkbox" checked={draft.cropEnabled} onChange={event => { const enabled = event.target.checked; const next = { ...draft, cropEnabled: enabled }; updateDraft({ cropEnabled: enabled, heightMm: draft.lockAspectRatio ? draft.widthMm / getStampAspectRatio(next, activeAsset) : draft.heightMm }); }} />套用透明邊界裁切（保留原圖）</label>
+                                    <div>
+                                        <p className="mb-2 text-xs font-bold text-slate-600">常用尺寸</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(27)}>公司大章 27 mm</button>
+                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(18)}>小章 18 mm</button>
+                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(40)}>發票章 40 mm</button>
+                                            <button type="button" className="rounded-md border border-red-200 px-2 py-1 text-[11px] text-red-500" onClick={removeAsset}>移除資產</button>
+                                        </div>
+                                    </div>
+                                    <label className="stamp-crop-control">
+                                        <input type="checkbox" checked={draft.cropEnabled} disabled={busy} onChange={event => toggleTransparentCrop(event.target.checked)} />
+                                        <span>裁切圖片透明留白<small>開啟後自動偵測透明邊界；原始圖片不會被修改。</small></span>
+                                    </label>
                                 </>}
                                 {error && <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700">{error}</p>}
                                 {busy && <p className="text-xs text-slate-400">正在處理圖片…</p>}
@@ -2287,7 +2488,7 @@
             );
         };
 
-        const SignatureCapture = ({ label, image, stamp, assets = [], uploadId, onChange, onStampChange, onStampAssetsChange, compact = false }) => {
+        const SignatureCapture = ({ label, image, stamp, assets = [], signatureData = {}, uploadId, onChange, onStampChange, onStampAssetsChange, compact = false }) => {
             const [isSigning, setIsSigning] = useState(false);
             const [isStampAdjusting, setIsStampAdjusting] = useState(false);
             const [pendingStampFile, setPendingStampFile] = useState(null);
@@ -2335,7 +2536,7 @@
                             {image && <button type="button" onClick={() => onChange('')} className="rounded bg-white/95 border border-red-200 px-1.5 py-0.5 text-[10px] text-red-500 shadow-sm">清除</button>}
                         </div>
                     </div>
-                    {isStampAdjusting && <StampAdjustModal label={label} stamp={stamp} assets={assets} initialFile={pendingStampFile} onClose={() => { setPendingStampFile(null); setIsStampAdjusting(false); }} onSave={(nextStamp, nextAssets) => { onStampChange?.(nextStamp); onStampAssetsChange?.(nextAssets); setPendingStampFile(null); setIsStampAdjusting(false); }} />}
+                    {isStampAdjusting && <StampAdjustModal label={label} stamp={stamp} assets={assets} signatureData={signatureData} initialFile={pendingStampFile} onClose={() => { setPendingStampFile(null); setIsStampAdjusting(false); }} onSave={(nextStamp, nextAssets) => { onStampChange?.(nextStamp); onStampAssetsChange?.(nextAssets); setPendingStampFile(null); setIsStampAdjusting(false); }} />}
                     {isSigning && <div className="no-print fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4">
                         <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl">
                             <div className="mb-3 flex items-center justify-between"><h3 className="font-bold text-kino">{label}手寫簽名</h3><button type="button" onClick={() => setIsSigning(false)} className="text-gray-400 hover:text-gray-700"><i className="fas fa-times"></i></button></div>
@@ -4724,8 +4925,8 @@
                                                 {/* Strict Height Signature Row */}
                                                 <tr className="bg-white border-b border-gray-200">
                                                     <td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">簽署</td>
-                                                    <td className="border-r border-gray-200 print-signature-row"><SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} uploadId="client-sig-upload" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
-                                                    <td className="print-signature-row"><SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} uploadId="vendor-sig-upload" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
+                                                    <td className="border-r border-gray-200 print-signature-row"><SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} signatureData={data.signature} uploadId="client-sig-upload" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
+                                                    <td className="print-signature-row"><SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} signatureData={data.signature} uploadId="vendor-sig-upload" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} /></td>
                                                 </tr>
 
                                                 {data.printSettings.showSigDate && (<tr className="bg-white"><td className="font-bold bg-kino-50 p-2 border-r border-gray-200 text-black">日期</td><td colSpan="2" className="p-2 text-center"><input type="date" value={data.signature.signatureDate} onChange={e => updateField('signature', 'signatureDate', e.target.value)} className="input-bg-print-remove text-kino font-bold" /></td></tr>)}
@@ -5060,7 +5261,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.clientTaxId} onChange={e => updateField('signature', 'clientTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.clientPhone} onChange={e => updateField('signature', 'clientPhone', e.target.value)} />
-                                    <SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} uploadId="m-client-sig" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
+                                    <SignatureCapture label="甲方" image={data.signature.clientSigImg} stamp={data.signature.clientStamp} assets={stampAssets} signatureData={data.signature} uploadId="m-client-sig" onChange={value => updateField('signature', 'clientSigImg', value)} onStampChange={value => updateField('signature', 'clientStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
                                 </div>
                             </div>
                             <div>
@@ -5072,7 +5273,7 @@
                                         <input className="w-full border-b py-1 text-sm text-kino" placeholder="統編" value={data.signature.vendorTaxId} onChange={e => updateField('signature', 'vendorTaxId', e.target.value)} />
                                     </div>
                                     <input className="w-full border-b py-1 text-sm text-kino" placeholder="電話" value={data.signature.vendorPhone} onChange={e => updateField('signature', 'vendorPhone', e.target.value)} />
-                                    <SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} uploadId="m-vendor-sig" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
+                                    <SignatureCapture label="乙方" image={data.signature.vendorSigImg} stamp={data.signature.vendorStamp} assets={stampAssets} signatureData={data.signature} uploadId="m-vendor-sig" onChange={value => updateField('signature', 'vendorSigImg', value)} onStampChange={value => updateField('signature', 'vendorStamp', value)} onStampAssetsChange={onStampAssetsChange} compact={true} />
                                 </div>
                             </div>
                         </div>
