@@ -899,6 +899,13 @@
             font-weight: 700;
         }
         .stamp-size-preset:hover { border-color: #105482; color: #105482; }
+        .stamp-size-preset.is-selected {
+            border-color: #105482;
+            background: #105482;
+            color: white;
+            box-shadow: 0 2px 7px rgba(16, 84, 130, .22);
+        }
+        .stamp-size-preset:disabled { cursor: not-allowed; opacity: .55; }
         .stamp-crop-control {
             display: flex !important;
             align-items: flex-start;
@@ -2207,6 +2214,7 @@
             const [showClosePrompt, setShowClosePrompt] = useState(false);
             const [scalePercent, setScalePercent] = useState(100);
             const [scaleBaseSize, setScaleBaseSize] = useState(() => ({ widthMm: initialStamp.widthMm, heightMm: initialStamp.heightMm }));
+            const [selectedSizePreset, setSelectedSizePreset] = useState(() => [18, 27, 40].find(width => Math.abs(Number(initialStamp.widthMm) - width) < .05) || null);
             const dragRef = useRef(null);
             const activeAsset = localAssets.find(asset => asset.id === activeAssetId) || null;
             const initialSnapshotRef = useRef(null);
@@ -2234,21 +2242,23 @@
             const updateDraft = (patchValue, selectedAsset = activeAsset) => {
                 setDraft(prev => clampStampToSignatureCell({ ...prev, ...patchValue }, selectedAsset));
             };
-            const setPhysicalSize = (widthMm, heightMm) => {
+            const setPhysicalSize = (widthMm, heightMm, presetWidth = null) => {
                 const nextWidth = formatStampNumber(widthMm);
                 const nextHeight = formatStampNumber(heightMm);
                 const fitted = clampStampToSignatureCell({ ...draft, widthMm: nextWidth, heightMm: nextHeight }, activeAsset);
                 setScalePercent(100);
                 setScaleBaseSize({ widthMm: fitted.widthMm, heightMm: fitted.heightMm });
+                setSelectedSizePreset(presetWidth);
                 setDraft(fitted);
             };
             const applySizePreset = widthMm => {
                 const heightMm = widthMm / Math.max(.1, getStampAspectRatio(draft, activeAsset));
-                setPhysicalSize(widthMm, heightMm);
+                setPhysicalSize(widthMm, heightMm, widthMm);
             };
             const applyScalePercent = value => {
                 const nextPercent = clampNumber(value, 70, 150, scalePercent);
                 setScalePercent(Math.round(nextPercent));
+                setSelectedSizePreset(null);
                 const ratio = nextPercent / 100;
                 updateDraft({ widthMm: formatStampNumber(scaleBaseSize.widthMm * ratio), heightMm: formatStampNumber(scaleBaseSize.heightMm * ratio) });
             };
@@ -2258,6 +2268,7 @@
                 const nextHeight = draft.lockAspectRatio ? draft.widthMm / Math.max(.1, aspectRatio) : draft.heightMm;
                 setScalePercent(100);
                 setScaleBaseSize({ widthMm: draft.widthMm, heightMm: nextHeight });
+                setSelectedSizePreset(null);
                 setActiveAssetId(asset.id);
                 setDraft(prev => clampStampToSignatureCell({ ...prev, assetId: asset.id, assetVersionId: asset.versionId || '', assetName: asset.name, sourceDataUrl: asset.dataUrl || prev.sourceDataUrl, mimeType: asset.mimeType || prev.mimeType, originalWidthPx: asset.originalWidthPx || prev.originalWidthPx, originalHeightPx: asset.originalHeightPx || prev.originalHeightPx, heightMm: nextHeight, crop: asset.crop || prev.crop, cropEnabled: Boolean(asset.crop || prev.cropEnabled) }, asset));
             };
@@ -2469,9 +2480,19 @@
                                     <div>
                                         <p className="mb-2 text-xs font-bold text-slate-600">常用尺寸</p>
                                         <div className="flex flex-wrap gap-2">
-                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(27)}>公司大章 27 mm</button>
-                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(18)}>小章 18 mm</button>
-                                            <button type="button" className="stamp-size-preset" onClick={() => applySizePreset(40)}>發票章 40 mm</button>
+                                            {[{ width: 27, label: '公司大章 27 mm' }, { width: 18, label: '小章 18 mm' }, { width: 40, label: '發票章 40 mm' }].map(preset => (
+                                                <button
+                                                    type="button"
+                                                    key={preset.width}
+                                                    className={`stamp-size-preset ${selectedSizePreset === preset.width ? 'is-selected' : ''}`}
+                                                    aria-pressed={selectedSizePreset === preset.width}
+                                                    disabled={busy}
+                                                    onClick={() => applySizePreset(preset.width)}
+                                                >
+                                                    {selectedSizePreset === preset.width && <i className="fas fa-check mr-1" aria-hidden="true"></i>}
+                                                    {preset.label}
+                                                </button>
+                                            ))}
                                             <button type="button" className="rounded-md border border-red-200 px-2 py-1 text-[11px] text-red-500" onClick={removeAsset}>移除資產</button>
                                         </div>
                                     </div>
