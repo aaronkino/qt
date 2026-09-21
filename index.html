@@ -1367,6 +1367,9 @@
         });
 
         const getStampImageSource = (stamp, asset) => stamp?.sourceDataUrl || asset?.dataUrl || '';
+        const hasConfiguredStamp = stamp => Boolean(
+            stamp?.sourceDataUrl || stamp?.assetId || stamp?.assetVersionId
+        );
 
         const getInitialData = () => ({
             schemaVersion: 4,
@@ -3323,12 +3326,15 @@
                 localStorage.setItem(PRINT_SCALE_STORAGE_KEY, nextScale);
 
                 const stampReady = [data.signature.clientStamp, data.signature.vendorStamp].every(stamp => {
-                    if (!stamp?.enabled) return true;
+                    // A new quotation keeps an empty stamp configuration for both parties.
+                    // Only block printing when a real stamp reference exists but its image
+                    // has not been restored yet; an untouched empty slot is valid.
+                    if (!stamp?.enabled || !hasConfiguredStamp(stamp)) return true;
                     const asset = stampAssets.find(item => item.id === stamp.assetId);
                     return Boolean(getStampImageSource(stamp, asset));
                 });
                 if (!stampReady) {
-                    showToast('印章圖片尚未載入完成，請稍候再列印。');
+                    showToast('已選用的印章圖片無法載入，請重新同步或重新選擇印章後再列印。');
                     return;
                 }
 
