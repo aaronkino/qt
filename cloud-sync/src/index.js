@@ -1,4 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { readPdfPayload, renderPrintPdf, PRINT_FONT_URL } from './pdf-render.js';
+import { Buffer } from 'node:buffer';
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -896,6 +898,35 @@ const routeRequest = async (request, env) => {
   }
 
   const workspaceId = auth.workspaceId;
+  if (request.method === 'POST' && url.pathname === '/api/pdf') {
+    const allowedEmails = String(env.PDF_ALLOWED_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+    if (!allowedEmails.includes(String(auth.user.email || '').toLowerCase())) throw new ApiError('此帳號尚未開通 PDF 下載。', 403);
+    if (env.PDF_ENABLED !== 'true' || !env.PDF_BROWSER) throw new ApiError('PDF 轉檔服務尚未啟用，請先使用列印另存 PDF。', 503);
+    if (!env.PDF_RATE_LIMITER) throw new ApiError('PDF 用量保護尚未設定', 503);
+    const limit = await env.PDF_RATE_LIMITER.limit({ key: auth.user.id });
+    if (!limit.success) throw new ApiError('PDF 下載過於頻繁，請一分鐘後重試。', 429);
+    let payload;
+    try { payload = await readPdfPayload(request); }
+    catch (error) { throw new ApiError(error.message === 'PDF_PAYLOAD_TOO_LARGE' ? 'PDF 內容超過 12 MB，請縮小圖片。' : 'PDF 內容格式不正確', error.message === 'PDF_PAYLOAD_TOO_LARGE' ? 413 : 400); }
+    const { default: puppeteer } = await import('@cloudflare/puppeteer');
+    let browser;
+    try {
+      const font = await fetch(PRINT_FONT_URL, { signal: AbortSignal.timeout(15000), cf: { cacheTtl: 86400 } });
+      if (!font.ok) throw new Error('PRINT_FONT_UNAVAILABLE');
+      const fontSource = 'data:font/ttf;base64,' + Buffer.from(await font.arrayBuffer()).toString('base64');
+      browser = await puppeteer.launch(env.PDF_BROWSER, { keep_alive: 10000 });
+      const page = await browser.newPage();
+      const bytes = await renderPrintPdf(page, payload, fontSource);
+      const filename = String(payload.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').slice(0, 180) + '.pdf';
+      return new Response(bytes, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="quotation.pdf"; filename*=UTF-8''${encodeURIComponent(filename)}`, 'cache-control': 'no-store' } });
+    } catch (error) {
+      // Do not log submitted HTML, seal images, or project contents.
+      console.error('PDF_RENDER_FAILED', error?.name || 'Error');
+      throw new ApiError('PDF 轉檔暫時無法完成或今日額度已用完，請使用列印另存 PDF。', 503);
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+    }
+  }
 
   if (request.method === "GET" && url.pathname === "/api/versions") {
     const versions = await env.DB.prepare(

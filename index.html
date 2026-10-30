@@ -44,6 +44,8 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+CJK+TC:wght@400;500;700&display=swap');
+        @font-face { font-family: KinoPrintTC; src: url('./assets/pdf/NotoSansTC-Regular.ttf') format('truetype'); font-weight: 400; font-display: block; }
+        .print-pagination-root, .print-pagination-root input, .print-pagination-root textarea, .print-pagination-root select { font-family: KinoPrintTC, sans-serif !important; }
         
         body { font-family: 'Inter', 'Noto Sans CJK TC', sans-serif; background-color: #f4f7f9; }
         
@@ -211,7 +213,7 @@
             }
             /* A4 安全邊界：保留印表機裁切空間，同時提高單頁可用高度。 */
             @page { size: A4; margin: 8mm; }
-            body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+            body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; font-family: KinoPrintTC, sans-serif !important; }
             
             .no-print { display: none !important; }
             .print-only { display: block !important; }
@@ -3337,6 +3339,7 @@
                 const originalTitle = document.title;
                 const quotationId = String(data.header.quotationId || 'quotation').trim().replace(/[\\/:*?"<>|]+/g, '-');
                 const waitForPrintAssets = async () => {
+                    await document.fonts.load('12px KinoPrintTC');
                     if (document.fonts?.ready) await document.fonts.ready;
                     const images = Array.from(document.querySelectorAll('.quick-print-sheet img, .print-pagination-root img'));
                     await Promise.all(images.filter(image => !image.complete).map(image => new Promise(resolve => {
@@ -3359,13 +3362,16 @@
                 const download = async event => {
                     if (window.KinoPdfExport?.busy) return;
                     try {
+                        const pdfToken = sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
+                        if (!pdfToken) { setShowCloudKeyModal(true); throw new Error('請先使用 Google 登入以下載 PDF；列印不需登入。'); }
                         const missingStamp = [data.signature.clientStamp, data.signature.vendorStamp].some(stamp => stamp?.enabled && hasConfiguredStamp(stamp) && !getStampImageSource(stamp, stampAssets.find(asset => asset.id === stamp.assetId)));
                         if (missingStamp) throw new Error('已選用的印章圖片無法載入，請重新同步或重新選擇印章。');
+                        await document.fonts.load('12px KinoPrintTC');
                         await document.fonts.ready;
                         printScaleRef.current = normalizePrintScaleValue(event.detail?.scale || printScale);
                         preparePrintPagination();
                         showToast('正在產生 PDF，請稍候…');
-                        await window.KinoPdfExport.download(document.querySelector('.print-pagination-root'), data.header.quotationId);
+                        await window.KinoPdfExport.download(document.querySelector('.print-pagination-root'), data.header.quotationId, pdfToken, CLOUD_SYNC_API_URL);
                         showToast('PDF 已產生');
                     } catch (error) {
                         console.error('PDF export failed', error);

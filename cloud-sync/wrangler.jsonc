@@ -4,10 +4,14 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-08",
   "compatibility_flags": ["nodejs_compat"],
+  "browser": { "binding": "PDF_BROWSER" },
+  "ratelimits": [{ "name": "PDF_RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 2, "period": 60 } }],
   "observability": {
     "enabled": true
   },
   "vars": {
+    "PDF_ENABLED": "true",
+    "PDF_ALLOWED_EMAILS": "kinostudio.tw@gmail.com",
     "ALLOWED_ORIGINS": "https://aaronkino.github.io,http://localhost:8000,http://127.0.0.1:8000",
     "GOOGLE_CLIENT_ID": "832913493589-j804t0j6ri2n4sfq3bthfn25d1pf45ad.apps.googleusercontent.com",
     "MICROSOFT_CLIENT_ID": "1716f4a3-f086-4c1b-b6e0-43ae9561b340"

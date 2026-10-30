@@ -8,11 +8,13 @@
 - 舊版 `web/`、`rwd/`、`pdf/`、`transMP3/` 已退出目前版本，仍可從 Git 歷史找回。
 - 雲端 API 僅接受伺服器簽發、未過期的 Google 工作階段；舊同步金鑰已停用。Google 使用者的 `sub`、user ID、`user:<id>` 工作區與 D1／R2 綁定不變；沒有執行資料遷移或刪除。
 - 按「下載 PDF」直接下載以報價單號命名的 A4 PDF，使用目前列印比例與既有快速／詳細分頁。原本「列印」仍可使用。
-- PDF 在裝置內產生；文字為可選取／搜尋的 Unicode PDF 文字，背景表格、標誌與印章為高解析度圖片。沒有把報價傳送到轉檔服務。首次使用會載入本網站內的開源字型與 PDF 套件。
-- 極長的單一服務列若超過一頁會提示調整內容，不會靜默裁切。下載版文字字重和瀏覽器列印可能略有差異。
-- 安全測試：先在 `cloud-sync/` 執行 `npm ci`，再於根目錄執行 `node --test tests/auth.test.mjs`；Worker 驗證使用 `npm run check`，不要對正式資料庫執行重置或遷移。
+- 「下載 PDF」使用 Cloudflare Browser Run 的 Chromium，直接渲染瀏覽器準備好的列印 HTML、CSS、分頁、字型、圖片及縮放設定。已移除 jsPDF／html2canvas，不再重繪版面。PDF 文字可選取與搜尋。
+- 下載需要 Google 登入，目前僅開通 `kinostudio.tw@gmail.com`。當次報價 HTML 與印章會透過 HTTPS 暫時送到專用 Worker 轉檔，不寫入 D1／R2，也不記錄請求內容；瀏覽器每次產生完立即關閉。未登入仍可列印。
+- 依使用者確認維持 Workers Free，Browser Run 官方免費額度為每日 10 分鐘（帳號共享，以官方最新規則為準），不升級付費。每帳號每分鐘限 2 次，每次最多 20 頁、請求 12 MB。免費額度或服務不可用時顯示提示，使用者可改用列印另存 PDF，不自動切回不同版型的輸出。
+- 轉檔瀏覽器停用 JavaScript、CSP 封鎖腳本與嵌入內容，網路只允許固定的公開字型與內嵌圖片，防止任意 URL 轉檔或 SSRF。
+- 安全測試：先在 `cloud-sync/` 執行 `npm ci`，再於根目錄執行 `node --test tests/auth.test.mjs tests/pdf.test.mjs`；Worker 驗證使用 `npm run check`，不要對正式資料庫執行重置或遷移。
 
-PDF 本機套件：jsPDF 4.2.1、html2canvas 1.4.1（MIT），Noto Sans TC 靜態 Regular 字型由 Google Fonts 開源變數字型轉換（SIL OFL）；授權文字位於 `assets/pdf/`。這些檔案是下載功能的正式相依資產，不屬於舊版遺留檔案。
+列印與下載共用 Noto Sans TC 靜態 Regular 字型，由 Google Fonts 開源變數字型轉換（SIL OFL），授權位於 `assets/pdf/OFL.txt`。後端使用官方 `@cloudflare/puppeteer`。本機 Chrome／Edge 與雲端 Chromium 版本不同，極細微反鋸齒差異仍可能存在；不使用另一套文字排版或圖片化 PDF。
 
 這是可直接部署到 GitHub Pages 的靜態報價工具，不需要 npm。
 
