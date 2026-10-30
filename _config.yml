@@ -1,0 +1,14 @@
+# Defense in depth for the repository's legacy branch-based Pages builder.
+# The primary workflow separately uploads only index.html and assets/.
+exclude:
+  - cloud-sync
+  - tests
+  - README.md
+  - node_modules
+  - tmp
+  - private
+  - projects
+  - exports
+  - package.json
+  - package-lock.json
+  - public-site
