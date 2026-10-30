@@ -101,15 +101,9 @@ const getAuthContext = async (request, env) => {
     };
   }
 
-  // Backward compatibility: existing manually generated sync keys continue to
-  // resolve to their original SHA-256 workspace.
-  return {
-    type: "key",
-    tokenHash,
-    workspaceId: tokenHash,
-    user: null,
-    expiresAt: null,
-  };
+  // Only server-issued, unexpired Google sessions are accepted. Legacy data
+  // remains stored, but arbitrary bearer strings cannot provision workspaces.
+  return null;
 };
 
 const readJson = async (request) => {
@@ -882,7 +876,7 @@ const routeRequest = async (request, env) => {
 
   const auth = await getAuthContext(request, env);
   if (!auth) {
-    throw new ApiError("請先使用 Google 登入或輸入同步金鑰", 401);
+    throw new ApiError("請先使用 Google 登入", 401);
   }
 
   if (request.method === "GET" && url.pathname === "/api/auth/me") {

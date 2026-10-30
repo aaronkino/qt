@@ -40,6 +40,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://accounts.google.com/gsi/client?hl=zh_TW" async defer></script>
     <script src="./assets/msal-browser-5.17.3.min.js"></script>
+    <script src="./assets/pdf-export.js" defer></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+CJK+TC:wght@400;500;700&display=swap');
@@ -1639,7 +1640,7 @@
                         onClick={onSync}
                         disabled={status === 'syncing'}
                         className={`qt-toolbar-control qt-toolbar-button text-white ${state.className} ${compact ? 'min-w-0 flex-1' : ''}`}
-                        title={authUser ? `已登入 ${authUser.email}` : '使用 Google 帳號登入，或以既有同步金鑰連接 KINO 專用雲端資料庫'}
+                        title={authUser ? `已登入 ${authUser.email}` : '使用 Google 帳號登入 KINO 專用雲端資料庫'}
                     >
                         <i className={`fas ${state.icon}`}></i>{state.label}
                     </button>
@@ -1850,33 +1851,6 @@
                                 <div ref={googleButtonRef} className="flex min-h-[44px] w-full items-center justify-center"></div>
                                 {authStatus === 'loading' && <p className="mt-2 text-center text-xs text-gray-400"><i className="fas fa-spinner fa-spin mr-1"></i>正在驗證 Google 帳號…</p>}
                             </div> : <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700"><i className="fas fa-info-circle mr-1"></i>Google 登入程式已完成，等待填入 Google OAuth Client ID 後啟用。</div>}
-                            <details className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                <summary className="cursor-pointer text-xs font-bold text-gray-500">使用既有同步金鑰</summary>
-                                <p className="mb-3 mt-2 text-xs leading-relaxed text-gray-400">保留給舊資料空間使用；新使用者建議選 Google 登入。</p>
-                        <label className="mb-1 block text-xs font-bold text-gray-600" htmlFor="cloud-sync-key">同步金鑰</label>
-                        <input
-                            id="cloud-sync-key"
-                            type={showKey ? 'text' : 'password'}
-                            autoComplete="off"
-                            value={syncKey}
-                            onChange={event => setSyncKey(event.target.value)}
-                            onKeyDown={event => { if (event.key === 'Enter' && syncKey.trim()) onSave(syncKey.trim()); }}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-kino focus:ring-2 focus:ring-kino/15"
-                            placeholder="請輸入同步金鑰"
-                        />
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500"><input type="checkbox" checked={showKey} onChange={event => setShowKey(event.target.checked)} className="accent-kino" />顯示金鑰</label>
-                            <div className="flex gap-1.5">
-                                <button type="button" onClick={generateSyncKey} className="rounded-md border border-kino/30 px-2 py-1 text-xs font-bold text-kino hover:bg-kino/5">產生新金鑰</button>
-                                {syncKey && <button type="button" onClick={copySyncKey} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">{copied ? '已複製' : '複製'}</button>}
-                            </div>
-                        </div>
-                                {showKey && syncKey && <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800">請立即把金鑰存到你的密碼管理器。遺失後無法讀回原本的雲端資料。</p>}
-                                <div className="mt-3 flex justify-end gap-2">
-                                    <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">取消</button>
-                                    <button type="button" disabled={!syncKey.trim()} onClick={() => onSave(syncKey.trim())} className="rounded-lg bg-kino px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">使用金鑰同步</button>
-                                </div>
-                            </details>
                         </>}
                     </div>
                 </div>
@@ -2682,6 +2656,7 @@
             };
             return (
                 <div ref={rootRef} className={`print-split-button relative inline-flex ${isOpen ? 'print-split-menu-open' : ''} ${compact ? 'shrink-0' : ''} ${fullWidth ? 'w-full' : ''}`}>
+                    <button type="button" className="qt-toolbar-control qt-toolbar-button mr-1 rounded-xl bg-kino text-white" onClick={() => window.dispatchEvent(new CustomEvent('quotation-download-pdf', { detail: { scale: normalizedValue } }))} aria-label="下載報價單 PDF"><i className="fas fa-file-pdf"></i><span>下載 PDF</span></button>
                     <div className={`inline-flex overflow-hidden rounded-xl shadow-sm ${fullWidth ? 'w-full' : ''}`}>
                         <button type="button" onClick={() => onPrint(String(PRINT_SCALE_MAX))} className={`qt-toolbar-control qt-toolbar-button flex-1 rounded-none ${light ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`} title="列印（100%）" aria-label="列印（100%）">
                             <i className="fas fa-print"></i><span>列印</span>
@@ -3380,6 +3355,28 @@
                 requestAnimationFrame(() => requestAnimationFrame(() => { void print(); }));
             };
             const handlePrint = selectedScale => handlePrintWithScale(selectedScale || printScaleRef.current);
+            useEffect(() => {
+                const download = async event => {
+                    if (window.KinoPdfExport?.busy) return;
+                    try {
+                        const missingStamp = [data.signature.clientStamp, data.signature.vendorStamp].some(stamp => stamp?.enabled && hasConfiguredStamp(stamp) && !getStampImageSource(stamp, stampAssets.find(asset => asset.id === stamp.assetId)));
+                        if (missingStamp) throw new Error('已選用的印章圖片無法載入，請重新同步或重新選擇印章。');
+                        await document.fonts.ready;
+                        printScaleRef.current = normalizePrintScaleValue(event.detail?.scale || printScale);
+                        preparePrintPagination();
+                        showToast('正在產生 PDF，請稍候…');
+                        await window.KinoPdfExport.download(document.querySelector('.print-pagination-root'), data.header.quotationId);
+                        showToast('PDF 已產生');
+                    } catch (error) {
+                        console.error('PDF export failed', error);
+                        showToast(error.message || 'PDF 產生失敗，請使用列印另存 PDF。');
+                    } finally {
+                        printPaginationCleanupRef.current?.();
+                    }
+                };
+                window.addEventListener('quotation-download-pdf', download);
+                return () => window.removeEventListener('quotation-download-pdf', download);
+            }, [data, stampAssets, printScale]);
             const handlePrintScaleChange = value => {
                 const nextScale = normalizePrintScaleValue(value);
                 setPrintScale(nextScale);
@@ -3507,7 +3504,7 @@
             };
             const handleManualSave = () => { localStorage.setItem('kino_quotation_draft_v2', JSON.stringify(data)); showToast("已儲存至瀏覽器快取"); };
             const getCloudSyncKey = () => {
-                return sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY) || sessionStorage.getItem(CLOUD_SYNC_KEY_STORAGE_KEY) || '';
+                return sessionStorage.getItem(CLOUD_AUTH_TOKEN_STORAGE_KEY) || '';
             };
             const cloudRequest = async (path, options = {}, allowPrompt = true) => {
                 const syncKey = getCloudSyncKey();

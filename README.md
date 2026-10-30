@@ -2,6 +2,18 @@
 
 公開網站：<https://aaronkino.github.io/qt/>
 
+## 2026-10-30 安全更新與下載 PDF
+
+- Pages 以公開檔案白名單部署：僅 `index.html`、`assets/`，不發布後端設定、測試與資料庫遷移。
+- 舊版 `web/`、`rwd/`、`pdf/`、`transMP3/` 已退出目前版本，仍可從 Git 歷史找回。
+- 雲端 API 僅接受伺服器簽發、未過期的 Google 工作階段；舊同步金鑰已停用。Google 使用者的 `sub`、user ID、`user:<id>` 工作區與 D1／R2 綁定不變；沒有執行資料遷移或刪除。
+- 按「下載 PDF」直接下載以報價單號命名的 A4 PDF，使用目前列印比例與既有快速／詳細分頁。原本「列印」仍可使用。
+- PDF 在裝置內產生；文字為可選取／搜尋的 Unicode PDF 文字，背景表格、標誌與印章為高解析度圖片。沒有把報價傳送到轉檔服務。首次使用會載入本網站內的開源字型與 PDF 套件。
+- 極長的單一服務列若超過一頁會提示調整內容，不會靜默裁切。下載版文字字重和瀏覽器列印可能略有差異。
+- 安全測試：先在 `cloud-sync/` 執行 `npm ci`，再於根目錄執行 `node --test tests/auth.test.mjs`；Worker 驗證使用 `npm run check`，不要對正式資料庫執行重置或遷移。
+
+PDF 本機套件：jsPDF 4.2.1、html2canvas 1.4.1（MIT），Noto Sans TC 靜態 Regular 字型由 Google Fonts 開源變數字型轉換（SIL OFL）；授權文字位於 `assets/pdf/`。這些檔案是下載功能的正式相依資產，不屬於舊版遺留檔案。
+
 這是可直接部署到 GitHub Pages 的靜態報價工具，不需要 npm。
 
 ## 報價模式
@@ -22,7 +34,7 @@
 3. 視需要套用付款比例，或開啟「選擇條款」依分類勾選條款。
 4. 使用「列印／另存 PDF」，在瀏覽器列印視窗選擇儲存為 PDF。
 
-草稿會持續儲存在目前瀏覽器的 `localStorage`。完整專案、條款範本、條款分類與單條條款可透過 Google 登入同步至 KINO 專用 Cloudflare D1。舊版同步金鑰仍保留為相容模式，但新使用者建議直接使用 Google 登入。
+草稿會持續儲存在目前瀏覽器的 `localStorage`。完整專案、條款範本、條款分類與單條條款可透過 Google 登入同步至 KINO 專用 Cloudflare D1。雲端同步必須使用 Google 登入。
 
 手機按「另存 JSON」時，支援 Web Share 的瀏覽器會開啟系統分享面板，可直接選擇「檔案」、Google Drive 或 OneDrive App 儲存；若裝置不支援，則改為一般 JSON 下載。檔名會優先使用報價單號。
 
@@ -70,7 +82,7 @@ D1 版本紀錄保存每次同步或還原前的完整工作區快照，可在�
 
 Google 登入使用專用 Google Cloud 專案 `kino-quotation` 與 OAuth Web Client。前端只包含可公開的 Client ID；Google 回傳的 ID token 由 Worker 以 Google 公開金鑰驗證簽章、簽發者、受眾與期限，D1 以 Google 帳號的固定 `sub` 建立獨立工作區。登入後由 Worker 簽發 30 天的隨機工作階段權杖，前端只保留於目前分頁的 `sessionStorage`。
 
-第一次使用可由前端以 Web Crypto 產生高強度同步金鑰；API 只使用金鑰的 SHA-256 雜湊分隔資料空間，不保存明文。請將金鑰存入密碼管理器，並在其他裝置輸入同一把金鑰。金鑰不得寫入 `index.html`、GitHub 或其他公開檔案。
+舊版自產同步金鑰已停用；請使用 Google 登入。既有金鑰工作區資料仍保留，但不再接受金鑰 API 存取；Google 工作區不受此變更影響。
 
 ## 雲端硬碟規劃
 
@@ -88,4 +100,4 @@ OneDrive 登入使用官方 `@azure/msal-browser` 5.17.3 瀏覽器套件；登�
 
 ## 資料安全
 
-未啟用雲端同步時，報價資料不會離開瀏覽器。啟用同步後，已儲存專案及條款資料庫會傳送至專用 D1；API 僅允許本網站與明列的本機測試來源，並要求有效的 Google 工作階段或舊版同步金鑰。GitHub 公開程式庫不包含 Google Client Secret、Cloudflare API Token、D1 存取憑證或使用者資料。請勿將帳密或其他無關敏感資訊寫入報價內容。
+未啟用雲端同步時，報價資料不會離開瀏覽器。啟用同步後，已儲存專案及條款資料庫會傳送至專用 D1；API 僅允許本網站與明列的本機測試來源，並要求有效的 Google 工作階段。GitHub 公開程式庫不包含 Google Client Secret、Cloudflare API Token、D1 存取憑證或使用者資料。請勿將帳密或其他無關敏感資訊寫入報價內容。
